@@ -1,0 +1,102 @@
+@page "/schedule"
+@namespace CourseRegistration.Web.Components.Pages
+@inject IViewScheduleUseCase ViewScheduleUseCase
+@inject IStudentRepository StudentRepository
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold mb-1">Thời Khóa Biểu Sinh Viên</h2>
+        <p class="text-muted mb-0">Học kỳ 1 (2025 - 2026) &bull; Lịch học theo tuần</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <label class="small text-muted fw-semibold">Sinh viên:</label>
+        <select class="form-select form-select-sm" style="min-width: 220px;" @onchange="OnStudentChanged">
+            @foreach (var s in students)
+            {
+                <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
+                    @s.StudentCode - @s.FullName
+                </option>
+            }
+        </select>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Đang tải lịch học...</p>
+    </div>
+}
+else if (!registeredSections.Any())
+{
+    <div class="card border-0 shadow-sm text-center py-5 bg-white">
+        <i class="bi bi-calendar-x fs-1 text-muted mb-3"></i>
+        <h5 class="fw-bold text-muted">Chưa có lịch học</h5>
+        <p class="text-muted small mb-4">Sinh viên này chưa có phiếu đăng ký nào được xác nhận trong học kỳ hiện tại.</p>
+        <div>
+            <a href="/sections" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Đăng ký lớp học phần ngay
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Hiển thị thời khóa biểu dạng lưới qua Reusable Component ScheduleTableComponent (K3.1) -->
+    <div class="mb-4">
+        <ScheduleTableComponent Sections="@registeredSections" />
+    </div>
+
+    <!-- Tóm tắt danh sách các môn đã đăng ký -->
+    <div class="card border-0 shadow-sm p-4 bg-white">
+        <h5 class="fw-bold mb-3"><i class="bi bi-list-check text-primary me-2"></i>Tổng Hợp Lớp Đã Đăng Ký</h5>
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+            @foreach (var sec in registeredSections)
+            {
+                <div class="col">
+                    <div class="p-3 border rounded bg-light-subtle">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <span class="badge bg-primary-subtle text-primary fw-bold">@sec.SectionCode</span>
+                            <span class="badge bg-secondary">@(sec.Course?.Credits ?? 0) TC</span>
+                        </div>
+                        <h6 class="fw-bold mb-1">@sec.Course?.CourseName</h6>
+                        <div class="small text-muted">
+                            <div><i class="bi bi-person me-1"></i> GV: @sec.Instructor</div>
+                            <div><i class="bi bi-geo-alt me-1"></i> Phòng: @sec.Room</div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private List<Student> students = new List<Student>();
+    private int selectedStudentId = 1;
+    private IEnumerable<Section> registeredSections = new List<Section>();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        students = (await StudentRepository.GetAllStudentsAsync()).ToList();
+        await LoadSchedule();
+    }
+
+    private async Task LoadSchedule()
+    {
+        isLoading = true;
+        registeredSections = await ViewScheduleUseCase.ExecuteAsync(selectedStudentId, "2025_HK1");
+        isLoading = false;
+    }
+
+    private async Task OnStudentChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int id))
+        {
+            selectedStudentId = id;
+            await LoadSchedule();
+        }
+    }
+}

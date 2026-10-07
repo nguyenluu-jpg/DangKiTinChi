@@ -1,0 +1,86 @@
+@namespace CourseRegistration.Web.Components.Shared
+
+<div class="table-responsive shadow-sm rounded border bg-white p-2">
+    <table class="table table-bordered text-center align-middle mb-0 schedule-table">
+        <thead class="table-primary">
+            <tr>
+                <th style="width: 80px;">Tiết</th>
+                <th>Thứ 2</th>
+                <th>Thứ 3</th>
+                <th>Thứ 4</th>
+                <th>Thứ 5</th>
+                <th>Thứ 6</th>
+                <th>Thứ 7</th>
+                <th>Chủ nhật</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int period = 1; period <= 10; period++)
+            {
+                int currentPeriod = period;
+                <tr>
+                    <td class="fw-bold bg-light">Tiết @currentPeriod</td>
+                    @for (int day = 2; day <= 8; day++)
+                    {
+                        int currentDay = day;
+                        var matchedItem = GetScheduleItem(currentDay, currentPeriod);
+
+                        if (matchedItem != null)
+                        {
+                            <td class="p-1 table-info">
+                                <div class="schedule-slot p-2 rounded shadow-sm text-start">
+                                    <div class="fw-bold text-primary small">@matchedItem.CourseName</div>
+                                    <div class="badge bg-primary text-wrap mb-1">@matchedItem.SectionCode</div>
+                                    <div class="small text-muted"><i class="bi bi-geo-alt"></i> @matchedItem.Room</div>
+                                </div>
+                            </td>
+                        }
+                        else
+                        {
+                            <td class="text-muted small bg-light-subtle">&nbsp;</td>
+                        }
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter]
+    public IEnumerable<Section> Sections { get; set; } = new List<Section>();
+
+    private class ScheduleCellInfo
+    {
+        public string CourseName { get; set; } = string.Empty;
+        public string SectionCode { get; set; } = string.Empty;
+        public string Room { get; set; } = string.Empty;
+    }
+
+    private ScheduleCellInfo? GetScheduleItem(int dayOfWeek, int period)
+    {
+        if (Sections == null) return null;
+
+        foreach (var sec in Sections)
+        {
+            if (sec.Schedules == null) continue;
+
+            var sched = sec.Schedules.FirstOrDefault(s =>
+                s.DayOfWeek == dayOfWeek &&
+                period >= s.StartPeriod &&
+                period <= s.EndPeriod);
+
+            if (sched != null)
+            {
+                return new ScheduleCellInfo
+                {
+                    CourseName = sec.Course?.CourseName ?? sec.SectionCode,
+                    SectionCode = sec.SectionCode,
+                    Room = string.IsNullOrEmpty(sched.Room) ? sec.Room : sched.Room
+                };
+            }
+        }
+
+        return null;
+    }
+}

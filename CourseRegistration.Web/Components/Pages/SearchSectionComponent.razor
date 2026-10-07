@@ -1,0 +1,125 @@
+@page "/sections"
+@namespace CourseRegistration.Web.Components.Pages
+@inject ISearchSectionUseCase SearchSectionUseCase
+@inject IAddSectionToCartUseCase AddSectionToCartUseCase
+@inject IRemoveSectionFromCartUseCase RemoveSectionFromCartUseCase
+@inject IViewRegistrationCartUseCase ViewRegistrationCartUseCase
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold mb-1">Tra Cứu & Đăng Ký Lớp Học Phần</h2>
+        <p class="text-muted mb-0">Học kỳ 1 (2025 - 2026) &bull; Chọn lớp học phần để thêm vào giỏ đăng ký</p>
+    </div>
+    <a href="/cart" class="btn btn-primary">
+        <i class="bi bi-cart-check me-1"></i> Đi đến Giỏ Đăng Ký
+    </a>
+</div>
+
+<!-- Thanh tìm kiếm & lọc -->
+<div class="card border-0 shadow-sm p-3 mb-4 bg-white">
+    <div class="row g-2 align-items-center">
+        <div class="col-md-8">
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0">
+                    <i class="bi bi-search text-muted"></i>
+                </span>
+                <input type="text" 
+                       class="form-control border-start-0" 
+                       placeholder="Tìm theo tên học phần, mã môn (vd: WEB301), giảng viên..."
+                       @bind="searchKeyword" 
+                       @bind:event="oninput" 
+                       @onkeyup="HandleSearch" />
+            </div>
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+            <button class="btn btn-primary flex-grow-1" @onclick="HandleSearch">
+                <i class="bi bi-funnel me-1"></i> Lọc kết quả
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="HandleReset">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Danh sách lớp học phần hiển thị qua Reusable SectionCardComponent -->
+@if (isLoading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+        <p class="mt-2 text-muted">Đang tải danh sách lớp học phần...</p>
+    </div>
+}
+else if (sections == null || !sections.Any())
+{
+    <div class="card border-0 shadow-sm text-center py-5 bg-white">
+        <i class="bi bi-inbox fs-1 text-muted mb-2"></i>
+        <h5 class="text-muted">Không tìm thấy lớp học phần phù hợp</h5>
+        <p class="small text-muted mb-3">Vui lòng thử tìm kiếm với từ khóa khác</p>
+        <div>
+            <button class="btn btn-outline-primary btn-sm" @onclick="HandleReset">Đặt lại bộ lọc</button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        @foreach (var sec in sections)
+        {
+            bool isAdded = cartSectionIds.Contains(sec.SectionId);
+            <div class="col">
+                <SectionCardComponent Section="@sec" 
+                                      IsInCart="@isAdded"
+                                      OnAddToCart="@HandleAddToCart"
+                                      OnRemoveFromCart="@HandleRemoveFromCart" />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private IEnumerable<Section> sections = new List<Section>();
+    private HashSet<int> cartSectionIds = new HashSet<int>();
+    private string searchKeyword = string.Empty;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        sections = await SearchSectionUseCase.ExecuteAsync(searchKeyword, "2025_HK1");
+
+        var cart = await ViewRegistrationCartUseCase.ExecuteAsync();
+        cartSectionIds = cart.EnrollmentLines.Select(l => l.SectionId).ToHashSet();
+        isLoading = false;
+    }
+
+    private async Task HandleSearch()
+    {
+        sections = await SearchSectionUseCase.ExecuteAsync(searchKeyword, "2025_HK1");
+    }
+
+    private async Task HandleReset()
+    {
+        searchKeyword = string.Empty;
+        await LoadData();
+    }
+
+    private async Task HandleAddToCart(Section section)
+    {
+        await AddSectionToCartUseCase.ExecuteAsync(section);
+        cartSectionIds.Add(section.SectionId);
+    }
+
+    private async Task HandleRemoveFromCart(int sectionId)
+    {
+        await RemoveSectionFromCartUseCase.ExecuteAsync(sectionId);
+        cartSectionIds.Remove(sectionId);
+    }
+}

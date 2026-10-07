@@ -1,0 +1,103 @@
+@namespace CourseRegistration.Web.Components.Shared
+
+<div class="card h-100 shadow-sm border-0 section-card">
+    <div class="card-header bg-transparent border-bottom-0 pb-0 pt-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="badge bg-primary-subtle text-primary fw-bold">@Section.SectionCode</span>
+            <span class="badge @(Section.HasAvailableSlot ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger")">
+                @(Section.HasAvailableSlot ? $"Còn {Section.AvailableSlots} chỗ" : "Hết chỗ")
+            </span>
+        </div>
+    </div>
+    <div class="card-body">
+        <h5 class="card-title text-dark fw-bold mb-1">
+            @(Section.Course?.CourseName ?? "Học phần")
+        </h5>
+        <p class="text-muted small mb-2">
+            Mã HP: <strong>@(Section.Course?.CourseCode)</strong> &bull; 
+            Số tín chỉ: <span class="badge bg-secondary">@(Section.Course?.Credits ?? 0) TC</span>
+        </p>
+
+        <div class="p-2 bg-light rounded small mb-3">
+            <div><i class="bi bi-person-badge text-secondary me-1"></i> Giảng viên: <strong>@Section.Instructor</strong></div>
+            <div><i class="bi bi-geo-alt text-secondary me-1"></i> Phòng học: <strong>@(string.IsNullOrEmpty(Section.Room) ? "Chưa sắp xếp" : Section.Room)</strong></div>
+            <div>
+                <i class="bi bi-people text-secondary me-1"></i> Sĩ số: 
+                <span class="fw-semibold">@Section.CurrentEnrollment / @Section.MaxCapacity</span>
+                <div class="progress mt-1" style="height: 6px;">
+                    <div class="progress-bar @(Section.CurrentEnrollment >= Section.MaxCapacity ? "bg-danger" : "bg-success")" 
+                         role="progressbar" 
+                         style="width: @(Section.MaxCapacity > 0 ? (Section.CurrentEnrollment * 100 / Section.MaxCapacity) : 0)%">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h6 class="fw-semibold small text-muted text-uppercase mb-2">
+            <i class="bi bi-clock me-1"></i> Lịch học
+        </h6>
+        @if (Section.Schedules != null && Section.Schedules.Any())
+        {
+            <div class="d-flex flex-wrap gap-1 mb-3">
+                @foreach (var sched in Section.Schedules)
+                {
+                    <span class="badge bg-info-subtle text-dark border">
+                        @sched.DayOfWeekName (Tiết @sched.StartPeriod - @sched.EndPeriod) - @sched.Room
+                    </span>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-muted small fst-italic mb-3">Chưa có lịch cụ thể</div>
+        }
+    </div>
+
+    <div class="card-footer bg-transparent border-top-0 pb-3 pt-0">
+        @if (IsInCart)
+        {
+            <button class="btn btn-outline-danger w-100" @onclick="HandleRemove">
+                <i class="bi bi-trash me-1"></i> Xóa khỏi giỏ
+            </button>
+        }
+        else
+        {
+            <button class="btn btn-primary w-100" 
+                    disabled="@(!Section.HasAvailableSlot)"
+                    @onclick="HandleAdd">
+                <i class="bi bi-plus-circle me-1"></i> 
+                @(Section.HasAvailableSlot ? "Thêm vào giỏ đăng ký" : "Lớp đã đầy")
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Section Section { get; set; } = default!;
+
+    [Parameter]
+    public bool IsInCart { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<Section> OnAddToCart { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnRemoveFromCart { get; set; }
+
+    private async Task HandleAdd()
+    {
+        if (OnAddToCart.HasDelegate)
+        {
+            await OnAddToCart.InvokeAsync(Section);
+        }
+    }
+
+    private async Task HandleRemove()
+    {
+        if (OnRemoveFromCart.HasDelegate)
+        {
+            await OnRemoveFromCart.InvokeAsync(Section.SectionId);
+        }
+    }
+}

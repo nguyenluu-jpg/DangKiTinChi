@@ -1,0 +1,39 @@
+@inject IRegistrationCartStateStore CartStateStore
+@implements IDisposable
+
+<a href="/cart" class="btn btn-outline-light position-relative ms-2">
+    <i class="bi bi-cart3"></i> Giỏ đăng ký
+    @if (itemCount > 0)
+    {
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            @itemCount
+            <span class="visually-hidden">môn đã chọn</span>
+        </span>
+    }
+</a>
+
+@code {
+    private int itemCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CartStateStore.AddStateChangeListeners(HandleStateChange);
+        await LoadCount();
+    }
+
+    private async void HandleStateChange()
+    {
+        await LoadCount();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadCount()
+    {
+        itemCount = await CartStateStore.GetItemsCount();
+    }
+
+    public void Dispose()
+    {
+        CartStateStore.RemoveStateChangeListeners(HandleStateChange);
+    }
+}

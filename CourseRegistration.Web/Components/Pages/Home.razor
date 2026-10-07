@@ -1,0 +1,60 @@
+@page "/"
+@namespace CourseRegistration.Web.Components.Pages
+
+<div class="row align-items-center py-4">
+    <div class="col-lg-7">
+        <span class="badge bg-primary-subtle text-primary mb-2 px-3 py-2 fs-6">Đề tài 15 &bull; Capstone 2026</span>
+        <h1 class="display-5 fw-bold text-dark mb-3">Hệ Thống Đăng Ký Học Phần Trực Tuyến</h1>
+        <p class="lead text-muted mb-4">
+            Giải pháp số hóa đợt đăng ký tín chỉ cho sinh viên. Áp dụng chuẩn <strong>Clean Architecture 4 tầng</strong> 
+            với các luật kiểm tra chặt chẽ: học phần tiên quyết, chống trùng lịch học và bảo đảm không vượt sĩ số tối đa.
+        </p>
+
+        <div class="d-flex flex-wrap gap-3 mb-4">
+            <a href="/sections" class="btn btn-primary btn-lg shadow-sm">
+                <i class="bi bi-search me-2"></i> Bắt đầu Đăng ký Lớp
+            </a>
+            <a href="/schedule" class="btn btn-outline-secondary btn-lg">
+                <i class="bi bi-calendar3 me-2"></i> Xem Thời khóa biểu
+            </a>
+        </div>
+
+        <div class="card border-0 bg-white shadow-sm p-3 rounded">
+            <h6 class="fw-bold text-primary mb-2"><i class="bi bi-info-circle me-1"></i> Thông tin đợt đăng ký hiện tại</h6>
+            <div class="row g-2 small text-muted">
+                <div class="col-6"><strong>Học kỳ:</strong> Học kỳ 1 (2025 - 2026)</div>
+                <div class="col-6"><strong>Hạn mức tín chỉ:</strong> Tối đa 24 TC / sinh viên</div>
+                <div class="col-6"><strong>Trạng thái đợt:</strong> <span class="badge bg-success">Đang mở đăng ký</span></div>
+                <div class="col-6"><strong>Dữ liệu:</strong> <span class="badge bg-info text-dark">In-Memory Mock Store (Sprint 1)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5 mt-4 mt-lg-0">
+        <div class="card shadow border-0 rounded-4 p-4 bg-white">
+            <h5 class="fw-bold text-dark mb-3">
+                <i class="bi bi-shield-check text-success me-2"></i> Luật Nghiệp Vụ Bắt Buộc
+            </h5>
+
+            <div class="mb-3 p-3 bg-light rounded">
+                <div class="fw-bold text-primary mb-1">⚖️ Luật 1: Kiểm tra hợp lệ</div>
+                <ul class="mb-0 small text-secondary ps-3">
+                    <li><strong>Tiên quyết:</strong> Phải hoàn thành môn điều kiện trước.</li>
+                    <li><strong>Trùng lịch:</strong> Không cho phép đăng ký 2 lớp trùng thứ & tiết.</li>
+                    <li><strong>Hạn mức:</strong> Tổng tín chỉ không vượt quá giới hạn kỳ.</li>
+                </ul>
+            </div>
+
+            <div class="mb-3 p-3 bg-light rounded">
+                <div class="fw-bold text-primary mb-1">⚡ Luật 2: Quản lý Sĩ số</div>
+                <p class="mb-0 small text-secondary">
+                    Chặn tuyệt đối khi lớp đã đầy chỗ, xử lý tranh chấp khi nhiều sinh viên cùng đăng ký chỗ cuối cùng.
+                </p>
+            </div>
+
+            <div class="text-center pt-2 border-top">
+                <span class="small text-muted">Kiến trúc: CoreBusiness &bull; UseCases &bull; Plugins &bull; Blazor Web</span>
+            </div>
+        </div>
+    </div>
+</div>

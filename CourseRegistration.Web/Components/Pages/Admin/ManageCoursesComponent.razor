@@ -1,0 +1,125 @@
+@page "/admin/courses"
+@namespace CourseRegistration.Web.Components.Pages.Admin
+@inject IViewCoursesUseCase ViewCoursesUseCase
+@inject IAddCourseUseCase AddCourseUseCase
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold mb-1"><i class="bi bi-book text-primary me-2"></i>Quản Lý Học Phần (Môn Học)</h2>
+        <p class="text-muted mb-0">Phòng Đào Tạo &bull; Danh mục học phần trong chương trình đào tạo</p>
+    </div>
+    <button class="btn btn-primary" @onclick="() => showAddModal = true">
+        <i class="bi bi-plus-circle me-1"></i> Thêm Học Phần Mới
+    </button>
+</div>
+
+<!-- Modal / Form thêm học phần sử dụng EditForm + DataAnnotations (K3.2) -->
+@if (showAddModal)
+{
+    <div class="card border-primary shadow-sm mb-4 bg-white">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">Thêm Học Phần Mới</h5>
+            <button type="button" class="btn-close btn-close-white" @onclick="() => showAddModal = false"></button>
+        </div>
+        <div class="card-body p-4">
+            <!-- EditForm + DataAnnotationsValidator theo tiêu chuẩn K3.2 -->
+            <EditForm Model="@newCourse" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Mã học phần: <span class="text-danger">*</span></label>
+                        <InputText class="form-control" placeholder="vd: TIN305" @bind-Value="newCourse.CourseCode" />
+                        <div class="text-danger small mt-1">
+                            <ValidationMessage For="@(() => newCourse.CourseCode)" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-5">
+                        <label class="form-label fw-bold">Tên học phần: <span class="text-danger">*</span></label>
+                        <InputText class="form-control" placeholder="vd: Trí tuệ Nhân tạo" @bind-Value="newCourse.CourseName" />
+                        <div class="text-danger small mt-1">
+                            <ValidationMessage For="@(() => newCourse.CourseName)" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Số tín chỉ (1-10): <span class="text-danger">*</span></label>
+                        <InputNumber class="form-control" @bind-Value="newCourse.Credits" />
+                        <div class="text-danger small mt-1">
+                            <ValidationMessage For="@(() => newCourse.Credits)" />
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Mô tả tóm tắt:</label>
+                        <InputTextArea class="form-control" rows="2" placeholder="Tóm tắt nội dung môn học..." @bind-Value="newCourse.Description" />
+                        <div class="text-danger small mt-1">
+                            <ValidationMessage For="@(() => newCourse.Description)" />
+                        </div>
+                    </div>
+
+                    <div class="col-12 d-flex justify-content-end gap-2 mt-3">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="() => showAddModal = false">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save me-1"></i> Lưu Học Phần
+                        </button>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<!-- Bảng danh sách học phần -->
+<div class="card border-0 shadow-sm bg-white overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 80px;">ID</th>
+                    <th>Mã Học Phần</th>
+                    <th>Tên Học Phần</th>
+                    <th>Số Tín Chỉ</th>
+                    <th>Mô Tả</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in courses)
+                {
+                    <tr>
+                        <td class="text-muted">#@c.CourseId</td>
+                        <td><span class="badge bg-primary-subtle text-primary fw-bold fs-6">@c.CourseCode</span></td>
+                        <td class="fw-bold">@c.CourseName</td>
+                        <td><span class="badge bg-secondary fs-6">@c.Credits TC</span></td>
+                        <td class="small text-muted">@c.Description</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private IEnumerable<Course> courses = new List<Course>();
+    private Course newCourse = new Course { Credits = 3 };
+    private bool showAddModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCourses();
+    }
+
+    private async Task LoadCourses()
+    {
+        courses = await ViewCoursesUseCase.ExecuteAsync();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        await AddCourseUseCase.ExecuteAsync(newCourse);
+        newCourse = new Course { Credits = 3 };
+        showAddModal = false;
+        await LoadCourses();
+    }
+}

@@ -1,0 +1,185 @@
+@page "/admin/sections"
+@namespace CourseRegistration.Web.Components.Pages.Admin
+@inject IViewSectionsUseCase ViewSectionsUseCase
+@inject IAddSectionUseCase AddSectionUseCase
+@inject ICourseRepository CourseRepository
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold mb-1"><i class="bi bi-collection text-primary me-2"></i>Quản Lý Lớp Học Phần</h2>
+        <p class="text-muted mb-0">Phòng Đào Tạo &bull; Quản lý lớp mở, sĩ số và giảng viên trong kỳ</p>
+    </div>
+    <button class="btn btn-primary" @onclick="() => showAddModal = true">
+        <i class="bi bi-plus-circle me-1"></i> Mở Lớp Học Phần Mới
+    </button>
+</div>
+
+<!-- Modal / Form thêm lớp học phần sử dụng EditForm + DataAnnotations (K3.2) -->
+@if (showAddModal)
+{
+    <div class="card border-primary shadow-sm mb-4 bg-white">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">Mở Lớp Học Phần Mới</h5>
+            <button type="button" class="btn-close btn-close-white" @onclick="() => showAddModal = false"></button>
+        </div>
+        <div class="card-body p-4">
+            <EditForm Model="@newSection" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Thuộc môn học: <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="newSection.CourseId">
+                            <option value="0">-- Chọn học phần --</option>
+                            @foreach (var c in courses)
+                            {
+                                <option value="@c.CourseId">@c.CourseCode - @c.CourseName (@c.Credits TC)</option>
+                            }
+                        </select>
+                        @if (newSection.CourseId <= 0 && isAttemptedSubmit)
+                        {
+                            <div class="text-danger small mt-1">Vui lòng chọn học phần</div>
+                        }
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Mã lớp học phần: <span class="text-danger">*</span></label>
+                        <InputText class="form-control" placeholder="vd: WEB301_03" @bind-Value="newSection.SectionCode" />
+                        <div class="text-danger small mt-1">
+                            <ValidationMessage For="@(() => newSection.SectionCode)" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Giảng viên phụ trách: <span class="text-danger">*</span></label>
+                        <InputText class="form-control" placeholder="vd: TS. Hoàng Văn Minh" @bind-Value="newSection.Instructor" />
+                        <div class="text-danger small mt-1">
+                            <ValidationMessage For="@(() => newSection.Instructor)" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Sĩ số tối đa (1-200): <span class="text-danger">*</span></label>
+                        <InputNumber class="form-control" @bind-Value="newSection.MaxCapacity" />
+                        <div class="text-danger small mt-1">
+                            <ValidationMessage For="@(() => newSection.MaxCapacity)" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Phòng học:</label>
+                        <InputText class="form-control" placeholder="vd: Lab 501" @bind-Value="newSection.Room" />
+                        <div class="text-danger small mt-1">
+                            <ValidationMessage For="@(() => newSection.Room)" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Học kỳ:</label>
+                        <InputText class="form-control" placeholder="2025_HK1" @bind-Value="newSection.Semester" />
+                    </div>
+
+                    <div class="col-12 d-flex justify-content-end gap-2 mt-3">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="() => showAddModal = false">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save me-1"></i> Lưu Lớp Học Phần
+                        </button>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<!-- Bảng danh sách các lớp học phần đang mở -->
+<div class="card border-0 shadow-sm bg-white overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Mã Lớp</th>
+                    <th>Học Phần</th>
+                    <th>Giảng Viên</th>
+                    <th>Phòng</th>
+                    <th>Sĩ Số (Hiện tại / Tối đa)</th>
+                    <th>Lịch Học</th>
+                    <th>Trạng Thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in sections)
+                {
+                    <tr>
+                        <td><span class="badge bg-primary-subtle text-primary fw-bold fs-6">@s.SectionCode</span></td>
+                        <td>
+                            <div class="fw-bold">@s.Course?.CourseName</div>
+                            <div class="small text-muted">@s.Course?.CourseCode &bull; @s.Course?.Credits TC</div>
+                        </td>
+                        <td>@s.Instructor</td>
+                        <td>@s.Room</td>
+                        <td>
+                            <span class="fw-bold">@s.CurrentEnrollment</span> / @s.MaxCapacity
+                            <div class="progress mt-1" style="height: 5px; width: 100px;">
+                                <div class="progress-bar @(s.CurrentEnrollment >= s.MaxCapacity ? "bg-danger" : "bg-success")"
+                                     style="width: @(s.MaxCapacity > 0 ? (s.CurrentEnrollment * 100 / s.MaxCapacity) : 0)%">
+                                </div>
+                            </div>
+                        </td>
+                        <td class="small">
+                            @if (s.Schedules != null && s.Schedules.Any())
+                            {
+                                foreach (var sched in s.Schedules)
+                                {
+                                    <div>@sched.DayOfWeekName (Tiết @sched.StartPeriod-@sched.EndPeriod)</div>
+                                }
+                            }
+                        </td>
+                        <td>
+                            @if (s.CurrentEnrollment >= s.MaxCapacity)
+                            {
+                                <span class="badge bg-danger">Hết chỗ</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">Còn @s.AvailableSlots chỗ</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private IEnumerable<Section> sections = new List<Section>();
+    private IEnumerable<Course> courses = new List<Course>();
+    private Section newSection = new Section { MaxCapacity = 50, Semester = "2025_HK1" };
+    private bool showAddModal = false;
+    private bool isAttemptedSubmit = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        courses = await CourseRepository.GetAllCoursesAsync();
+        await LoadSections();
+    }
+
+    private async Task LoadSections()
+    {
+        sections = await ViewSectionsUseCase.ExecuteAsync();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isAttemptedSubmit = true;
+        if (newSection.CourseId <= 0) return;
+
+        newSection.Course = courses.FirstOrDefault(c => c.CourseId == newSection.CourseId);
+        await AddSectionUseCase.ExecuteAsync(newSection);
+
+        newSection = new Section { MaxCapacity = 50, Semester = "2025_HK1" };
+        showAddModal = false;
+        isAttemptedSubmit = false;
+        await LoadSections();
+    }
+}

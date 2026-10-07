@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CourseRegistration.CoreBusiness\CourseRegistration.CoreBusiness.csproj" />
+    <ProjectReference Include="..\CourseRegistration.UseCases\CourseRegistration.UseCases.csproj" />
+    <ProjectReference Include="..\Plugins\CourseRegistration.DataStore.HardCoded\CourseRegistration.DataStore.HardCoded.csproj" />
+    <ProjectReference Include="..\Plugins\CourseRegistration.StateStore.DI\CourseRegistration.StateStore.DI.csproj" />
+  </ItemGroup>
+
+</Project>

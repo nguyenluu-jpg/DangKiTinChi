@@ -1,0 +1,26 @@
+@inherits LayoutComponentBase
+@namespace CourseRegistration.Web.Components.Layout
+
+<div class="page d-flex flex-column min-vh-100 bg-light">
+    <header>
+        <NavMenu />
+    </header>
+
+    <main class="flex-grow-1 py-4">
+        <div class="container">
+            @Body
+        </div>
+    </main>
+
+    <footer class="bg-white border-top py-3 mt-auto">
+        <div class="container text-center text-muted small">
+            <div><strong>Hệ Thống Đăng Ký Học Phần</strong> — Đề tài 15 (Capstone Project 2026)</div>
+            <div>Clean Architecture 4 Tầng &bull; Blazor Server &bull; Dapper / In-Memory Store</div>
+        </div>
+    </footer>
+</div>
+<div id="blazor-error-ui" class="alert alert-danger fixed-bottom m-3 d-none">
+    Có lỗi xảy ra trong ứng dụng.
+    <a href="" class="reload">Tải lại</a>
+    <a class="dismiss">🗙</a>
+</div>

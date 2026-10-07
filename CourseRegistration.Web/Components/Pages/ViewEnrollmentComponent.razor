@@ -1,0 +1,117 @@
+@page "/enrollment/{enrollmentId:int}"
+@namespace CourseRegistration.Web.Components.Pages
+@inject IViewEnrollmentUseCase ViewEnrollmentUseCase
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Đang tải phiếu đăng ký...</p>
+            </div>
+        }
+        else if (enrollment == null)
+        {
+            <div class="card border-0 shadow-sm p-5 text-center bg-white">
+                <i class="bi bi-exclamation-circle fs-1 text-danger mb-3"></i>
+                <h5>Không tìm thấy phiếu đăng ký #@EnrollmentId</h5>
+                <a href="/" class="btn btn-primary mt-3">Quay về trang chủ</a>
+            </div>
+        }
+        else
+        {
+            <div class="card border-0 shadow rounded-4 overflow-hidden bg-white">
+                <div class="card-header bg-success text-white py-4 text-center">
+                    <i class="bi bi-check-circle-fill display-4 mb-2"></i>
+                    <h3 class="fw-bold mb-1">Đăng Ký Học Phần Thành Công!</h3>
+                    <p class="mb-0 opacity-75">Phiếu đăng ký số: #@enrollment.EnrollmentId &bull; Mã giao dịch: @enrollment.UniqueId</p>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="row g-3 mb-4 pb-3 border-bottom">
+                        <div class="col-sm-6">
+                            <div class="text-muted small">Sinh viên đăng ký:</div>
+                            <div class="fw-bold fs-5">@enrollment.Student?.FullName</div>
+                            <div class="text-muted small">MSSV: <strong>@enrollment.Student?.StudentCode</strong> &bull; Lớp/Ngành: @enrollment.Student?.Major</div>
+                        </div>
+                        <div class="col-sm-6 text-sm-end">
+                            <div class="text-muted small">Thời gian xác nhận:</div>
+                            <div class="fw-semibold">@(enrollment.DateRegistered?.ToString("dd/MM/yyyy HH:mm:ss") ?? "N/A")</div>
+                            <div class="text-muted small">Học kỳ: <strong>@enrollment.Semester</strong></div>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-bold mb-3"><i class="bi bi-card-checklist text-primary me-2"></i>Danh Sách Lớp Đã Đăng Ký</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>STT</th>
+                                    <th>Mã Lớp HP</th>
+                                    <th>Tên Học Phần</th>
+                                    <th>Tín Chỉ</th>
+                                    <th>Giảng Viên</th>
+                                    <th>Lịch Học</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ int index = 1; }
+                                @foreach (var line in enrollment.EnrollmentLines)
+                                {
+                                    var sec = line.Section;
+                                    <tr>
+                                        <td>@(index++)</td>
+                                        <td><span class="badge bg-primary-subtle text-primary fw-bold">@sec?.SectionCode</span></td>
+                                        <td class="fw-semibold">@sec?.Course?.CourseName</td>
+                                        <td><span class="badge bg-secondary">@(sec?.Course?.Credits ?? 0) TC</span></td>
+                                        <td>@sec?.Instructor</td>
+                                        <td class="small">
+                                            @if (sec?.Schedules != null)
+                                            {
+                                                foreach (var sched in sec.Schedules)
+                                                {
+                                                    <div>@sched.DayOfWeekName (Tiết @sched.StartPeriod-@sched.EndPeriod) - @sched.Room</div>
+                                                }
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="table-group-divider">
+                                <tr class="fw-bold">
+                                    <td colspan="3" class="text-end">Tổng số tín chỉ:</td>
+                                    <td colspan="3" class="text-primary fs-5">@enrollment.TotalCredits TC</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-between flex-wrap gap-2 pt-2">
+                        <a href="/schedule" class="btn btn-primary">
+                            <i class="bi bi-calendar3 me-1"></i> Xem Thời Khóa Biểu Tuần
+                        </a>
+                        <a href="/sections" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Tiếp tục đăng ký thêm
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int EnrollmentId { get; set; }
+
+    private Enrollment? enrollment;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        enrollment = await ViewEnrollmentUseCase.ExecuteAsync(EnrollmentId);
+        isLoading = false;
+    }
+}

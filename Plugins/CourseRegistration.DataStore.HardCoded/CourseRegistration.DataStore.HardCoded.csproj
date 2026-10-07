@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\CourseRegistration.CoreBusiness\CourseRegistration.CoreBusiness.csproj" />
+    <ProjectReference Include="..\..\CourseRegistration.UseCases\CourseRegistration.UseCases.csproj" />
+  </ItemGroup>
+
+</Project>

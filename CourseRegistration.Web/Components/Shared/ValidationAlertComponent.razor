@@ -1,0 +1,38 @@
+@namespace CourseRegistration.Web.Components.Shared
+
+@if (Errors != null && Errors.Any())
+{
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm border-danger-subtle my-3" role="alert">
+        <div class="d-flex align-items-center mb-2">
+            <i class="bi bi-exclamation-triangle-fill fs-4 text-danger me-2"></i>
+            <h5 class="alert-heading mb-0 fw-bold">Không thể thực hiện đăng ký</h5>
+        </div>
+        <p class="mb-2 text-secondary small">Vui lòng kiểm tra lại các điều kiện sau trước khi tiếp tục:</p>
+        <ul class="mb-0 ps-3">
+            @foreach (var error in Errors)
+            {
+                <li class="fw-semibold text-danger-emphasis">@error</li>
+            }
+        </ul>
+        @if (OnDismiss.HasDelegate)
+        {
+            <button type="button" class="btn-close" aria-label="Close" @onclick="HandleDismiss"></button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public List<string> Errors { get; set; } = new List<string>();
+
+    [Parameter]
+    public EventCallback OnDismiss { get; set; }
+
+    private async Task HandleDismiss()
+    {
+        if (OnDismiss.HasDelegate)
+        {
+            await OnDismiss.InvokeAsync();
+        }
+    }
+}

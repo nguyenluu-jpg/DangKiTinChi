@@ -2,10 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CourseRegistration.CoreBusiness.Models
 {
-    /// <summary>
-    /// Lớp học phần (Section) - ánh xạ Product trong eShop
-    /// Mỗi Section thuộc về 1 Course, có giảng viên, sĩ số tối đa
-    /// </summary>
+    // Lớp học phần (Section) - ánh xạ Product trong eShop
+    // Mỗi Section thuộc về 1 Course, có giảng viên, sĩ số tối đa
     public class Section
     {
         public int SectionId { get; set; }
@@ -35,14 +33,10 @@ namespace CourseRegistration.CoreBusiness.Models
         public Course? Course { get; set; }
         public List<SectionSchedule> Schedules { get; set; } = new List<SectionSchedule>();
 
-        /// <summary>
-        /// Kiểm tra lớp còn chỗ trống không
-        /// </summary>
+        // Kiểm tra lớp còn chỗ trống không
         public bool HasAvailableSlot => CurrentEnrollment < MaxCapacity;
 
-        /// <summary>
-        /// Số chỗ còn trống
-        /// </summary>
+        // Số chỗ còn trống
         public int AvailableSlots => MaxCapacity - CurrentEnrollment;
     }
 }

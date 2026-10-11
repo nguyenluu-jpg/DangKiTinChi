@@ -2,10 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CourseRegistration.CoreBusiness.Models
 {
-    /// <summary>
-    /// Lịch học của lớp học phần (SectionSchedule)
-    /// Mỗi Section có thể có nhiều buổi học trong tuần
-    /// </summary>
+    // Lịch học của lớp học phần (SectionSchedule)
+    // Mỗi Section có thể có nhiều buổi học trong tuần
     public class SectionSchedule
     {
         public int ScheduleId { get; set; }
@@ -44,9 +42,7 @@ namespace CourseRegistration.CoreBusiness.Models
             _ => "Không xác định"
         };
 
-        /// <summary>
-        /// Kiểm tra 2 lịch có trùng nhau không (cùng thứ + tiết trùng)
-        /// </summary>
+        // Kiểm tra 2 lịch có trùng nhau không (cùng thứ + tiết trùng)
         public bool ConflictsWith(SectionSchedule other)
         {
             if (DayOfWeek != other.DayOfWeek) return false;

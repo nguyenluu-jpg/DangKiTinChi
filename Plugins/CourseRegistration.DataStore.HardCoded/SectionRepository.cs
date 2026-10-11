@@ -32,7 +32,7 @@ namespace CourseRegistration.DataStore.HardCoded
 
                 _sections.AddRange(new List<Section>
                 {
-                    // Lớp 1: Lập trình Web - Nhóm 1 (Thứ 2, tiết 1-4)
+                    // Lập trình Web - Nhóm 1 (Thứ 2, tiết 1-4)
                     new Section
                     {
                         SectionId = 1,
@@ -45,7 +45,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Semester = "2025_HK1",
                         Room = "Lab 402"
                     },
-                    // Lớp 2: Lập trình Web - Nhóm 2 (Thứ 4, tiết 7-10)
+                    // Lập trình Web - Nhóm 2 (Thứ 4, tiết 7-10)
                     new Section
                     {
                         SectionId = 2,
@@ -58,7 +58,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Semester = "2025_HK1",
                         Room = "Lab 403"
                     },
-                    // Lớp 3: Cấu trúc Dữ liệu & GT (Thứ 2, tiết 1-3) -> TRÙNG LỊCH VỚI LỚP 1 (Thứ 2 tiết 1-4) ĐỂ DEMO VI PHẠM!
+                    // Cấu trúc Dữ liệu & GT (Thứ 2, tiết 1-3) -> TRÙNG LỊCH VỚI LỚP 1 (Thứ 2 tiết 1-4) ĐỂ DEMO VI PHẠM!
                     new Section
                     {
                         SectionId = 3,
@@ -71,7 +71,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Semester = "2025_HK1",
                         Room = "Phòng A101"
                     },
-                    // Lớp 4: Cấu trúc Dữ liệu & GT (Thứ 6, tiết 2-4) -> Không trùng lịch
+                    // Cấu trúc Dữ liệu & GT (Thứ 6, tiết 2-4) -> Không trùng lịch
                     new Section
                     {
                         SectionId = 4,
@@ -84,7 +84,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Semester = "2025_HK1",
                         Room = "Phòng A102"
                     },
-                    // Lớp 5: Cơ sở Dữ liệu (Thứ 3, tiết 7-9)
+                    // Cơ sở Dữ liệu (Thứ 3, tiết 7-9)
                     new Section
                     {
                         SectionId = 5,
@@ -97,7 +97,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Semester = "2025_HK1",
                         Room = "Phòng B204"
                     },
-                    // Lớp 6: Công nghệ Phần mềm -> ĐÃ ĐẦY CHỖ (50/50) ĐỂ DEMO VI PHẠM LUẬT 2!
+                    // Công nghệ Phần mềm -> ĐÃ ĐẦY CHỖ (50/50) ĐỂ DEMO VI PHẠM LUẬT 2!
                     new Section
                     {
                         SectionId = 6,
@@ -110,7 +110,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Semester = "2025_HK1",
                         Room = "Phòng C301"
                     },
-                    // Lớp 7: Lập trình OOP (Thứ 7, tiết 1-3)
+                    // Lập trình OOP (Thứ 7, tiết 1-3)
                     new Section
                     {
                         SectionId = 7,
@@ -265,7 +265,7 @@ namespace CourseRegistration.DataStore.HardCoded
                 var section = _sections.FirstOrDefault(s => s.SectionId == sectionId);
                 if (section == null) return Task.FromResult(false);
 
-                // Luật 2: Sĩ số không vượt giới hạn
+                // Sĩ số không vượt giới hạn
                 if (section.CurrentEnrollment >= section.MaxCapacity)
                 {
                     return Task.FromResult(false);

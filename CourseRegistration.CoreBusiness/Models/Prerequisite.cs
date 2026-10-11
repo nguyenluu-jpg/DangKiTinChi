@@ -1,9 +1,7 @@
 namespace CourseRegistration.CoreBusiness.Models
 {
-    /// <summary>
-    /// Tiên quyết - Prerequisite
-    /// Liên kết giữa các học phần: CourseId yêu cầu phải hoàn thành PrerequisiteCourseId trước
-    /// </summary>
+    // Tiên quyết - Prerequisite
+    // Liên kết giữa các học phần: CourseId yêu cầu phải hoàn thành PrerequisiteCourseId trước
     public class Prerequisite
     {
         public int PrerequisiteId { get; set; }

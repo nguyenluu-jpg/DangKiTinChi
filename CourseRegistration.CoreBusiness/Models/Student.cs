@@ -2,9 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CourseRegistration.CoreBusiness.Models
 {
-    /// <summary>
-    /// Sinh viên - Student
-    /// </summary>
+    // Sinh viên 
     public class Student
     {
         public int StudentId { get; set; }
@@ -26,14 +24,12 @@ namespace CourseRegistration.CoreBusiness.Models
 
         [Required(ErrorMessage = "Khóa học không được để trống")]
         [StringLength(20)]
-        public string AcademicYear { get; set; } = string.Empty; // Khóa: K20, K21...
+        public string AcademicYear { get; set; } = string.Empty; // Khóa
 
         [StringLength(100)]
         public string Major { get; set; } = string.Empty; // Ngành
 
-        /// <summary>
-        /// Số tín chỉ tối đa được đăng ký trong 1 kỳ
-        /// </summary>
+        // Số tín chỉ tối đa được đăng ký trong 1 kỳ
         public int MaxCreditsPerSemester { get; set; } = 24;
     }
 }

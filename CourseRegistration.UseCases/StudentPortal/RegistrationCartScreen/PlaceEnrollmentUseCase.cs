@@ -7,12 +7,7 @@ using CourseRegistration.UseCases.StudentPortal.RegistrationCartScreen.Interface
 
 namespace CourseRegistration.UseCases.StudentPortal.RegistrationCartScreen
 {
-    /// <summary>
-    /// USE CASE XÁC NHẬN ĐĂNG KÝ HỌC PHẦN
-    /// Phối hợp kiểm tra:
-    /// - LUẬT 1: Tiên quyết, Trùng lịch, Tín chỉ tối đa (thông qua IEnrollmentValidationService)
-    /// - LUẬT 2: Tranh chấp sĩ số chỗ cuối (kiểm tra sĩ số và cập nhật thông qua repository)
-    /// </summary>
+
     public class PlaceEnrollmentUseCase : IPlaceEnrollmentUseCase
     {
         private readonly IRegistrationCart _registrationCart;
@@ -80,13 +75,13 @@ namespace CourseRegistration.UseCases.StudentPortal.RegistrationCartScreen
                     continue;
                 }
 
-                // LUẬT 2: Sĩ số không vượt giới hạn (kể cả tranh chấp chỗ cuối)
+                // Sĩ số không vượt giới hạn (kể cả tranh chấp chỗ cuối)
                 if (section.CurrentEnrollment >= section.MaxCapacity)
                 {
                     allErrors.Add($"Lớp {section.SectionCode} ({section.Course?.CourseName}) đã hết chỗ (sĩ số {section.CurrentEnrollment}/{section.MaxCapacity}).");
                 }
 
-                // LUẬT 1: Tiên quyết, Trùng lịch, Tín chỉ tối đa
+                // iên quyết, Trùng lịch, Tín chỉ tối đa
                 var ruleErrors = _validationService.ValidateEnrollment(
                     section,
                     accumulatedSections,

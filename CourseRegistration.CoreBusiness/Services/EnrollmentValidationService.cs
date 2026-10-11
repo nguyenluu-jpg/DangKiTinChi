@@ -3,26 +3,12 @@ using CourseRegistration.CoreBusiness.Services.Interfaces;
 
 namespace CourseRegistration.CoreBusiness.Services
 {
-    /// <summary>
-    /// ========================================================
-    /// LUẬT NGHIỆP VỤ 1: Kiểm tra đăng ký học phần
-    /// (1) Chặn khi chưa đạt học phần tiên quyết
-    /// (2) Chặn khi trùng lịch với lớp đã đăng ký
-    /// (3) Chặn khi vượt số tín chỉ tối đa của kỳ
-    /// ========================================================
-    /// Luật này nằm trong CoreBusiness, KHÔNG nằm trong .razor (K1.3)
-    /// </summary>
+    
+    //  Kiểm tra đăng ký học phần
+   
     public class EnrollmentValidationService : IEnrollmentValidationService
     {
-        /// <summary>
-        /// Kiểm tra tất cả luật nghiệp vụ trước khi cho phép đăng ký 1 lớp học phần
-        /// </summary>
-        /// <param name="sectionToRegister">Lớp muốn đăng ký</param>
-        /// <param name="alreadyRegisteredSections">Các lớp đã đăng ký trong kỳ</param>
-        /// <param name="completedCourses">Các học phần SV đã hoàn thành</param>
-        /// <param name="prerequisites">Danh sách tiên quyết của học phần</param>
-        /// <param name="maxCreditsPerSemester">Số tín chỉ tối đa trong kỳ</param>
-        /// <returns>Danh sách lỗi vi phạm (rỗng = hợp lệ)</returns>
+        // Kiểm tra tất cả luật nghiệp vụ trước khi cho phép đăng ký 1 lớp học phần       
         public List<string> ValidateEnrollment(
             Section sectionToRegister,
             List<Section> alreadyRegisteredSections,

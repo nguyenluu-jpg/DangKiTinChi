@@ -34,20 +34,20 @@ namespace CourseRegistration.Web
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
 
-            // 1. Đăng ký CoreBusiness Services (LUẬT NGHIỆP VỤ 1)
+            // Đăng ký CoreBusiness Services (LUẬT NGHIỆP VỤ 1)
             builder.Services.AddTransient<IEnrollmentValidationService, EnrollmentValidationService>();
 
-            // 2. Đăng ký DataStore Plugins (Sprint 1: In-Memory / HardCoded)
+            // Đăng ký DataStore Plugins (Sprint 1: In-Memory / HardCoded)
             builder.Services.AddSingleton<ICourseRepository, CourseRepository>();
             builder.Services.AddSingleton<ISectionRepository, SectionRepository>();
             builder.Services.AddSingleton<IStudentRepository, StudentRepository>();
             builder.Services.AddSingleton<IEnrollmentRepository, EnrollmentRepository>();
 
-            // 3. Đăng ký StateStore Plugins (Scoped: Giỏ đăng ký - K1.4)
+            // Đăng ký StateStore Plugins (Scoped: Giỏ đăng ký - K1.4)
             builder.Services.AddScoped<IRegistrationCart, RegistrationCart>();
             builder.Services.AddScoped<IRegistrationCartStateStore, RegistrationCartStateStore>();
 
-            // 4. Đăng ký Student Portal UseCases
+            // Đăng ký Student Portal UseCases
             builder.Services.AddTransient<ISearchSectionUseCase, SearchSectionUseCase>();
             builder.Services.AddTransient<IViewSectionUseCase, ViewSectionUseCase>();
             builder.Services.AddTransient<IViewRegistrationCartUseCase, ViewRegistrationCartUseCase>();

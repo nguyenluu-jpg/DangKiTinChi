@@ -7,7 +7,7 @@ namespace CourseRegistration.DataStore.HardCoded
     {
         private static readonly List<Student> _students = new List<Student>
         {
-            // SV1: Đã hoàn thành TIN101 và TIN102 -> Đủ điều kiện học WEB301, KTPM302
+            //  Đã hoàn thành TIN101 và TIN102 -> Đủ điều kiện học WEB301, KTPM302
             new Student
             {
                 StudentId = 1,
@@ -19,7 +19,7 @@ namespace CourseRegistration.DataStore.HardCoded
                 Major = "Công nghệ Thông tin",
                 MaxCreditsPerSemester = 24
             },
-            // SV2: MỚI CHỈ HOÀN THÀNH TIN101 (CHƯA HỌC TIN102) -> DEMO VI PHẠM TIÊN QUYẾT KHI ĐĂNG KÝ WEB301!
+            // MỚI CHỈ HOÀN THÀNH TIN101 (CHƯA HỌC TIN102) -> DEMO VI PHẠM TIÊN QUYẾT KHI ĐĂNG KÝ WEB301!
             new Student
             {
                 StudentId = 2,

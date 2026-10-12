@@ -2,8 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CourseRegistration.CoreBusiness.Models
 {
-    // Lớp học phần (Section) - ánh xạ Product trong eShop
-    // Mỗi Section thuộc về 1 Course, có giảng viên, sĩ số tối đa
+    // Lớp học phần (Section) - ánh xạ Product trong eShop. Mỗi Section thuộc về 1 Course, có giảng viên, sĩ số tối đa
     public class Section
     {
         public int SectionId { get; set; }

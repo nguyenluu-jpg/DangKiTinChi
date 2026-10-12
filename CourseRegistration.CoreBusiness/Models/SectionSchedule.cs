@@ -2,8 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CourseRegistration.CoreBusiness.Models
 {
-    // Lịch học của lớp học phần (SectionSchedule)
-    // Mỗi Section có thể có nhiều buổi học trong tuần
+    // Lịch học của lớp học phần (SectionSchedule). Mỗi Section có thể có nhiều buổi học trong tuần
     public class SectionSchedule
     {
         public int ScheduleId { get; set; }
@@ -27,9 +26,7 @@ namespace CourseRegistration.CoreBusiness.Models
         // Navigation property
         public Section? Section { get; set; }
 
-        /// <summary>
-        /// Hiển thị tên ngày trong tuần
-        /// </summary>
+        // Hiển thị tên ngày trong tuần
         public string DayOfWeekName => DayOfWeek switch
         {
             2 => "Thứ 2",

@@ -1,7 +1,7 @@
 namespace CourseRegistration.CoreBusiness.Models
 {
     //  Dòng đăng ký (Line) - EnrollmentLine
-    // Ánh xạ OrderLineItem trong eShop
+
     public class EnrollmentLine
     {
         public int EnrollmentLineId { get; set; }

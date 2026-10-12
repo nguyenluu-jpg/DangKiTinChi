@@ -1,7 +1,7 @@
 namespace CourseRegistration.CoreBusiness.Models
 {
     // Phiếu đăng ký (Header) - Enrollment
-    // Ánh xạ Order trong eShop
+
     public class Enrollment
     {
         public Enrollment()
@@ -21,9 +21,7 @@ namespace CourseRegistration.CoreBusiness.Models
         public List<EnrollmentLine> EnrollmentLines { get; set; } = new List<EnrollmentLine>();
 
         // Tổng số tín chỉ trong phiếu đăng ký
-        public int TotalCredits => EnrollmentLines
-            .Where(el => el.Section?.Course != null)
-            .Sum(el => el.Section!.Course!.Credits);
+        public int TotalCredits => EnrollmentLines.Where(el => el.Section?.Course != null).Sum(el => el.Section!.Course!.Credits);
 
         // Thêm lớp học phần vào phiếu đăng ký
         public void AddSection(int sectionId, Section section)

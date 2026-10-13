@@ -63,14 +63,11 @@ namespace CourseRegistration.DataStore.HardCoded
         {
             var confirmedEnrollments = _enrollments
                 .Where(e => e.StudentId == studentId && e.Semester.Equals(semester, StringComparison.OrdinalIgnoreCase) && e.Status == "Confirmed")
-                .Select(e => e.EnrollmentId)
-                .ToList();
+                .Select(e => e.EnrollmentId).ToList();
 
             var sectionIds = _enrollmentLines
                 .Where(l => l.EnrollmentId.HasValue && confirmedEnrollments.Contains(l.EnrollmentId.Value))
-                .Select(l => l.SectionId)
-                .Distinct()
-                .ToList();
+                .Select(l => l.SectionId).Distinct().ToList();
 
             var sections = new List<Section>();
             foreach (var sId in sectionIds)
@@ -118,9 +115,7 @@ namespace CourseRegistration.DataStore.HardCoded
         {
             var enrollmentIds = _enrollmentLines
                 .Where(l => l.SectionId == sectionId && l.EnrollmentId.HasValue)
-                .Select(l => l.EnrollmentId!.Value)
-                .Distinct()
-                .ToList();
+                .Select(l => l.EnrollmentId!.Value).Distinct().ToList();
 
             var list = new List<Enrollment>();
             foreach (var eId in enrollmentIds)

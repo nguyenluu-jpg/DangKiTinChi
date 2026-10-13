@@ -39,7 +39,7 @@ namespace CourseRegistration.DataStore.HardCoded
             new CompletedCourse { CompletedCourseId = 1, StudentId = 1, CourseId = 1, Semester = "2023_HK1", Grade = 8.5 },
             new CompletedCourse { CompletedCourseId = 2, StudentId = 1, CourseId = 2, Semester = "2023_HK2", Grade = 7.5 },
             
-            // SV 2 chỉ mới học TIN101, CHƯA HỌC TIN102
+
             new CompletedCourse { CompletedCourseId = 3, StudentId = 2, CourseId = 1, Semester = "2024_HK1", Grade = 9.0 }
         };
 

@@ -3,9 +3,8 @@ using CourseRegistration.UseCases.PluginInterfaces.UI;
 
 namespace CourseRegistration.StateStore.DI
 {
-    /// <summary>
-    /// Giỏ đăng ký tạm (Scoped Service) - ánh xạ ShoppingCart trong eShop
-    /// </summary>
+
+    // Giỏ đăng ký tạm (Scoped Service)
     public class RegistrationCart : IRegistrationCart
     {
         private readonly Enrollment _cartEnrollment;

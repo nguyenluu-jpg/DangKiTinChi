@@ -2,10 +2,8 @@ using CourseRegistration.CoreBusiness.Models;
 
 namespace CourseRegistration.UseCases.PluginInterfaces.DataStore
 {
-    /// <summary>
-    /// Interface Repository cho Course (học phần)
-    /// Nằm trong UseCases, implementation ở Plugins (K1.2)
-    /// </summary>
+    // Interface Repository cho Course (học phần)
+    // Nằm trong UseCases, implementation ở Plugins (K1.2)
     public interface ICourseRepository
     {
         Task<IEnumerable<Course>> GetAllCoursesAsync();

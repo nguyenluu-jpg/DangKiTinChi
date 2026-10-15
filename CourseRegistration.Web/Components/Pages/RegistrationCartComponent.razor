@@ -4,38 +4,53 @@
 @inject IRemoveSectionFromCartUseCase RemoveSectionFromCartUseCase
 @inject IPlaceEnrollmentUseCase PlaceEnrollmentUseCase
 @inject IStudentRepository StudentRepository
+@inject ICurrentUserStateStore CurrentUserStateStore
 @inject NavigationManager NavigationManager
+@implements IDisposable
 
-<div class="mb-4">
-    <h2 class="fw-bold mb-1">Giỏ Đăng Ký Học Phần</h2>
-    <p class="text-muted mb-0">Kiểm tra danh sách lớp học phần trước khi gửi phiếu đăng ký chính thức</p>
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-cart3 text-primary me-2"></i>Giỏ Đăng Ký Học Phần
+        </h2>
+        <p class="text-muted mb-0">Rà soát danh sách lớp đã chọn, đối chiếu lịch học và gửi phiếu đăng ký chính thức</p>
+    </div>
+    <a href="/sections" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Chọn thêm lớp học phần
+    </a>
 </div>
 
-<!-- Lựa chọn tài khoản sinh viên demo (Để test vi phạm luật nghiệp vụ) -->
+<!-- Lựa chọn tài khoản sinh viên demo (Đồng bộ với CurrentUserStateStore) -->
 <div class="card border-0 shadow-sm p-3 mb-4 bg-white">
-    <div class="row align-items-center">
+    <div class="row align-items-center g-3">
         <div class="col-md-7">
             <label class="form-label fw-bold text-dark small mb-1">
-                <i class="bi bi-person-circle text-primary me-1"></i> Chọn Sinh viên thực hiện đăng ký (Demo kiểm tra luật):
+                <i class="bi bi-person-circle text-primary me-1"></i> Tài khoản sinh viên thực hiện đăng ký (Demo kiểm tra luật):
             </label>
             <select class="form-select" @onchange="OnStudentChanged">
                 @foreach (var s in availableStudents)
                 {
                     <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
-                        @s.StudentCode - @s.FullName (@s.Major - Hạn mức: @s.MaxCreditsPerSemester TC)
+                        @s.StudentCode - @s.FullName (@s.Major - Tối đa: @s.MaxCreditsPerSemester TC)
                     </option>
                 }
             </select>
         </div>
-        <div class="col-md-5 mt-2 mt-md-0">
-            <div class="p-2 bg-light rounded small border">
+        <div class="col-md-5">
+            <div class="p-2 bg-light rounded-3 small border">
                 @if (selectedStudentId == 1)
                 {
-                    <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i> <strong>SV Tuấn:</strong> Đã đạt TIN101 & TIN102 (Đủ điều kiện đăng ký các môn)</span>
+                    <div class="text-success fw-semibold">
+                        <i class="bi bi-patch-check-fill me-1"></i><strong>SV Tuấn (K21):</strong> Đã đạt TIN101 & TIN102
+                    </div>
+                    <div class="text-muted" style="font-size: 0.76rem;">Đủ điều kiện đăng ký tất cả các môn học nâng cao.</div>
                 }
                 else
                 {
-                    <span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>SV Mai:</strong> Mới học TIN101, CHƯA học TIN102 (Sẽ bị chặn khi đăng ký Web/CNPM)</span>
+                    <div class="text-danger fw-semibold">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i><strong>SV Mai (K22):</strong> CHƯA học TIN102 (OOP)
+                    </div>
+                    <div class="text-danger" style="font-size: 0.76rem;">Sẽ bị hệ thống CHẶN NGAY khi đăng ký môn Web hoặc CNPM.</div>
                 }
             </div>
         </div>
@@ -50,20 +65,26 @@
     <div class="card border-0 shadow-sm text-center py-5 bg-white">
         <i class="bi bi-cart-x fs-1 text-muted mb-3"></i>
         <h5 class="fw-bold text-muted">Giỏ đăng ký hiện đang trống</h5>
-        <p class="text-muted small mb-4">Bạn chưa chọn lớp học phần nào để đăng ký.</p>
+        <p class="text-muted small mb-4">Bạn chưa chọn lớp học phần nào để đăng ký trong học kỳ này.</p>
         <div>
-            <a href="/sections" class="btn btn-primary">
-                <i class="bi bi-search me-1"></i> Tìm và chọn lớp học phần ngay
+            <a href="/sections" class="btn btn-primary px-4 py-2">
+                <i class="bi bi-search me-1"></i> Tra cứu và chọn lớp ngay
             </a>
         </div>
     </div>
 }
 else
 {
+    var currentStudent = availableStudents.FirstOrDefault(s => s.StudentId == selectedStudentId);
+    int maxCredits = currentStudent?.MaxCreditsPerSemester ?? 24;
+    int totalCredits = cart.TotalCredits;
+    bool isCreditExceeded = totalCredits > maxCredits;
+
     <div class="row g-4">
-        <!-- Danh sách lớp trong giỏ -->
+        <!-- Danh sách lớp trong giỏ (Desktop: Table / Mobile: Cards) -->
         <div class="col-lg-8">
-            <div class="card border-0 shadow-sm bg-white overflow-hidden">
+            <!-- Desktop Table View (>= 768px) -->
+            <div class="card border-0 shadow-sm bg-white overflow-hidden d-none d-md-block mb-3">
                 <div class="table-responsive">
                     <table class="table align-middle mb-0">
                         <thead class="table-light">
@@ -80,12 +101,21 @@ else
                             @foreach (var line in cart.EnrollmentLines)
                             {
                                 var sec = line.Section;
-                                <tr>
+                                bool hasConflict = CheckCartConflict(line.SectionId);
+                                <tr class="@(hasConflict ? "table-warning" : "")">
                                     <td>
-                                        <span class="badge bg-primary-subtle text-primary fw-bold">@sec?.SectionCode</span>
+                                        <span class="badge bg-primary-subtle text-primary fw-bold fs-6">
+                                            @sec?.SectionCode
+                                        </span>
+                                        @if (hasConflict)
+                                        {
+                                            <div class="badge bg-danger text-wrap mt-1" style="font-size: 0.7rem;">
+                                                <i class="bi bi-exclamation-circle me-1"></i>Trùng lịch
+                                            </div>
+                                        }
                                     </td>
                                     <td>
-                                        <div class="fw-bold">@sec?.Course?.CourseName</div>
+                                        <div class="fw-bold text-dark">@sec?.Course?.CourseName</div>
                                         <div class="small text-muted">GV: @sec?.Instructor</div>
                                     </td>
                                     <td>
@@ -96,17 +126,19 @@ else
                                         {
                                             foreach (var sched in sec.Schedules)
                                             {
-                                                <div class="text-nowrap">@sched.DayOfWeekName (Tiết @sched.StartPeriod-@sched.EndPeriod)</div>
+                                                <div class="text-nowrap text-secondary">
+                                                    @sched.DayOfWeekName (Tiết @sched.StartPeriod-@sched.EndPeriod) - @(string.IsNullOrEmpty(sched.Room) ? sec.Room : sched.Room)
+                                                </div>
                                             }
                                         }
                                     </td>
                                     <td>
-                                        <span class="small @(sec?.CurrentEnrollment >= sec?.MaxCapacity ? "text-danger fw-bold" : "text-muted")">
+                                        <span class="small @(sec?.CurrentEnrollment >= sec?.MaxCapacity ? "text-danger fw-bold" : "text-dark")">
                                             @sec?.CurrentEnrollment / @sec?.MaxCapacity
                                         </span>
                                     </td>
                                     <td class="text-end">
-                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => HandleRemove(line.SectionId)">
+                                        <button class="btn btn-sm btn-outline-danger" title="Xóa khỏi giỏ" @onclick="() => HandleRemove(line.SectionId)">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </td>
@@ -117,44 +149,117 @@ else
                 </div>
             </div>
 
-            <div class="mt-3">
+            <!-- Mobile Card View (< 768px) -->
+            <div class="d-md-none mb-3">
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var line in cart.EnrollmentLines)
+                    {
+                        var sec = line.Section;
+                        bool hasConflict = CheckCartConflict(line.SectionId);
+                        <div class="card border-0 shadow-sm bg-white p-3 @(hasConflict ? "border-start border-warning border-4" : "")">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <span class="badge bg-primary-subtle text-primary fw-bold me-1">@sec?.SectionCode</span>
+                                    <span class="badge bg-secondary">@(sec?.Course?.Credits ?? 0) TC</span>
+                                    @if (hasConflict)
+                                    {
+                                        <span class="badge bg-danger ms-1">Trùng lịch</span>
+                                    }
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger py-1 px-2" @onclick="() => HandleRemove(line.SectionId)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <h6 class="fw-bold mb-1 text-dark">@sec?.Course?.CourseName</h6>
+                            <div class="small text-muted mb-2">
+                                <div><i class="bi bi-person me-1"></i> GV: @sec?.Instructor</div>
+                                <div><i class="bi bi-geo-alt me-1"></i> Phòng: @sec?.Room</div>
+                                <div><i class="bi bi-people me-1"></i> Sĩ số: @sec?.CurrentEnrollment / @sec?.MaxCapacity</div>
+                            </div>
+                            @if (sec?.Schedules != null && sec.Schedules.Any())
+                            {
+                                <div class="p-2 bg-light rounded small">
+                                    <i class="bi bi-clock me-1 text-primary"></i>
+                                    @foreach (var sched in sec.Schedules)
+                                    {
+                                        <span class="me-2">@sched.DayOfWeekName (T @sched.StartPeriod-@sched.EndPeriod)</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center">
                 <a href="/sections" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left me-1"></i> Tiếp tục chọn lớp học phần
+                    <i class="bi bi-plus-circle me-1"></i> Chọn thêm lớp học phần
                 </a>
             </div>
         </div>
 
-        <!-- Tóm tắt đăng ký & nút xác nhận -->
+        <!-- Tóm tắt đăng ký & Thước đo tín chỉ & Xác nhận -->
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm p-4 bg-white">
-                <h5 class="fw-bold mb-3">Tóm Tắt Đăng Ký</h5>
+            <div class="card border-0 shadow-sm p-4 bg-white sticky-top" style="top: 80px;">
+                <h5 class="fw-bold mb-3 text-dark">
+                    <i class="bi bi-receipt text-primary me-2"></i>Tóm Tắt Đăng Ký
+                </h5>
 
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Tổng số lớp đã chọn:</span>
-                    <span class="fw-bold">@cart.EnrollmentLines.Count lớp</span>
-                </div>
-
-                <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                    <span class="text-muted">Tổng số tín chỉ:</span>
-                    <span class="fw-bold fs-5 text-primary">@cart.TotalCredits TC</span>
-                </div>
-
-                <div class="mb-3 small text-muted">
-                    <i class="bi bi-shield-check text-success me-1"></i> Hệ thống sẽ tự động kiểm tra điều kiện tiên quyết, trùng lịch và sĩ số khi bạn nhấn xác nhận.
-                </div>
-
-                <button class="btn btn-success btn-lg w-100 shadow-sm" 
-                        disabled="@isSubmitting"
-                        @onclick="HandleConfirmEnrollment">
-                    @if (isSubmitting)
+                <!-- Thước đo Tín chỉ (Credit Meter) -->
+                <div class="p-3 bg-light rounded-3 mb-3 border">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted fw-bold">Tổng tín chỉ trong giỏ:</span>
+                        <span class="fw-bold fs-5 @(isCreditExceeded ? "text-danger" : "text-primary")">
+                            @totalCredits / @maxCredits TC
+                        </span>
+                    </div>
+                    <div class="progress mb-2" style="height: 8px;">
+                        <div class="progress-bar @(isCreditExceeded ? "bg-danger" : (totalCredits >= maxCredits * 0.8 ? "bg-warning" : "bg-success"))" 
+                             role="progressbar" 
+                             style="width: @(Math.Min(100, maxCredits > 0 ? (totalCredits * 100 / maxCredits) : 0))%">
+                        </div>
+                    </div>
+                    @if (isCreditExceeded)
                     {
-                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                        <span>Đang xử lý...</span>
+                        <div class="text-danger small fw-semibold">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>Vượt quá hạn mức kỳ này (@maxCredits TC)!
+                        </div>
                     }
                     else
                     {
-                        <i class="bi bi-check2-circle me-1"></i>
-                        <span>Xác Nhận Đăng Ký</span>
+                        <div class="text-success small">
+                            <i class="bi bi-check-circle-fill me-1"></i>Hợp lệ (Còn được phép đăng ký @(maxCredits - totalCredits) TC).
+                        </div>
+                    }
+                </div>
+
+                <div class="d-flex justify-content-between mb-2 small text-muted">
+                    <span>Số lớp học phần:</span>
+                    <strong class="text-dark">@cart.EnrollmentLines.Count lớp</strong>
+                </div>
+
+                <div class="d-flex justify-content-between mb-3 pb-3 border-bottom small text-muted">
+                    <span>Sinh viên xác nhận:</span>
+                    <strong class="text-dark">@currentStudent?.FullName (@currentStudent?.StudentCode)</strong>
+                </div>
+
+                <div class="mb-3 small text-muted lh-sm">
+                    <i class="bi bi-shield-check text-success me-1"></i>
+                    Nhấn nút xác nhận để hệ thống kiểm tra <strong>môn tiên quyết, chống trùng lịch</strong> và <strong>tranh chấp sĩ số chỗ cuối</strong>.
+                </div>
+
+                <button class="btn btn-success btn-lg w-100 py-3 shadow-sm d-flex align-items-center justify-content-center gap-2" 
+                        disabled="@(isSubmitting || isCreditExceeded)"
+                        @onclick="HandleConfirmEnrollment">
+                    @if (isSubmitting)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                        <span>Đang xử lý giao dịch...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-check2-circle fs-5"></i>
+                        <span class="fw-bold">Xác Nhận Đăng Ký Ngay</span>
                     }
                 </button>
             </div>
@@ -171,8 +276,18 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
         availableStudents = (await StudentRepository.GetAllStudentsAsync()).ToList();
+
+        selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
         await LoadCart();
+    }
+
+    private async void HandleUserStateChange()
+    {
+        selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+        validationErrors.Clear();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadCart()
@@ -187,13 +302,40 @@ else
         await LoadCart();
     }
 
-    private void OnStudentChanged(ChangeEventArgs e)
+    private async Task OnStudentChanged(ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out int id))
         {
             selectedStudentId = id;
+            await CurrentUserStateStore.SetCurrentStudentIdAsync(id);
             validationErrors.Clear();
         }
+    }
+
+    private bool CheckCartConflict(int sectionId)
+    {
+        if (cart?.EnrollmentLines == null) return false;
+
+        var targetLine = cart.EnrollmentLines.FirstOrDefault(l => l.SectionId == sectionId);
+        if (targetLine?.Section?.Schedules == null) return false;
+
+        foreach (var line in cart.EnrollmentLines)
+        {
+            if (line.SectionId == sectionId) continue;
+            if (line.Section?.Schedules == null) continue;
+
+            foreach (var sched1 in targetLine.Section.Schedules)
+            {
+                foreach (var sched2 in line.Section.Schedules)
+                {
+                    if (sched1.ConflictsWith(sched2))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private async Task HandleConfirmEnrollment()
@@ -213,5 +355,10 @@ else
         {
             validationErrors = result.Errors;
         }
+    }
+
+    public void Dispose()
+    {
+        CurrentUserStateStore.RemoveStateChangeListeners(HandleUserStateChange);
     }
 }

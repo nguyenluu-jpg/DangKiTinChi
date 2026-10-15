@@ -1,6 +1,6 @@
 using CourseRegistration.CoreBusiness.Services;
 using CourseRegistration.CoreBusiness.Services.Interfaces;
-using CourseRegistration.DataStore.HardCoded;
+using CourseRegistration.DataStore.SqlServer;
 using CourseRegistration.StateStore.DI;
 using CourseRegistration.UseCases.AdminPortal.ManageCoursesScreen;
 using CourseRegistration.UseCases.AdminPortal.ManageCoursesScreen.Interfaces;
@@ -34,18 +34,20 @@ namespace CourseRegistration.Web
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
 
-            // Đăng ký CoreBusiness Services (LUẬT NGHIỆP VỤ 1)
+            // Đăng ký CoreBusiness Services 
             builder.Services.AddTransient<IEnrollmentValidationService, EnrollmentValidationService>();
 
-            // Đăng ký DataStore Plugins (Sprint 1: In-Memory / HardCoded)
-            builder.Services.AddSingleton<ICourseRepository, CourseRepository>();
-            builder.Services.AddSingleton<ISectionRepository, SectionRepository>();
-            builder.Services.AddSingleton<IStudentRepository, StudentRepository>();
-            builder.Services.AddSingleton<IEnrollmentRepository, EnrollmentRepository>();
+            // Đăng ký DataStore Plugins (Sprint 2: SQL Server thật qua Dapper)
+            builder.Services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
+            builder.Services.AddScoped<ICourseRepository, CourseRepository>();
+            builder.Services.AddScoped<ISectionRepository, SectionRepository>();
+            builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+            builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
 
             // Đăng ký StateStore Plugins (Scoped: Giỏ đăng ký - K1.4)
             builder.Services.AddScoped<IRegistrationCart, RegistrationCart>();
             builder.Services.AddScoped<IRegistrationCartStateStore, RegistrationCartStateStore>();
+            builder.Services.AddScoped<ICurrentUserStateStore, CurrentUserStateStore>();
 
             // Đăng ký Student Portal UseCases
             builder.Services.AddTransient<ISearchSectionUseCase, SearchSectionUseCase>();

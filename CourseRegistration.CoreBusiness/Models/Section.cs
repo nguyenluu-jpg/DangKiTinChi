@@ -28,6 +28,15 @@ namespace CourseRegistration.CoreBusiness.Models
 
         public string Semester { get; set; } = string.Empty;
 
+        // Thời gian mở / đóng đăng ký học phần (Sprint 2)
+        public DateTime? RegistrationOpenAt { get; set; }
+        public DateTime? RegistrationCloseAt { get; set; }
+
+        // Kiểm tra xem lớp học phần có đang trong thời gian mở đăng ký không
+        public bool IsRegistrationOpen =>
+            (!RegistrationOpenAt.HasValue || DateTime.Now >= RegistrationOpenAt.Value) &&
+            (!RegistrationCloseAt.HasValue || DateTime.Now <= RegistrationCloseAt.Value);
+
         // Navigation properties
         public Course? Course { get; set; }
         public List<SectionSchedule> Schedules { get; set; } = new List<SectionSchedule>();

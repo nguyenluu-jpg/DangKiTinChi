@@ -12,6 +12,7 @@ namespace CourseRegistration.CoreBusiness.Models
         public int? EnrollmentId { get; set; }
         public int StudentId { get; set; }
         public DateTime? DateRegistered { get; set; }
+        public DateTime? DateCancelled { get; set; }
         public string Semester { get; set; } = string.Empty; //Học kì 
         public string Status { get; set; } = "Pending"; // Pending, Confirmed, Cancelled
         public string? UniqueId { get; set; }

@@ -1,0 +1,269 @@
+@page "/admin/enrollments"
+@page "/admin/enrollments/{SectionId:int}"
+@namespace CourseRegistration.Web.Components.Pages.Admin
+@inject IViewEnrollmentListUseCase ViewEnrollmentListUseCase
+@inject ISectionRepository SectionRepository
+@inject ICourseRepository CourseRepository
+@inject IStudentRepository StudentRepository
+@inject NavigationManager NavigationManager
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-people-fill text-primary me-2"></i>Danh Sách Đăng Ký Theo Lớp
+        </h2>
+        <p class="text-muted mb-0">Phòng Đào Tạo &bull; Theo dõi sĩ số và danh sách sinh viên đăng ký từng lớp học phần</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/admin/sections" class="btn btn-outline-secondary">
+            <i class="bi bi-collection me-1"></i> Quản lý lớp học phần
+        </a>
+        <button class="btn btn-primary" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> In danh sách
+        </button>
+    </div>
+</div>
+
+<!-- Bộ lọc chọn lớp học phần -->
+<div class="card border-0 shadow-sm p-3 mb-4 bg-white">
+    <div class="row g-3 align-items-center">
+        <div class="col-md-6">
+            <label class="form-label fw-bold small text-muted mb-1">
+                <i class="bi bi-filter me-1"></i>Chọn lớp học phần để xem danh sách:
+            </label>
+            <select class="form-select" @onchange="OnSectionSelected">
+                <option value="0">-- Vui lòng chọn lớp học phần --</option>
+                @foreach (var sec in allSections)
+                {
+                    <option value="@sec.SectionId" selected="@(sec.SectionId == currentSectionId)">
+                        @sec.SectionCode - @(sec.Course?.CourseName) (GV: @sec.Instructor | Sĩ số: @sec.CurrentEnrollment/@sec.MaxCapacity)
+                    </option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label fw-bold small text-muted mb-1">
+                <i class="bi bi-search me-1"></i>Tìm nhanh sinh viên trong lớp:
+            </label>
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="Tìm theo MSSV, họ tên, email..." 
+                       @bind="searchKeyword" @bind:event="oninput" />
+                @if (!string.IsNullOrEmpty(searchKeyword))
+                {
+                    <button class="btn btn-outline-secondary" @onclick="() => searchKeyword = string.Empty">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Đang tải danh sách sinh viên...</p>
+    </div>
+}
+else if (selectedSection == null)
+{
+    <div class="card border-0 shadow-sm text-center py-5 bg-white">
+        <i class="bi bi-inbox fs-1 text-muted mb-2"></i>
+        <h5 class="fw-bold text-muted">Vui lòng chọn lớp học phần</h5>
+        <p class="text-muted small mb-0">Chọn một lớp trong danh sách phía trên để xem chi tiết sinh viên đã đăng ký</p>
+    </div>
+}
+else
+{
+    <!-- Thẻ tóm tắt thông tin lớp học phần -->
+    <div class="card border-0 shadow-sm p-4 mb-4 bg-white">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-8">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-primary fs-6 px-3 py-1">@selectedSection.SectionCode</span>
+                    <span class="badge bg-secondary fs-6">@(selectedSection.Course?.Credits ?? 0) Tín chỉ</span>
+                    <span class="badge @(selectedSection.HasAvailableSlot ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger")">
+                        @(selectedSection.HasAvailableSlot ? $"Còn {selectedSection.AvailableSlots} chỗ" : "Đã đủ sĩ số")
+                    </span>
+                </div>
+                <h4 class="fw-bold mb-1 text-dark">@(selectedSection.Course?.CourseName)</h4>
+                <div class="text-muted small d-flex flex-wrap gap-3 mt-2">
+                    <span><i class="bi bi-person-badge text-primary me-1"></i>Giảng viên: <strong>@selectedSection.Instructor</strong></span>
+                    <span><i class="bi bi-geo-alt text-primary me-1"></i>Phòng: <strong>@(string.IsNullOrEmpty(selectedSection.Room) ? "Chưa xếp" : selectedSection.Room)</strong></span>
+                    <span><i class="bi bi-calendar-event text-primary me-1"></i>Học kỳ: <strong>@selectedSection.Semester</strong></span>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="p-3 bg-light rounded-3 border">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted fw-bold">Sĩ số lớp:</span>
+                        <span class="fw-bold text-dark">@selectedSection.CurrentEnrollment / @selectedSection.MaxCapacity</span>
+                    </div>
+                    <div class="progress mb-2" style="height: 8px;">
+                        <div class="progress-bar @(selectedSection.CurrentEnrollment >= selectedSection.MaxCapacity ? "bg-danger" : "bg-primary")" 
+                             role="progressbar" 
+                             style="width: @(selectedSection.MaxCapacity > 0 ? (selectedSection.CurrentEnrollment * 100 / selectedSection.MaxCapacity) : 0)%">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>Tỷ lệ lấp đầy:</span>
+                        <span class="fw-bold">@(selectedSection.MaxCapacity > 0 ? (selectedSection.CurrentEnrollment * 100 / selectedSection.MaxCapacity) : 0)%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danh sách sinh viên đã đăng ký -->
+    var filteredList = GetFilteredEnrollments();
+
+    <div class="card border-0 shadow-sm bg-white overflow-hidden">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="fw-bold mb-0">
+                <i class="bi bi-card-checklist text-primary me-2"></i>Danh Sách Sinh Viên (@filteredList.Count sinh viên)
+            </h5>
+            <span class="text-muted small">Cập nhật theo thời gian thực</span>
+        </div>
+
+        @if (!filteredList.Any())
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-person-x fs-1 text-muted mb-2"></i>
+                <h6 class="text-muted">Chưa có sinh viên nào đăng ký lớp học phần này</h6>
+                @if (!string.IsNullOrEmpty(searchKeyword))
+                {
+                    <p class="small text-muted">Không tìm thấy sinh viên khớp với từ khóa "@searchKeyword"</p>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 60px;">STT</th>
+                            <th>Mã Sinh Viên</th>
+                            <th>Họ và Tên</th>
+                            <th>Chuyên Ngành</th>
+                            <th>Email Liên Hệ</th>
+                            <th>Ngày Đăng Ký</th>
+                            <th>Mã Biên Nhận</th>
+                            <th class="text-center">Trạng Thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ int idx = 1; }
+                        @foreach (var item in filteredList)
+                        {
+                            var student = item.Student;
+                            <tr>
+                                <td class="text-muted fw-bold">@(idx++)</td>
+                                <td>
+                                    <span class="badge bg-primary-subtle text-primary fw-bold fs-6">
+                                        @(student?.StudentCode ?? "N/A")
+                                    </span>
+                                </td>
+                                <td class="fw-bold text-dark">
+                                    @(student?.FullName ?? "N/A")
+                                </td>
+                                <td>
+                                    <span class="text-secondary small">@(student?.Major ?? "N/A")</span>
+                                    <span class="badge bg-light text-dark border ms-1">@(student?.AcademicYear)</span>
+                                </td>
+                                <td class="small text-muted">
+                                    <i class="bi bi-envelope me-1"></i>@(student?.Email ?? "N/A")
+                                </td>
+                                <td class="small text-muted">
+                                    <i class="bi bi-clock me-1"></i>@(item.DateRegistered?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")
+                                </td>
+                                <td>
+                                    <a href="/enrollment/@(item.EnrollmentId)" class="small text-decoration-none" title="Xem phiếu đăng ký">
+                                        #@item.EnrollmentId (@(item.UniqueId?.Substring(0, Math.Min(8, item.UniqueId.Length)) ?? ""))
+                                    </a>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-success-subtle text-success px-2 py-1">
+                                        <i class="bi bi-check2 me-1"></i>Đã xác nhận
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int? SectionId { get; set; }
+
+    private List<Section> allSections = new List<Section>();
+    private Section? selectedSection;
+    private int currentSectionId = 0;
+    private List<Enrollment> enrolledList = new List<Enrollment>();
+    private string searchKeyword = string.Empty;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        allSections = (await SectionRepository.GetAllSectionsAsync()).ToList();
+
+        if (SectionId.HasValue && SectionId.Value > 0)
+        {
+            currentSectionId = SectionId.Value;
+        }
+        else if (allSections.Any())
+        {
+            currentSectionId = allSections.First().SectionId;
+        }
+
+        await LoadSectionData();
+    }
+
+    private async Task OnSectionSelected(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int id))
+        {
+            currentSectionId = id;
+            searchKeyword = string.Empty;
+            await LoadSectionData();
+        }
+    }
+
+    private async Task LoadSectionData()
+    {
+        isLoading = true;
+        if (currentSectionId > 0)
+        {
+            selectedSection = await SectionRepository.GetSectionByIdAsync(currentSectionId);
+            var enrollments = await ViewEnrollmentListUseCase.ExecuteAsync(currentSectionId);
+            enrolledList = enrollments.ToList();
+        }
+        else
+        {
+            selectedSection = null;
+            enrolledList.Clear();
+        }
+        isLoading = false;
+    }
+
+    private List<Enrollment> GetFilteredEnrollments()
+    {
+        if (string.IsNullOrWhiteSpace(searchKeyword))
+        {
+            return enrolledList;
+        }
+
+        return enrolledList.Where(e =>
+            (e.Student?.StudentCode != null && e.Student.StudentCode.Contains(searchKeyword, StringComparison.OrdinalIgnoreCase)) ||
+            (e.Student?.FullName != null && e.Student.FullName.Contains(searchKeyword, StringComparison.OrdinalIgnoreCase)) ||
+            (e.Student?.Email != null && e.Student.Email.Contains(searchKeyword, StringComparison.OrdinalIgnoreCase))
+        ).ToList();
+    }
+}

@@ -7,7 +7,7 @@ namespace CourseRegistration.UseCases.PluginInterfaces.DataStore
     public interface ICourseRepository
     {
         Task<IEnumerable<Course>> GetAllCoursesAsync();
-        Task<Course?> GetCourseByIdAsync(int courseId);
+        Task<Course?> GetCourseByIdAsync(int courseId);   
         Task<IEnumerable<Course>> SearchCoursesAsync(string keyword);
         Task AddCourseAsync(Course course);
         Task UpdateCourseAsync(Course course);

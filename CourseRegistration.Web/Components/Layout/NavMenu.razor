@@ -1,53 +1,265 @@
 @namespace CourseRegistration.Web.Components.Layout
+@inject ICurrentUserStateStore CurrentUserStateStore
+@inject IStudentRepository StudentRepository
+@inject IRegistrationCartStateStore CartStateStore
+@inject NavigationManager NavigationManager
+@implements IDisposable
 
+<!-- Top Desktop & Tablet Navbar -->
 <nav class="navbar navbar-expand-lg navbar-dark custom-navbar sticky-top py-2 shadow-sm">
     <div class="container">
         <a class="navbar-brand fw-bold d-flex align-items-center text-white" href="/">
-            <div class="d-inline-flex align-items-center justify-content-center bg-primary rounded-3 text-white me-2" style="width: 36px; height: 36px;">
-                <i class="bi bi-mortarboard-fill fs-5"></i>
+            <div class="brand-logo-icon me-2">
+                <i class="bi bi-mortarboard-fill"></i>
             </div>
-            <span>Đăng Ký Học Phần</span>
+            <div class="d-flex flex-column">
+                <span class="lh-1 fw-bold">Đăng Ký Học Phần</span>
+                <span class="brand-subtext">Cổng Đào Tạo Trực Tuyến</span>
+            </div>
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+        <!-- Mobile Quick Indicators (Cart + Toggle) -->
+        <div class="d-flex align-items-center d-lg-none gap-2">
+            <CartBadgeComponent />
+            <button class="navbar-toggler border-0 p-1" type="button" @onclick="() => isMobileNavExpanded = !isMobileNavExpanded">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+
+        <div class="collapse navbar-collapse @(isMobileNavExpanded ? "show" : "")" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center">
                 <li class="nav-item">
-                    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All" @onclick="CloseAllDropdowns">
                         <i class="bi bi-house-door me-1"></i> Trang chủ
                     </NavLink>
                 </li>
                 <li class="nav-item">
-                    <NavLink class="nav-link" href="/sections">
-                        <i class="bi bi-search me-1"></i> Tìm lớp học phần
+                    <NavLink class="nav-link" href="/sections" @onclick="CloseAllDropdowns">
+                        <i class="bi bi-search me-1"></i> Tra cứu học phần
                     </NavLink>
                 </li>
                 <li class="nav-item">
-                    <NavLink class="nav-link" href="/schedule">
+                    <NavLink class="nav-link" href="/schedule" @onclick="CloseAllDropdowns">
                         <i class="bi bi-calendar3 me-1"></i> Thời khóa biểu
                     </NavLink>
                 </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                <li class="nav-item dropdown position-relative">
+                    <button class="nav-link dropdown-toggle d-flex align-items-center bg-transparent border-0" 
+                            type="button" 
+                            @onclick="() => isAdminDropdownOpen = !isAdminDropdownOpen">
                         <i class="bi bi-shield-lock me-1"></i> Phòng Đào Tạo
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="/admin/courses"><i class="bi bi-book me-1"></i> Quản lý Môn học</a></li>
-                        <li><a class="dropdown-item" href="/admin/sections"><i class="bi bi-collection me-1"></i> Quản lý Lớp học phần</a></li>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow border-0 rounded-3 @(isAdminDropdownOpen ? "show" : "")">
+                        <li>
+                            <a class="dropdown-item py-2" href="/admin/courses" @onclick="CloseAllDropdowns">
+                                <i class="bi bi-book text-primary me-2"></i> Danh mục Môn học
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2" href="/admin/sections" @onclick="CloseAllDropdowns">
+                                <i class="bi bi-collection text-info me-2"></i> Mở & Quản lý Lớp HP
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2" href="/admin/enrollments" @onclick="CloseAllDropdowns">
+                                <i class="bi bi-people text-success me-2"></i> Danh sách SV theo Lớp
+                            </a>
+                        </li>
                     </ul>
                 </li>
             </ul>
 
-            <div class="d-flex align-items-center">
-                <!-- User Selector (Dùng để demo 2 sinh viên kiểm tra luật nghiệp vụ) -->
-                <div class="d-flex align-items-center me-2 text-white small">
-                    <i class="bi bi-person-circle fs-5 me-1"></i>
-                    <span>Tài khoản Demo</span>
+            <div class="d-flex align-items-center flex-wrap gap-2 pt-2 pt-lg-0 border-top border-secondary border-opacity-25 border-top-lg-0">
+                <!-- User Switcher Dropdown (Seamless Switch for Rubric & Real-World Demo) -->
+                <div class="dropdown position-relative">
+                    <button class="btn btn-dark user-profile-btn dropdown-toggle d-flex align-items-center gap-2 border border-secondary border-opacity-50" 
+                            type="button" 
+                            @onclick="() => isUserDropdownOpen = !isUserDropdownOpen">
+                        @if (currentRole == "Admin")
+                        {
+                            <div class="user-avatar bg-danger text-white">
+                                <i class="bi bi-shield-lock-fill"></i>
+                            </div>
+                            <div class="text-start d-none d-sm-block">
+                                <div class="fw-bold small lh-1 text-white">Cán bộ Quản lý</div>
+                                <span class="badge bg-danger-subtle text-danger px-1 py-0" style="font-size: 0.68rem;">Phòng Đào Tạo</span>
+                            </div>
+                        }
+                        else if (currentStudent != null)
+                        {
+                            <div class="user-avatar @(currentStudent.StudentId == 1 ? "bg-primary" : "bg-warning text-dark")">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            <div class="text-start d-none d-sm-block">
+                                <div class="fw-bold small lh-1 text-white">@currentStudent.FullName</div>
+                                <span class="badge @(currentStudent.StudentId == 1 ? "bg-primary-subtle text-primary" : "bg-warning-subtle text-warning") px-1 py-0" style="font-size: 0.68rem;">
+                                    @currentStudent.StudentCode &bull; @(currentStudent.MaxCreditsPerSemester) TC
+                                </span>
+                            </div>
+                        }
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 p-2 @(isUserDropdownOpen ? "show" : "")" style="min-width: 280px;">
+                        <li class="dropdown-header small text-uppercase text-muted fw-bold pb-1">
+                            Chọn Tài Khoản Demo (Kiểm tra luật)
+                        </li>
+                        @foreach (var s in availableStudents)
+                        {
+                            bool isCurrent = currentRole == "Student" && currentStudent?.StudentId == s.StudentId;
+                            <li>
+                                <button class="dropdown-item rounded-2 py-2 d-flex align-items-center justify-content-between @(isCurrent ? "active" : "")" 
+                                        @onclick="() => SwitchStudent(s.StudentId)">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="user-avatar-sm @(s.StudentId == 1 ? "bg-primary text-white" : "bg-warning text-dark")">
+                                            <i class="bi bi-person"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold small">@s.FullName</div>
+                                            <div class="text-muted" style="font-size: 0.75rem;">
+                                                @s.StudentCode &bull; @s.Major
+                                            </div>
+                                            <div class="extra-info-text @(s.StudentId == 1 ? "text-success" : "text-warning")" style="font-size: 0.72rem;">
+                                                @(s.StudentId == 1 ? "✓ Đã học TIN101 & 102 (Đạt chuẩn)" : "⚠️ Chưa học TIN102 (Bị chặn Web)")
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @if (isCurrent)
+                                    {
+                                        <i class="bi bi-check-circle-fill text-white ms-2"></i>
+                                    }
+                                </button>
+                            </li>
+                        }
+                        <li><hr class="dropdown-divider my-2"></li>
+                        <li>
+                            <button class="dropdown-item rounded-2 py-2 d-flex align-items-center justify-content-between @(currentRole == "Admin" ? "active" : "")" 
+                                    @onclick="SwitchToAdmin">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="user-avatar-sm bg-danger text-white">
+                                        <i class="bi bi-shield-check"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold small">Cán bộ Quản trị</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">Phòng Đào Tạo & Khảo Thí</div>
+                                    </div>
+                                </div>
+                                @if (currentRole == "Admin")
+                                {
+                                    <i class="bi bi-check-circle-fill text-white ms-2"></i>
+                                }
+                            </button>
+                        </li>
+                    </ul>
                 </div>
-                <!-- Giỏ đăng ký Component -->
-                <CartBadgeComponent />
+
+                <!-- Desktop Cart Badge -->
+                <div class="d-none d-lg-block">
+                    <CartBadgeComponent />
+                </div>
             </div>
         </div>
     </div>
 </nav>
+
+<!-- Mobile Native-Style Bottom Navigation Bar (Dành riêng cho Điện thoại < 768px) -->
+<div class="mobile-bottom-nav d-lg-none">
+    <div class="mobile-nav-container">
+        <NavLink class="mobile-nav-item" href="/" Match="NavLinkMatch.All">
+            <i class="bi bi-house-door"></i>
+            <span>Trang chủ</span>
+        </NavLink>
+        <NavLink class="mobile-nav-item" href="/sections">
+            <i class="bi bi-search"></i>
+            <span>Tra cứu</span>
+        </NavLink>
+        <NavLink class="mobile-nav-item position-relative" href="/cart">
+            <div class="cart-icon-wrapper">
+                <i class="bi bi-cart3"></i>
+                @if (cartCount > 0)
+                {
+                    <span class="mobile-cart-badge">@cartCount</span>
+                }
+            </div>
+            <span>Giỏ môn</span>
+        </NavLink>
+        <NavLink class="mobile-nav-item" href="/schedule">
+            <i class="bi bi-calendar3"></i>
+            <span>Lịch học</span>
+        </NavLink>
+        <NavLink class="mobile-nav-item" href="/admin/enrollments">
+            <i class="bi bi-shield-lock"></i>
+            <span>Quản trị</span>
+        </NavLink>
+    </div>
+</div>
+
+@code {
+    private List<Student> availableStudents = new List<Student>();
+    private Student? currentStudent;
+    private string currentRole = "Student";
+    private int cartCount = 0;
+
+    private bool isAdminDropdownOpen = false;
+    private bool isUserDropdownOpen = false;
+    private bool isMobileNavExpanded = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
+        CartStateStore.AddStateChangeListeners(HandleCartStateChange);
+
+        availableStudents = (await StudentRepository.GetAllStudentsAsync()).ToList();
+        await RefreshUserState();
+        await RefreshCartCount();
+    }
+
+    private async void HandleUserStateChange()
+    {
+        await RefreshUserState();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleCartStateChange()
+    {
+        await RefreshCartCount();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshUserState()
+    {
+        int studentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+        currentRole = await CurrentUserStateStore.GetCurrentRoleAsync();
+        currentStudent = availableStudents.FirstOrDefault(s => s.StudentId == studentId);
+    }
+
+    private async Task RefreshCartCount()
+    {
+        cartCount = await CartStateStore.GetItemsCount();
+    }
+
+    private async Task SwitchStudent(int studentId)
+    {
+        CloseAllDropdowns();
+        await CurrentUserStateStore.SetCurrentRoleAsync("Student");
+        await CurrentUserStateStore.SetCurrentStudentIdAsync(studentId);
+    }
+
+    private async Task SwitchToAdmin()
+    {
+        CloseAllDropdowns();
+        await CurrentUserStateStore.SetCurrentRoleAsync("Admin");
+        NavigationManager.NavigateTo("/admin/courses");
+    }
+
+    private void CloseAllDropdowns()
+    {
+        isAdminDropdownOpen = false;
+        isUserDropdownOpen = false;
+        isMobileNavExpanded = false;
+    }
+
+    public void Dispose()
+    {
+        CurrentUserStateStore.RemoveStateChangeListeners(HandleUserStateChange);
+        CartStateStore.RemoveStateChangeListeners(HandleCartStateChange);
+    }
+}

@@ -4,21 +4,89 @@
 @inject IAddSectionToCartUseCase AddSectionToCartUseCase
 @inject IRemoveSectionFromCartUseCase RemoveSectionFromCartUseCase
 @inject IViewRegistrationCartUseCase ViewRegistrationCartUseCase
+@inject ICurrentUserStateStore CurrentUserStateStore
+@inject IStudentRepository StudentRepository
+@inject ICourseRepository CourseRepository
+@implements IDisposable
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
-        <h2 class="fw-bold mb-1">Tra Cứu & Đăng Ký Lớp Học Phần</h2>
-        <p class="text-muted mb-0">Học kỳ 1 (2025 - 2026) &bull; Chọn lớp học phần để thêm vào giỏ đăng ký</p>
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-search text-primary me-2"></i>Tra Cứu & Đăng Ký Lớp Học Phần
+        </h2>
+        <p class="text-muted mb-0">Học kỳ 1 (2025 - 2026) &bull; Hệ thống đối chiếu thời gian thực điều kiện tiên quyết & sĩ số</p>
     </div>
-    <a href="/cart" class="btn btn-primary">
-        <i class="bi bi-cart-check me-1"></i> Đi đến Giỏ Đăng Ký
+    <a href="/cart" class="btn btn-primary d-inline-flex align-items-center shadow-sm">
+        <i class="bi bi-cart-check me-2"></i>
+        <span>Vào Giỏ Đăng Ký</span>
+        @if (cartSectionIds.Count > 0)
+        {
+            <span class="badge bg-white text-primary ms-2 rounded-pill">@cartSectionIds.Count</span>
+        }
     </a>
 </div>
 
-<!-- Thanh tìm kiếm & lọc -->
+<!-- Thông báo thao tác giỏ hàng (Feedback Toast) -->
+@if (!string.IsNullOrEmpty(feedbackMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show shadow-sm border-success-subtle d-flex align-items-center justify-content-between py-2 px-3 mb-4 rounded-3" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-check-circle-fill fs-5 text-success me-2"></i>
+            <div>
+                <strong>Thành công!</strong> @feedbackMessage
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="/cart" class="btn btn-sm btn-success">Xem giỏ</a>
+            <button type="button" class="btn-close position-static p-2" @onclick="() => feedbackMessage = null"></button>
+        </div>
+    </div>
+}
+
+<!-- Thanh sinh viên hiện tại & Hạn mức -->
+@if (currentStudent != null)
+{
+    <div class="card border-0 shadow-sm p-3 mb-4 bg-white">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <div class="user-avatar @(currentStudent.StudentId == 1 ? "bg-primary text-white" : "bg-warning text-dark")">
+                    <i class="bi bi-person-fill fs-5"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-dark">
+                        @currentStudent.FullName 
+                        <span class="text-muted fw-normal">(@currentStudent.StudentCode &bull; @currentStudent.Major)</span>
+                    </div>
+                    <div class="small text-muted">
+                        Hạn mức kỳ này: <strong class="text-primary">@currentStudent.MaxCreditsPerSemester Tín chỉ</strong>
+                        &bull; Đã chọn trong giỏ: <strong class="text-success">@cartTotalCredits TC</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                @if (currentStudent.StudentId == 1)
+                {
+                    <span class="badge bg-success-subtle text-success px-2 py-1 small">
+                        <i class="bi bi-check2-circle me-1"></i>Đã đạt TIN101 & TIN102
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-warning-subtle text-warning-emphasis px-2 py-1 small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>Chưa đạt TIN102 (Bị chặn WEB301 & KTPM302)
+                    </span>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Thanh tìm kiếm & bộ lọc nâng cao -->
 <div class="card border-0 shadow-sm p-3 mb-4 bg-white">
     <div class="row g-2 align-items-center">
-        <div class="col-md-8">
+        <!-- Input tìm kiếm từ khóa -->
+        <div class="col-md-5">
             <div class="input-group">
                 <span class="input-group-text bg-light border-end-0">
                     <i class="bi bi-search text-muted"></i>
@@ -28,21 +96,45 @@
                        placeholder="Tìm theo tên học phần, mã môn (vd: WEB301), giảng viên..."
                        @bind="searchKeyword" 
                        @bind:event="oninput" 
-                       @onkeyup="HandleSearch" />
+                       @onkeyup="FilterSections" />
+                @if (!string.IsNullOrEmpty(searchKeyword))
+                {
+                    <button class="btn btn-outline-secondary" @onclick="ClearKeyword">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                }
             </div>
         </div>
-        <div class="col-md-4 d-flex gap-2">
-            <button class="btn btn-primary flex-grow-1" @onclick="HandleSearch">
-                <i class="bi bi-funnel me-1"></i> Lọc kết quả
-            </button>
-            <button class="btn btn-outline-secondary" @onclick="HandleReset">
+
+        <!-- Lọc theo môn học -->
+        <div class="col-md-4">
+            <select class="form-select" @onchange="OnCourseFilterChanged">
+                <option value="0">-- Tất cả học phần trong kỳ --</option>
+                @foreach (var c in allCourses)
+                {
+                    <option value="@c.CourseId">@c.CourseCode - @c.CourseName (@c.Credits TC)</option>
+                }
+            </select>
+        </div>
+
+        <!-- Toggle chỉ lớp còn chỗ & nút reset -->
+        <div class="col-md-3 d-flex align-items-center justify-content-between gap-2">
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="availableOnlySwitch" 
+                       checked="@onlyAvailable" @onchange="OnAvailableOnlyChanged">
+                <label class="form-check-label small fw-semibold" for="availableOnlySwitch">
+                    Chỉ hiện còn chỗ
+                </label>
+            </div>
+
+            <button class="btn btn-outline-secondary btn-sm" title="Đặt lại bộ lọc" @onclick="HandleReset">
                 <i class="bi bi-arrow-clockwise"></i>
             </button>
         </div>
     </div>
 </div>
 
-<!-- Danh sách lớp học phần hiển thị qua Reusable SectionCardComponent -->
+<!-- Danh sách lớp học phần hiển thị qua Reusable SectionCardComponent (K3.1) -->
 @if (isLoading)
 {
     <div class="text-center py-5">
@@ -52,12 +144,12 @@
         <p class="mt-2 text-muted">Đang tải danh sách lớp học phần...</p>
     </div>
 }
-else if (sections == null || !sections.Any())
+else if (!filteredSections.Any())
 {
     <div class="card border-0 shadow-sm text-center py-5 bg-white">
         <i class="bi bi-inbox fs-1 text-muted mb-2"></i>
-        <h5 class="text-muted">Không tìm thấy lớp học phần phù hợp</h5>
-        <p class="small text-muted mb-3">Vui lòng thử tìm kiếm với từ khóa khác</p>
+        <h5 class="fw-bold text-muted">Không tìm thấy lớp học phần phù hợp</h5>
+        <p class="small text-muted mb-3">Vui lòng thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc</p>
         <div>
             <button class="btn btn-outline-primary btn-sm" @onclick="HandleReset">Đặt lại bộ lọc</button>
         </div>
@@ -65,13 +157,24 @@ else if (sections == null || !sections.Any())
 }
 else
 {
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-muted small fw-semibold">
+            Tìm thấy <strong>@filteredSections.Count</strong> lớp học phần phù hợp
+        </span>
+    </div>
+
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-        @foreach (var sec in sections)
+        @foreach (var sec in filteredSections)
         {
             bool isAdded = cartSectionIds.Contains(sec.SectionId);
+            string? prereqWarning = GetPrerequisiteWarning(sec);
+            bool hasPrereqMet = string.IsNullOrEmpty(prereqWarning) && HasAnyPrerequisite(sec);
+
             <div class="col">
                 <SectionCardComponent Section="@sec" 
                                       IsInCart="@isAdded"
+                                      PrerequisiteWarning="@prereqWarning"
+                                      HasPrerequisiteMet="@hasPrereqMet"
                                       OnAddToCart="@HandleAddToCart"
                                       OnRemoveFromCart="@HandleRemoveFromCart" />
             </div>
@@ -80,46 +183,172 @@ else
 }
 
 @code {
-    private IEnumerable<Section> sections = new List<Section>();
+    private List<Section> allSections = new List<Section>();
+    private List<Section> filteredSections = new List<Section>();
+    private List<Course> allCourses = new List<Course>();
+    private List<Prerequisite> allPrerequisites = new List<Prerequisite>();
+    private List<CompletedCourse> studentCompletedCourses = new List<CompletedCourse>();
+    private Student? currentStudent;
+
     private HashSet<int> cartSectionIds = new HashSet<int>();
+    private int cartTotalCredits = 0;
     private string searchKeyword = string.Empty;
+    private int selectedCourseId = 0;
+    private bool onlyAvailable = false;
     private bool isLoading = true;
+    private string? feedbackMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
+        CurrentUserStateStore.AddStateChangeListeners(HandleUserOrCartChanged);
+        await LoadMasterData();
     }
 
-    private async Task LoadData()
+    private async void HandleUserOrCartChanged()
+    {
+        await LoadStudentData();
+        await LoadCartData();
+        FilterSections();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadMasterData()
     {
         isLoading = true;
-        sections = await SearchSectionUseCase.ExecuteAsync(searchKeyword, "2025_HK1");
+        allCourses = (await CourseRepository.GetAllCoursesAsync()).ToList();
+        allPrerequisites = (await CourseRepository.GetAllPrerequisitesAsync()).ToList();
+        var rawSections = await SearchSectionUseCase.ExecuteAsync(string.Empty, "2025_HK1");
+        allSections = rawSections.ToList();
 
-        var cart = await ViewRegistrationCartUseCase.ExecuteAsync();
-        cartSectionIds = cart.EnrollmentLines.Select(l => l.SectionId).ToHashSet();
+        await LoadStudentData();
+        await LoadCartData();
+        FilterSections();
         isLoading = false;
     }
 
-    private async Task HandleSearch()
+    private async Task LoadStudentData()
     {
-        sections = await SearchSectionUseCase.ExecuteAsync(searchKeyword, "2025_HK1");
+        int studentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+        currentStudent = await StudentRepository.GetStudentByIdAsync(studentId);
+        studentCompletedCourses = (await StudentRepository.GetCompletedCoursesByStudentIdAsync(studentId)).ToList();
+    }
+
+    private async Task LoadCartData()
+    {
+        var cart = await ViewRegistrationCartUseCase.ExecuteAsync();
+        cartSectionIds = cart.EnrollmentLines.Select(l => l.SectionId).ToHashSet();
+        cartTotalCredits = cart.TotalCredits;
+    }
+
+    private void FilterSections()
+    {
+        var query = allSections.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(searchKeyword))
+        {
+            string kw = searchKeyword.Trim();
+            query = query.Where(s =>
+                (s.SectionCode != null && s.SectionCode.Contains(kw, StringComparison.OrdinalIgnoreCase)) ||
+                (s.Course?.CourseName != null && s.Course.CourseName.Contains(kw, StringComparison.OrdinalIgnoreCase)) ||
+                (s.Course?.CourseCode != null && s.Course.CourseCode.Contains(kw, StringComparison.OrdinalIgnoreCase)) ||
+                (s.Instructor != null && s.Instructor.Contains(kw, StringComparison.OrdinalIgnoreCase))
+            );
+        }
+
+        if (selectedCourseId > 0)
+        {
+            query = query.Where(s => s.CourseId == selectedCourseId);
+        }
+
+        if (onlyAvailable)
+        {
+            query = query.Where(s => s.HasAvailableSlot);
+        }
+
+        filteredSections = query.ToList();
+    }
+
+    private void OnCourseFilterChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int cid))
+        {
+            selectedCourseId = cid;
+            FilterSections();
+        }
+    }
+
+    private void OnAvailableOnlyChanged(ChangeEventArgs e)
+    {
+        onlyAvailable = e.Value is bool b && b;
+        FilterSections();
+    }
+
+    private void ClearKeyword()
+    {
+        searchKeyword = string.Empty;
+        FilterSections();
     }
 
     private async Task HandleReset()
     {
         searchKeyword = string.Empty;
-        await LoadData();
+        selectedCourseId = 0;
+        onlyAvailable = false;
+        FilterSections();
+        await LoadCartData();
+    }
+
+    private bool HasAnyPrerequisite(Section sec)
+    {
+        return allPrerequisites.Any(p => p.CourseId == sec.CourseId);
+    }
+
+    private string? GetPrerequisiteWarning(Section sec)
+    {
+        var reqs = allPrerequisites.Where(p => p.CourseId == sec.CourseId).ToList();
+        if (!reqs.Any()) return null;
+
+        var missing = new List<string>();
+        foreach (var req in reqs)
+        {
+            bool completed = studentCompletedCourses.Any(cc => cc.CourseId == req.PrerequisiteCourseId);
+            if (!completed)
+            {
+                var reqCourse = allCourses.FirstOrDefault(c => c.CourseId == req.PrerequisiteCourseId);
+                missing.Add(reqCourse?.CourseCode ?? $"Mã #{req.PrerequisiteCourseId}");
+            }
+        }
+
+        if (missing.Any())
+        {
+            return $"Chưa hoàn thành môn tiên quyết: {string.Join(", ", missing)}";
+        }
+
+        return null;
     }
 
     private async Task HandleAddToCart(Section section)
     {
         await AddSectionToCartUseCase.ExecuteAsync(section);
         cartSectionIds.Add(section.SectionId);
+        cartTotalCredits += section.Course?.Credits ?? 0;
+        feedbackMessage = $"Đã thêm lớp {section.SectionCode} ({section.Course?.CourseName}) vào giỏ đăng ký!";
     }
 
     private async Task HandleRemoveFromCart(int sectionId)
     {
+        var sec = allSections.FirstOrDefault(s => s.SectionId == sectionId);
         await RemoveSectionFromCartUseCase.ExecuteAsync(sectionId);
         cartSectionIds.Remove(sectionId);
+        if (sec?.Course != null)
+        {
+            cartTotalCredits = Math.Max(0, cartTotalCredits - sec.Course.Credits);
+        }
+        feedbackMessage = $"Đã xóa lớp {sec?.SectionCode ?? sectionId.ToString()} khỏi giỏ đăng ký.";
+    }
+
+    public void Dispose()
+    {
+        CurrentUserStateStore.RemoveStateChangeListeners(HandleUserOrCartChanged);
     }
 }

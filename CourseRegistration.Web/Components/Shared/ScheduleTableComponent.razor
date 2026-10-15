@@ -1,60 +1,200 @@
 @namespace CourseRegistration.Web.Components.Shared
 
-<div class="table-responsive shadow-sm rounded border bg-white p-2">
-    <table class="table table-bordered text-center align-middle mb-0 schedule-table">
-        <thead class="table-primary">
-            <tr>
-                <th style="width: 80px;">Tiết</th>
-                <th>Thứ 2</th>
-                <th>Thứ 3</th>
-                <th>Thứ 4</th>
-                <th>Thứ 5</th>
-                <th>Thứ 6</th>
-                <th>Thứ 7</th>
-                <th>Chủ nhật</th>
-            </tr>
-        </thead>
-        <tbody>
-            @for (int period = 1; period <= 10; period++)
-            {
-                int currentPeriod = period;
-                <tr>
-                    <td class="fw-bold bg-light">Tiết @currentPeriod</td>
-                    @for (int day = 2; day <= 8; day++)
-                    {
-                        int currentDay = day;
-                        var matchedItem = GetScheduleItem(currentDay, currentPeriod);
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <!-- View Mode Switcher -->
+    <div class="btn-group btn-group-sm shadow-sm" role="group">
+        <button type="button" class="btn @(viewMode == "Agenda" ? "btn-primary" : "btn-outline-primary")" 
+                @onclick="@(() => viewMode = "Agenda")">
+            <i class="bi bi-view-list me-1"></i> Lịch theo ngày (Tiện cho Điện thoại)
+        </button>
+        <button type="button" class="btn @(viewMode == "Grid" ? "btn-primary" : "btn-outline-primary")" 
+                @onclick="@(() => viewMode = "Grid")">
+            <i class="bi bi-grid-3x3 me-1"></i> Ma trận tuần (Desktop)
+        </button>
+    </div>
 
-                        if (matchedItem != null)
-                        {
-                            <td class="p-1 table-info">
-                                <div class="schedule-slot p-2 rounded shadow-sm text-start">
-                                    <div class="fw-bold text-primary small">@matchedItem.CourseName</div>
-                                    <div class="badge bg-primary text-wrap mb-1">@matchedItem.SectionCode</div>
-                                    <div class="small text-muted"><i class="bi bi-geo-alt"></i> @matchedItem.Room</div>
-                                </div>
-                            </td>
-                        }
-                        else
-                        {
-                            <td class="text-muted small bg-light-subtle">&nbsp;</td>
-                        }
-                    }
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="text-muted small">
+        <i class="bi bi-info-circle me-1"></i>
+        <span>@(viewMode == "Agenda" ? "Xem chi tiết giờ học từng ngày" : "Bảng lưới tổng quan toàn tuần")</span>
+    </div>
 </div>
+
+@if (viewMode == "Agenda")
+{
+    <!-- Mobile-First / Agenda View -->
+    <div class="card border-0 shadow-sm bg-white p-3 mb-4 rounded-4">
+        <!-- Day Selector Pills (Scrollable horizontally on mobile) -->
+        <div class="d-flex gap-2 overflow-x-auto pb-2 mb-3">
+            @for (int day = 2; day <= 8; day++)
+            {
+                int currentDay = day;
+                int countOnDay = GetItemsForDay(currentDay).Count();
+                <button type="button" 
+                        class="agenda-day-pill d-flex align-items-center gap-1 @(selectedDay == currentDay ? "active" : "")" 
+                        @onclick="@(() => selectedDay = currentDay)">
+                    <span>@GetDayName(currentDay)</span>
+                    @if (countOnDay > 0)
+                    {
+                        <span class="badge @(selectedDay == currentDay ? "bg-white text-primary" : "bg-primary text-white") rounded-pill ms-1" style="font-size: 0.7rem;">
+                            @countOnDay
+                        </span>
+                    }
+                </button>
+            }
+        </div>
+
+        <!-- Class items for selected day -->
+        @{
+            var dayItems = GetItemsForDay(selectedDay).ToList();
+        }
+
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <h5 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-calendar2-day text-primary me-2"></i>Lịch học: @GetDayName(selectedDay)
+            </h5>
+            <span class="badge bg-light text-dark border">
+                @dayItems.Count buổi học
+            </span>
+        </div>
+
+        @if (!dayItems.Any())
+        {
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-cup-hot fs-2 text-secondary mb-2 d-block"></i>
+                <h6 class="fw-semibold">Không có lịch học trong @GetDayName(selectedDay)</h6>
+                <p class="small mb-0">Bạn có thể dành thời gian này để tự học hoặc tham gia các hoạt động ngoại khóa.</p>
+            </div>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3">
+                @foreach (var item in dayItems.OrderBy(i => i.Schedule.StartPeriod))
+                {
+                    <div class="agenda-card">
+                        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                            <div>
+                                <span class="badge bg-primary-subtle text-primary fw-bold me-2 fs-6">
+                                    @item.Section.SectionCode
+                                </span>
+                                <span class="badge bg-secondary">@(item.Section.Course?.Credits ?? 0) Tín chỉ</span>
+                            </div>
+                            <div class="period-pill">
+                                <i class="bi bi-clock me-1"></i>
+                                <span>Tiết @item.Schedule.StartPeriod - @item.Schedule.EndPeriod (@GetPeriodTime(item.Schedule.StartPeriod, item.Schedule.EndPeriod))</span>
+                            </div>
+                        </div>
+
+                        <h5 class="fw-bold mb-2 text-dark">@(item.Section.Course?.CourseName)</h5>
+
+                        <div class="row g-2 text-muted small">
+                            <div class="col-sm-6">
+                                <i class="bi bi-person-badge text-primary me-1"></i> Giảng viên: <strong>@item.Section.Instructor</strong>
+                            </div>
+                            <div class="col-sm-6">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i> Phòng học: <strong>@(string.IsNullOrEmpty(item.Schedule.Room) ? item.Section.Room : item.Schedule.Room)</strong>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+else
+{
+    <!-- Desktop Weekly Matrix Table View -->
+    <div class="table-responsive shadow-sm rounded-4 border bg-white p-2">
+        <table class="table table-bordered text-center align-middle mb-0 schedule-table">
+            <thead class="table-primary">
+                <tr>
+                    <th style="width: 80px;">Tiết</th>
+                    <th>Thứ 2</th>
+                    <th>Thứ 3</th>
+                    <th>Thứ 4</th>
+                    <th>Thứ 5</th>
+                    <th>Thứ 6</th>
+                    <th>Thứ 7</th>
+                    <th>Chủ nhật</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int period = 1; period <= 10; period++)
+                {
+                    int currentPeriod = period;
+                    <tr>
+                        <td class="fw-bold bg-light">Tiết @currentPeriod</td>
+                        @for (int day = 2; day <= 8; day++)
+                        {
+                            int currentDay = day;
+                            var matchedItem = GetScheduleItem(currentDay, currentPeriod);
+
+                            if (matchedItem != null)
+                            {
+                                <td class="p-1 table-info">
+                                    <div class="schedule-slot p-2 rounded shadow-sm text-start">
+                                        <div class="fw-bold text-primary small">@matchedItem.CourseName</div>
+                                        <div class="badge bg-primary text-wrap mb-1">@matchedItem.SectionCode</div>
+                                        <div class="small text-muted"><i class="bi bi-geo-alt"></i> @matchedItem.Room</div>
+                                    </div>
+                                </td>
+                            }
+                            else
+                            {
+                                <td class="text-muted small bg-light-subtle">&nbsp;</td>
+                            }
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
 
 @code {
     [Parameter]
     public IEnumerable<Section> Sections { get; set; } = new List<Section>();
+
+    private string viewMode = "Agenda"; // Default to Agenda for convenient mobile & touch experience
+    private int selectedDay = 2; // Default to Thứ 2
+
+    protected override void OnInitialized()
+    {
+        // Set selectedDay to today's day of week if possible
+        int day = (int)DateTime.Now.DayOfWeek;
+        selectedDay = day == 0 ? 8 : day + 1; // Convert to 2=Mon ... 8=Sun
+        if (selectedDay < 2 || selectedDay > 8) selectedDay = 2;
+    }
 
     private class ScheduleCellInfo
     {
         public string CourseName { get; set; } = string.Empty;
         public string SectionCode { get; set; } = string.Empty;
         public string Room { get; set; } = string.Empty;
+    }
+
+    private class AgendaItemInfo
+    {
+        public Section Section { get; set; } = default!;
+        public SectionSchedule Schedule { get; set; } = default!;
+    }
+
+    private IEnumerable<AgendaItemInfo> GetItemsForDay(int dayOfWeek)
+    {
+        if (Sections == null) yield break;
+
+        foreach (var sec in Sections)
+        {
+            if (sec.Schedules == null) continue;
+
+            foreach (var sched in sec.Schedules.Where(s => s.DayOfWeek == dayOfWeek))
+            {
+                yield return new AgendaItemInfo
+                {
+                    Section = sec,
+                    Schedule = sched
+                };
+            }
+        }
     }
 
     private ScheduleCellInfo? GetScheduleItem(int dayOfWeek, int period)
@@ -82,5 +222,52 @@
         }
 
         return null;
+    }
+
+    private string GetDayName(int day) => day switch
+    {
+        2 => "Thứ 2",
+        3 => "Thứ 3",
+        4 => "Thứ 4",
+        5 => "Thứ 5",
+        6 => "Thứ 6",
+        7 => "Thứ 7",
+        8 => "Chủ nhật",
+        _ => "N/A"
+    };
+
+    private string GetPeriodTime(int start, int end)
+    {
+        string startTime = start switch
+        {
+            1 => "07:00",
+            2 => "07:50",
+            3 => "08:45",
+            4 => "09:35",
+            5 => "10:25",
+            6 => "11:15",
+            7 => "13:00",
+            8 => "13:50",
+            9 => "14:45",
+            10 => "15:35",
+            _ => "07:00"
+        };
+
+        string endTime = end switch
+        {
+            1 => "07:45",
+            2 => "08:35",
+            3 => "09:30",
+            4 => "10:20",
+            5 => "11:10",
+            6 => "12:00",
+            7 => "13:45",
+            8 => "14:35",
+            9 => "15:30",
+            10 => "16:20",
+            _ => "17:00"
+        };
+
+        return $"{startTime} - {endTime}";
     }
 }

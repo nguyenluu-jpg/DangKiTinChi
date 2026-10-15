@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -11,6 +11,10 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CourseRegistration.DataStore.HardCoded", "Plugins\CourseRegistration.DataStore.HardCoded\CourseRegistration.DataStore.HardCoded.csproj", "{B1E37E0F-1D89-41BF-B005-A1E2D6EFCC44}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CourseRegistration.Web", "CourseRegistration.Web\CourseRegistration.Web.csproj", "{C449E514-A227-4628-9844-325A65EDC7F2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugins", "Plugins", "{C20DF340-E2DC-410C-A145-DF749DC2AF40}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CourseRegistration.DataStore.SqlServer", "Plugins\CourseRegistration.DataStore.SqlServer\CourseRegistration.DataStore.SqlServer.csproj", "{EE15A557-D4C4-4BC9-9DDD-9322E6165DAB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -38,5 +42,12 @@ Global
 		{C449E514-A227-4628-9844-325A65EDC7F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C449E514-A227-4628-9844-325A65EDC7F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C449E514-A227-4628-9844-325A65EDC7F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE15A557-D4C4-4BC9-9DDD-9322E6165DAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE15A557-D4C4-4BC9-9DDD-9322E6165DAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE15A557-D4C4-4BC9-9DDD-9322E6165DAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE15A557-D4C4-4BC9-9DDD-9322E6165DAB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{EE15A557-D4C4-4BC9-9DDD-9322E6165DAB} = {C20DF340-E2DC-410C-A145-DF749DC2AF40}
 	EndGlobalSection
 EndGlobal

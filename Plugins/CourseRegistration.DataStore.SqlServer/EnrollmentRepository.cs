@@ -84,20 +84,31 @@ namespace CourseRegistration.DataStore.SqlServer
         {
             using var context = _contextFactory.CreateDbContext();
 
-            // Đảm bảo không chèn lại các thực thể liên kết đã có
-            enrollment.Student = null;
-            if (enrollment.EnrollmentLines != null)
+            // Cặp Header - Line được lưu trong 1 Transaction tường minh (Tiêu chí chấm thi K2.1 - Tiêu chí 5)
+            using var transaction = await context.Database.BeginTransactionAsync();
+            try
             {
-                foreach (var line in enrollment.EnrollmentLines)
+                // Đảm bảo không chèn lại các thực thể liên kết đã có
+                enrollment.Student = null;
+                if (enrollment.EnrollmentLines != null)
                 {
-                    line.Section = null;
+                    foreach (var line in enrollment.EnrollmentLines)
+                    {
+                        line.Section = null;
+                    }
                 }
+
+                await context.Enrollments.AddAsync(enrollment);
+                await context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return enrollment.EnrollmentId;
             }
-
-            await context.Enrollments.AddAsync(enrollment);
-            await context.SaveChangesAsync();
-
-            return enrollment.EnrollmentId;
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task CancelEnrollmentAsync(int enrollmentId)

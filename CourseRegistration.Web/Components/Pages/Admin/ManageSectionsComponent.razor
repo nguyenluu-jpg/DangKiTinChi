@@ -6,6 +6,15 @@
 @inject ICurrentUserStateStore CurrentUserStateStore
 @inject NavigationManager NavigationManager
 
+@if (!isAuthorized)
+{
+    <div class="text-center py-5 text-muted">
+        <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+        <span>Đang kiểm tra quyền hạn truy cập...</span>
+    </div>
+}
+else
+{
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h2 class="fw-bold mb-1"><i class="bi bi-collection text-primary me-2"></i>Quản Lý Lớp Học Phần</h2>
@@ -158,6 +167,7 @@
         </table>
     </div>
 </div>
+}
 
 @code {
     private IEnumerable<Section> sections = new List<Section>();

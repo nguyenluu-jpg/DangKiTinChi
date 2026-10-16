@@ -8,6 +8,15 @@
 @inject ICurrentUserStateStore CurrentUserStateStore
 @inject NavigationManager NavigationManager
 
+@if (!isAuthorized)
+{
+    <div class="text-center py-5 text-muted">
+        <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+        <span>Đang kiểm tra quyền hạn truy cập...</span>
+    </div>
+}
+else
+{
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h2 class="fw-bold mb-1">
@@ -570,11 +579,13 @@
         </div>
     </div>
 }
+}
 
 @code {
     [Parameter]
     public int? SectionId { get; set; }
 
+    private bool isAuthorized = false;
     private string activeTab = "student"; // "student" hoặc "section"
     private List<Student> allStudents = new List<Student>();
     private Student? selectedStudent;
@@ -613,6 +624,8 @@
             NavigationManager.NavigateTo("/access-denied");
             return;
         }
+
+        isAuthorized = true;
 
         allStudents = (await StudentRepository.GetAllStudentsAsync()).ToList();
         allSections = (await SectionRepository.GetAllSectionsAsync()).ToList();

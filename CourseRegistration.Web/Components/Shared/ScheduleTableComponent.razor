@@ -154,8 +154,19 @@ else
     [Parameter]
     public IEnumerable<Section> Sections { get; set; } = new List<Section>();
 
+    [Parameter]
+    public EventCallback<Section> OnSectionClick { get; set; }
+
     private string viewMode = "Agenda"; // Default to Agenda for convenient mobile & touch experience
     private int selectedDay = 2; // Default to Thứ 2
+
+    private async Task HandleSectionClick(Section section)
+    {
+        if (OnSectionClick.HasDelegate)
+        {
+            await OnSectionClick.InvokeAsync(section);
+        }
+    }
 
     protected override void OnInitialized()
     {

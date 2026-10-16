@@ -26,5 +26,22 @@ namespace CourseRegistration.UseCases.PluginInterfaces.DataStore
         /// Lấy danh sách sinh viên đã đăng ký một lớp học phần
         /// </summary>
         Task<IEnumerable<Enrollment>> GetEnrollmentsBySectionIdAsync(int sectionId);
+
+        /// <summary>
+        /// Lấy chi tiết các dòng lớp học phần đang đăng ký hợp lệ của sinh viên trong học kỳ
+        /// </summary>
+        Task<IEnumerable<EnrollmentLine>> GetActiveEnrollmentLinesByStudentAsync(int studentId, string semester);
+
+        /// <summary>
+        /// Phòng Đào Tạo hủy / rút học phần cho sinh viên (kể cả khi đã hết hạn trực tuyến)
+        /// Giảm sĩ số lớp học phần tương ứng
+        /// </summary>
+        Task<bool> DropSectionForStudentAsync(int studentId, int sectionId, string? reason = null);
+
+        /// <summary>
+        /// Phòng Đào Tạo đăng ký bổ sung / cứu xét môn học cho sinh viên
+        /// Tăng sĩ số lớp học phần tương ứng
+        /// </summary>
+        Task<(bool IsSuccess, string? ErrorMessage)> AddSectionForStudentAsync(int studentId, int sectionId, string semester);
     }
 }

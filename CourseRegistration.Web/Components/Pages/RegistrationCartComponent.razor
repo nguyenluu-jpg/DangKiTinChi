@@ -20,42 +20,100 @@
     </a>
 </div>
 
-<!-- Lựa chọn tài khoản sinh viên demo (Đồng bộ với CurrentUserStateStore) -->
-<div class="card border-0 shadow-sm p-3 mb-4 bg-white">
-    <div class="row align-items-center g-3">
-        <div class="col-md-7">
-            <label class="form-label fw-bold text-dark small mb-1">
-                <i class="bi bi-person-circle text-primary me-1"></i> Tài khoản sinh viên thực hiện đăng ký (Demo kiểm tra luật):
-            </label>
-            <select class="form-select" @onchange="OnStudentChanged">
-                @foreach (var s in availableStudents)
-                {
-                    <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
-                        @s.StudentCode - @s.FullName (@s.Major - Tối đa: @s.MaxCreditsPerSemester TC)
-                    </option>
-                }
-            </select>
+@if (!isAuthenticated)
+{
+    <div class="alert alert-warning d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 shadow-sm border-warning-subtle">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-circle-fill fs-4 text-warning me-3"></i>
+            <div>
+                <div class="fw-bold">Bạn chưa đăng nhập vào hệ thống</div>
+                <div class="small text-muted">Vui lòng đăng nhập bằng tài khoản Sinh viên để kiểm tra điều kiện tiên quyết và gửi phiếu đăng ký chính thức.</div>
+            </div>
         </div>
-        <div class="col-md-5">
-            <div class="p-2 bg-light rounded-3 small border">
+        <a href="/login" class="btn btn-warning fw-bold px-3 py-2 text-dark">
+            <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Ngay
+        </a>
+    </div>
+}
+else if (currentRole == "Admin")
+{
+    <!-- Admin Tool: Kiểm tra & mô phỏng theo từng sinh viên trong danh sách -->
+    <div class="card border-0 shadow-sm p-3 mb-4 bg-white border-start border-danger border-4">
+        <div class="row align-items-center g-3">
+            <div class="col-md-7">
+                <div class="badge bg-danger-subtle text-danger mb-1 fw-bold">
+                    <i class="bi bi-shield-lock-fill me-1"></i> Chế độ Quản trị viên (Admin Tool)
+                </div>
+                <label class="form-label fw-bold text-dark small d-block mb-1">
+                    Kiểm tra & mô phỏng đăng ký theo tài khoản sinh viên:
+                </label>
+                <select class="form-select" @onchange="OnStudentChanged">
+                    @foreach (var s in availableStudents)
+                    {
+                        <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
+                            @s.StudentCode - @s.FullName (@s.Major - Hạn mức: @s.MaxCreditsPerSemester TC)
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-5">
+                <div class="p-2 bg-light rounded-3 small border">
+                    @if (selectedStudentId == 1)
+                    {
+                        <div class="text-success fw-semibold">
+                            <i class="bi bi-patch-check-fill me-1"></i><strong>SV Tuấn (K21):</strong> Đã đạt TIN101 & TIN102
+                        </div>
+                        <div class="text-muted" style="font-size: 0.76rem;">Đủ điều kiện đăng ký tất cả các môn học nâng cao.</div>
+                    }
+                    else
+                    {
+                        <div class="text-danger fw-semibold">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i><strong>SV Mai (K22):</strong> CHƯA học TIN102 (OOP)
+                        </div>
+                        <div class="text-danger" style="font-size: 0.76rem;">Sẽ bị hệ thống CHẶN NGAY khi đăng ký môn Web hoặc CNPM.</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Sinh viên đăng nhập: Chỉ thấy thông tin cá nhân của chính mình -->
+    var curStudent = availableStudents.FirstOrDefault(s => s.StudentId == selectedStudentId);
+    <div class="card border-0 shadow-sm p-3 mb-4 bg-white">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <div class="user-avatar @(selectedStudentId == 1 ? "bg-primary text-white" : "bg-warning text-dark")">
+                    <i class="bi bi-person-fill fs-5"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-dark">
+                        @(curStudent?.FullName ?? "Sinh viên")
+                        <span class="text-muted fw-normal">(@(curStudent?.StudentCode) &bull; @(curStudent?.Major))</span>
+                    </div>
+                    <div class="small text-muted">
+                        Hạn mức kỳ này: <strong class="text-primary">@(curStudent?.MaxCreditsPerSemester ?? 24) Tín chỉ</strong>
+                    </div>
+                </div>
+            </div>
+            <div>
                 @if (selectedStudentId == 1)
                 {
-                    <div class="text-success fw-semibold">
-                        <i class="bi bi-patch-check-fill me-1"></i><strong>SV Tuấn (K21):</strong> Đã đạt TIN101 & TIN102
-                    </div>
-                    <div class="text-muted" style="font-size: 0.76rem;">Đủ điều kiện đăng ký tất cả các môn học nâng cao.</div>
+                    <span class="badge bg-success-subtle text-success px-3 py-2 small">
+                        <i class="bi bi-patch-check-fill me-1"></i>Đã đạt chuẩn tiên quyết (TIN101 & 102)
+                    </span>
                 }
                 else
                 {
-                    <div class="text-danger fw-semibold">
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i><strong>SV Mai (K22):</strong> CHƯA học TIN102 (OOP)
-                    </div>
-                    <div class="text-danger" style="font-size: 0.76rem;">Sẽ bị hệ thống CHẶN NGAY khi đăng ký môn Web hoặc CNPM.</div>
+                    <span class="badge bg-warning-subtle text-danger px-3 py-2 small">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Chưa đạt môn tiên quyết TIN102
+                    </span>
                 }
             </div>
         </div>
     </div>
-</div>
+}
 
 <!-- Reusable Component: Thông báo lỗi thân thiện nếu vi phạm luật nghiệp vụ (K3.3) -->
 <ValidationAlertComponent Errors="@validationErrors" OnDismiss="@(() => validationErrors.Clear())" />
@@ -248,20 +306,30 @@ else
                     Nhấn nút xác nhận để hệ thống kiểm tra <strong>môn tiên quyết, chống trùng lịch</strong> và <strong>tranh chấp sĩ số chỗ cuối</strong>.
                 </div>
 
-                <button class="btn btn-success btn-lg w-100 py-3 shadow-sm d-flex align-items-center justify-content-center gap-2" 
-                        disabled="@(isSubmitting || isCreditExceeded)"
-                        @onclick="HandleConfirmEnrollment">
-                    @if (isSubmitting)
-                    {
-                        <span class="spinner-border spinner-border-sm" role="status"></span>
-                        <span>Đang xử lý giao dịch...</span>
-                    }
-                    else
-                    {
-                        <i class="bi bi-check2-circle fs-5"></i>
-                        <span class="fw-bold">Xác Nhận Đăng Ký Ngay</span>
-                    }
-                </button>
+                @if (!isAuthenticated)
+                {
+                    <a href="/login" class="btn btn-warning btn-lg w-100 py-3 shadow-sm d-flex align-items-center justify-content-center gap-2 text-dark fw-bold">
+                        <i class="bi bi-box-arrow-in-right fs-5"></i>
+                        <span>Đăng Nhập Để Xác Nhận Đăng Ký</span>
+                    </a>
+                }
+                else
+                {
+                    <button class="btn btn-success btn-lg w-100 py-3 shadow-sm d-flex align-items-center justify-content-center gap-2" 
+                            disabled="@(isSubmitting || isCreditExceeded)"
+                            @onclick="HandleConfirmEnrollment">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            <span>Đang xử lý giao dịch...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-check2-circle fs-5"></i>
+                            <span class="fw-bold">Xác Nhận Đăng Ký Ngay</span>
+                        }
+                    </button>
+                }
             </div>
         </div>
     </div>
@@ -270,7 +338,9 @@ else
 @code {
     private Enrollment? cart;
     private List<Student> availableStudents = new List<Student>();
-    private int selectedStudentId = 1;
+    private int selectedStudentId = 0;
+    private bool isAuthenticated = false;
+    private string currentRole = string.Empty;
     private List<string> validationErrors = new List<string>();
     private bool isSubmitting = false;
 
@@ -279,13 +349,20 @@ else
         CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
         availableStudents = (await StudentRepository.GetAllStudentsAsync()).ToList();
 
-        selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+        await RefreshUserState();
         await LoadCart();
+    }
+
+    private async Task RefreshUserState()
+    {
+        isAuthenticated = await CurrentUserStateStore.IsAuthenticatedAsync();
+        currentRole = await CurrentUserStateStore.GetCurrentRoleAsync();
+        selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
     }
 
     private async void HandleUserStateChange()
     {
-        selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+        await RefreshUserState();
         validationErrors.Clear();
         await InvokeAsync(StateHasChanged);
     }

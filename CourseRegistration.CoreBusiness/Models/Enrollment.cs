@@ -9,7 +9,7 @@ namespace CourseRegistration.CoreBusiness.Models
             EnrollmentLines = new List<EnrollmentLine>();
         }
 
-        public int? EnrollmentId { get; set; }
+        public int EnrollmentId { get; set; }
         public int StudentId { get; set; }
         public DateTime? DateRegistered { get; set; }
         public DateTime? DateCancelled { get; set; }

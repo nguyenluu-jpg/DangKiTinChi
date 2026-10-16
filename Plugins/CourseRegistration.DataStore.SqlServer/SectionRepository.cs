@@ -1,246 +1,166 @@
-using System.Data;
 using CourseRegistration.CoreBusiness.Models;
 using CourseRegistration.UseCases.PluginInterfaces.DataStore;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace CourseRegistration.DataStore.SqlServer
 {
     public class SectionRepository : ISectionRepository
     {
-        private readonly ISqlConnectionFactory _connectionFactory;
+        private readonly IDbContextFactory<CourseRegistrationContext> _contextFactory;
 
-        public SectionRepository(ISqlConnectionFactory connectionFactory)
+        public SectionRepository(IDbContextFactory<CourseRegistrationContext> contextFactory)
         {
-            _connectionFactory = connectionFactory;
+            _contextFactory = contextFactory;
         }
-
-        private const string BaseSectionQuery = @"
-            SELECT s.SectionId, s.SectionCode, s.CourseId, s.Instructor, s.MaxCapacity, 
-                   s.CurrentEnrollment, s.Semester, s.Room, s.RegistrationOpenAt, s.RegistrationCloseAt,
-                   c.CourseId, c.CourseCode, c.CourseName, c.Credits, c.Description,
-                   sch.ScheduleId, sch.SectionId, sch.DayOfWeek, sch.StartPeriod, sch.EndPeriod, sch.Room
-            FROM Sections s
-            INNER JOIN Courses c ON s.CourseId = c.CourseId
-            LEFT JOIN SectionSchedules sch ON s.SectionId = sch.SectionId";
 
         public async Task<IEnumerable<Section>> GetAllSectionsAsync()
         {
-            using var connection = _connectionFactory.CreateConnection();
-            string sql = $"{BaseSectionQuery} ORDER BY s.SectionCode ASC;";
-
-            var sectionDictionary = new Dictionary<int, Section>();
-            await connection.QueryAsync<Section, Course, SectionSchedule, Section>(
-                sql,
-                (section, course, schedule) =>
-                {
-                    if (!sectionDictionary.TryGetValue(section.SectionId, out var currentSection))
-                    {
-                        currentSection = section;
-                        currentSection.Course = course;
-                        currentSection.Schedules = new List<SectionSchedule>();
-                        sectionDictionary.Add(currentSection.SectionId, currentSection);
-                    }
-
-                    if (schedule != null && schedule.ScheduleId > 0 && !currentSection.Schedules.Any(s => s.ScheduleId == schedule.ScheduleId))
-                    {
-                        currentSection.Schedules.Add(schedule);
-                    }
-
-                    return currentSection;
-                },
-                splitOn: "CourseId,ScheduleId"
-            );
-
-            return sectionDictionary.Values;
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Sections
+                .AsNoTracking()
+                .Include(s => s.Course)
+                .Include(s => s.Schedules)
+                .OrderBy(s => s.SectionCode)
+                .ToListAsync();
         }
 
         public async Task<IEnumerable<Section>> GetSectionsBySemesterAsync(string semester)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            string sql = $"{BaseSectionQuery} WHERE s.Semester = @Semester ORDER BY s.SectionCode ASC;";
-
-            var sectionDictionary = new Dictionary<int, Section>();
-            await connection.QueryAsync<Section, Course, SectionSchedule, Section>(
-                sql,
-                (section, course, schedule) =>
-                {
-                    if (!sectionDictionary.TryGetValue(section.SectionId, out var currentSection))
-                    {
-                        currentSection = section;
-                        currentSection.Course = course;
-                        currentSection.Schedules = new List<SectionSchedule>();
-                        sectionDictionary.Add(currentSection.SectionId, currentSection);
-                    }
-
-                    if (schedule != null && schedule.ScheduleId > 0 && !currentSection.Schedules.Any(s => s.ScheduleId == schedule.ScheduleId))
-                    {
-                        currentSection.Schedules.Add(schedule);
-                    }
-
-                    return currentSection;
-                },
-                new { Semester = semester },
-                splitOn: "CourseId,ScheduleId"
-            );
-
-            return sectionDictionary.Values;
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Sections
+                .AsNoTracking()
+                .Include(s => s.Course)
+                .Include(s => s.Schedules)
+                .Where(s => s.Semester == semester)
+                .OrderBy(s => s.SectionCode)
+                .ToListAsync();
         }
 
         public async Task<IEnumerable<Section>> SearchSectionsAsync(string keyword, string semester)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            string sql = $@"{BaseSectionQuery}
-                WHERE (@Semester IS NULL OR @Semester = '' OR s.Semester = @Semester)
-                  AND (@Pattern IS NULL OR @Pattern = '' OR 
-                       s.SectionCode LIKE @Pattern OR 
-                       c.CourseName LIKE @Pattern OR 
-                       c.CourseCode LIKE @Pattern OR 
-                       s.Instructor LIKE @Pattern)
-                ORDER BY s.SectionCode ASC;";
+            using var context = _contextFactory.CreateDbContext();
+            var query = context.Sections
+                .AsNoTracking()
+                .Include(s => s.Course)
+                .Include(s => s.Schedules)
+                .AsQueryable();
 
-            string? pattern = string.IsNullOrWhiteSpace(keyword) ? null : $"%{keyword}%";
+            if (!string.IsNullOrWhiteSpace(semester))
+            {
+                query = query.Where(s => s.Semester == semester);
+            }
 
-            var sectionDictionary = new Dictionary<int, Section>();
-            await connection.QueryAsync<Section, Course, SectionSchedule, Section>(
-                sql,
-                (section, course, schedule) =>
-                {
-                    if (!sectionDictionary.TryGetValue(section.SectionId, out var currentSection))
-                    {
-                        currentSection = section;
-                        currentSection.Course = course;
-                        currentSection.Schedules = new List<SectionSchedule>();
-                        sectionDictionary.Add(currentSection.SectionId, currentSection);
-                    }
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                query = query.Where(s =>
+                    s.SectionCode.Contains(keyword) ||
+                    s.Instructor.Contains(keyword) ||
+                    (s.Course != null && (s.Course.CourseCode.Contains(keyword) || s.Course.CourseName.Contains(keyword))));
+            }
 
-                    if (schedule != null && schedule.ScheduleId > 0 && !currentSection.Schedules.Any(s => s.ScheduleId == schedule.ScheduleId))
-                    {
-                        currentSection.Schedules.Add(schedule);
-                    }
-
-                    return currentSection;
-                },
-                new { Semester = semester, Pattern = pattern },
-                splitOn: "CourseId,ScheduleId"
-            );
-
-            return sectionDictionary.Values;
+            return await query.OrderBy(s => s.SectionCode).ToListAsync();
         }
 
         public async Task<Section?> GetSectionByIdAsync(int sectionId)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            string sql = $"{BaseSectionQuery} WHERE s.SectionId = @SectionId;";
-
-            Section? resultSection = null;
-            await connection.QueryAsync<Section, Course, SectionSchedule, Section>(
-                sql,
-                (section, course, schedule) =>
-                {
-                    if (resultSection == null)
-                    {
-                        resultSection = section;
-                        resultSection.Course = course;
-                        resultSection.Schedules = new List<SectionSchedule>();
-                    }
-
-                    if (schedule != null && schedule.ScheduleId > 0 && !resultSection.Schedules.Any(s => s.ScheduleId == schedule.ScheduleId))
-                    {
-                        resultSection.Schedules.Add(schedule);
-                    }
-
-                    return resultSection;
-                },
-                new { SectionId = sectionId },
-                splitOn: "CourseId,ScheduleId"
-            );
-
-            return resultSection;
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Sections
+                .AsNoTracking()
+                .Include(s => s.Course)
+                .Include(s => s.Schedules)
+                .FirstOrDefaultAsync(s => s.SectionId == sectionId);
         }
 
         public async Task AddSectionAsync(Section section)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = @"
-                INSERT INTO Sections (SectionCode, CourseId, Instructor, MaxCapacity, CurrentEnrollment, Semester, Room)
-                VALUES (@SectionCode, @CourseId, @Instructor, @MaxCapacity, @CurrentEnrollment, @Semester, @Room);
-                SELECT CAST(SCOPE_IDENTITY() as int);";
-
-            var id = await connection.ExecuteScalarAsync<int>(sql, section);
-            section.SectionId = id;
+            using var context = _contextFactory.CreateDbContext();
+            // Đảm bảo không gán lại Navigation property nếu đã có CourseId
+            section.Course = null;
+            await context.Sections.AddAsync(section);
+            await context.SaveChangesAsync();
         }
 
         public async Task UpdateSectionAsync(Section section)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = @"
-                UPDATE Sections
-                SET SectionCode = @SectionCode,
-                    CourseId = @CourseId,
-                    Instructor = @Instructor,
-                    MaxCapacity = @MaxCapacity,
-                    CurrentEnrollment = @CurrentEnrollment,
-                    Semester = @Semester,
-                    Room = @Room
-                WHERE SectionId = @SectionId;";
-
-            await connection.ExecuteAsync(sql, section);
+            using var context = _contextFactory.CreateDbContext();
+            var existing = await context.Sections.FindAsync(section.SectionId);
+            if (existing != null)
+            {
+                existing.SectionCode = section.SectionCode;
+                existing.CourseId = section.CourseId;
+                existing.Instructor = section.Instructor;
+                existing.MaxCapacity = section.MaxCapacity;
+                existing.Room = section.Room;
+                existing.Semester = section.Semester;
+                existing.RegistrationOpenAt = section.RegistrationOpenAt;
+                existing.RegistrationCloseAt = section.RegistrationCloseAt;
+                await context.SaveChangesAsync();
+            }
         }
 
         public async Task DeleteSectionAsync(int sectionId)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = "DELETE FROM Sections WHERE SectionId = @SectionId;";
-            await connection.ExecuteAsync(sql, new { SectionId = sectionId });
+            using var context = _contextFactory.CreateDbContext();
+            var section = await context.Sections.FindAsync(sectionId);
+            if (section != null)
+            {
+                context.Sections.Remove(section);
+                await context.SaveChangesAsync();
+            }
         }
 
         public async Task AddScheduleAsync(SectionSchedule schedule)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = @"
-                INSERT INTO SectionSchedules (SectionId, DayOfWeek, StartPeriod, EndPeriod, Room)
-                VALUES (@SectionId, @DayOfWeek, @StartPeriod, @EndPeriod, @Room);
-                SELECT CAST(SCOPE_IDENTITY() as int);";
-
-            var id = await connection.ExecuteScalarAsync<int>(sql, schedule);
-            schedule.ScheduleId = id;
+            using var context = _contextFactory.CreateDbContext();
+            schedule.Section = null;
+            await context.SectionSchedules.AddAsync(schedule);
+            await context.SaveChangesAsync();
         }
 
         public async Task DeleteScheduleAsync(int scheduleId)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = "DELETE FROM SectionSchedules WHERE ScheduleId = @ScheduleId;";
-            await connection.ExecuteAsync(sql, new { ScheduleId = scheduleId });
+            using var context = _contextFactory.CreateDbContext();
+            var schedule = await context.SectionSchedules.FindAsync(scheduleId);
+            if (schedule != null)
+            {
+                context.SectionSchedules.Remove(schedule);
+                await context.SaveChangesAsync();
+            }
         }
 
         public async Task<IEnumerable<SectionSchedule>> GetSchedulesBySectionIdAsync(int sectionId)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = "SELECT * FROM SectionSchedules WHERE SectionId = @SectionId ORDER BY DayOfWeek, StartPeriod;";
-            return await connection.QueryAsync<SectionSchedule>(sql, new { SectionId = sectionId });
+            using var context = _contextFactory.CreateDbContext();
+            return await context.SectionSchedules
+                .AsNoTracking()
+                .Where(sch => sch.SectionId == sectionId)
+                .OrderBy(sch => sch.DayOfWeek)
+                .ThenBy(sch => sch.StartPeriod)
+                .ToListAsync();
         }
 
         public async Task<bool> IncrementEnrollmentCountAsync(int sectionId)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = @"
-                UPDATE Sections 
-                SET CurrentEnrollment = CurrentEnrollment + 1 
-                WHERE SectionId = @SectionId AND CurrentEnrollment < MaxCapacity;";
-
-            var affectedRows = await connection.ExecuteAsync(sql, new { SectionId = sectionId });
-            return affectedRows > 0;
+            using var context = _contextFactory.CreateDbContext();
+            var section = await context.Sections.FindAsync(sectionId);
+            if (section != null && section.CurrentEnrollment < section.MaxCapacity)
+            {
+                section.CurrentEnrollment++;
+                await context.SaveChangesAsync();
+                return true;
+            }
+            return false;
         }
 
         public async Task DecrementEnrollmentCountAsync(int sectionId)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = @"
-                UPDATE Sections 
-                SET CurrentEnrollment = CurrentEnrollment - 1 
-                WHERE SectionId = @SectionId AND CurrentEnrollment > 0;";
-
-            await connection.ExecuteAsync(sql, new { SectionId = sectionId });
+            using var context = _contextFactory.CreateDbContext();
+            var section = await context.Sections.FindAsync(sectionId);
+            if (section != null && section.CurrentEnrollment > 0)
+            {
+                section.CurrentEnrollment--;
+                await context.SaveChangesAsync();
+            }
         }
     }
 }

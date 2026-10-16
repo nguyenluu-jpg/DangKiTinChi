@@ -1,0 +1,182 @@
+@page "/login"
+@namespace CourseRegistration.Web.Components.Pages
+@inject ILoginUseCase LoginUseCase
+@inject ICurrentUserStateStore CurrentUserStateStore
+@inject NavigationManager NavigationManager
+
+<div class="row justify-content-center py-5">
+    <div class="col-md-6 col-lg-5 col-xl-4">
+        <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+            <!-- Header Card với Gradient hiện đại -->
+            <div class="card-header bg-gradient text-white text-center py-4 border-0" 
+                 style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+                <div class="mb-2">
+                    <span class="d-inline-flex align-items-center justify-content-center bg-white bg-opacity-25 rounded-circle p-3 shadow-sm">
+                        <i class="bi bi-mortarboard-fill fs-2 text-white"></i>
+                    </span>
+                </div>
+                <h4 class="fw-bold mb-1">Đăng Nhập Hệ Thống</h4>
+                <div class="text-white-50 small">Cổng Đăng Ký Học Phần Trực Tuyến</div>
+            </div>
+
+            <div class="card-body p-4 p-md-5 bg-white">
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger d-flex align-items-center rounded-3 mb-4 py-2" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2 fs-5"></i>
+                        <div class="small fw-semibold">
+                            @errorMessage
+                        </div>
+                    </div>
+                }
+
+                <!-- EditForm + DataAnnotationsValidator theo tiêu chí K3.2 -->
+                <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small">Tài khoản / MSSV <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="bi bi-person"></i>
+                            </span>
+                            <InputText class="form-control border-start-0 ps-0 bg-light" 
+                                       placeholder="vd: admin hoặc sv21001" 
+                                       @bind-Value="loginModel.Username" />
+                        </div>
+                        <div class="text-danger small mt-1">
+                            <ValidationMessage For="@(() => loginModel.Username)" />
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark small">Mật khẩu <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="bi bi-lock"></i>
+                            </span>
+                            <InputText type="password" 
+                                       class="form-control border-start-0 ps-0 bg-light" 
+                                       placeholder="Mật khẩu của bạn" 
+                                       @bind-Value="loginModel.Password" />
+                        </div>
+                        <div class="text-danger small mt-1">
+                            <ValidationMessage For="@(() => loginModel.Password)" />
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                            class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2"
+                            disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Đang xác thực...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-box-arrow-in-right fs-5"></i>
+                            <span>Đăng Nhập</span>
+                        }
+                    </button>
+                </EditForm>
+
+                <!-- Thẻ Hướng Dẫn Tài Khoản Mẫu Tiện Chấm Thi -->
+                <div class="mt-4 pt-3 border-top text-center">
+                    <div class="small fw-bold text-muted mb-2 text-uppercase" style="font-size: 0.72rem;">
+                        Tài khoản chấm thi (Bấm để điền nhanh)
+                    </div>
+                    <div class="d-flex flex-column gap-2">
+                        <button type="button" 
+                                class="btn btn-outline-danger btn-sm text-start d-flex justify-content-between align-items-center py-2 px-3 rounded-3"
+                                @onclick="@(() => SetCredentials("admin", "admin123"))">
+                            <div>
+                                <div class="fw-bold"><i class="bi bi-shield-lock-fill me-1"></i> Quản trị viên (Admin)</div>
+                                <div class="small text-muted" style="font-size: 0.75rem;">admin &bull; Toàn quyền quản trị</div>
+                            </div>
+                            <span class="badge bg-danger">admin123</span>
+                        </button>
+
+                        <button type="button" 
+                                class="btn btn-outline-primary btn-sm text-start d-flex justify-content-between align-items-center py-2 px-3 rounded-3"
+                                @onclick="@(() => SetCredentials("sv21001", "123456"))">
+                            <div>
+                                <div class="fw-bold"><i class="bi bi-person-check-fill me-1"></i> SV: Nguyễn Văn Tuấn</div>
+                                <div class="small text-muted" style="font-size: 0.75rem;">sv21001 &bull; Đã qua TIN101, 102</div>
+                            </div>
+                            <span class="badge bg-primary">123456</span>
+                        </button>
+
+                        <button type="button" 
+                                class="btn btn-outline-warning btn-sm text-start d-flex justify-content-between align-items-center py-2 px-3 rounded-3"
+                                @onclick="@(() => SetCredentials("sv22002", "123456"))">
+                            <div>
+                                <div class="fw-bold"><i class="bi bi-person-exclamation me-1"></i> SV: Trần Thị Mai</div>
+                                <div class="small text-muted" style="font-size: 0.75rem;">sv22002 &bull; Chưa qua TIN102 (Demo chặn)</div>
+                            </div>
+                            <span class="badge bg-warning text-dark">123456</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginViewModel loginModel = new LoginViewModel();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+
+    private void SetCredentials(string u, string p)
+    {
+        loginModel.Username = u;
+        loginModel.Password = p;
+        errorMessage = string.Empty;
+    }
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var account = await LoginUseCase.ExecuteAsync(loginModel.Username, loginModel.Password);
+            if (account != null)
+            {
+                await CurrentUserStateStore.SetCurrentUserAsync(account);
+
+                if (account.Role == "Admin")
+                {
+                    NavigationManager.NavigateTo("/admin/courses");
+                }
+                else
+                {
+                    NavigationManager.NavigateTo("/sections");
+                }
+            }
+            else
+            {
+                errorMessage = "Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng thử lại!";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Có lỗi xảy ra trong quá trình đăng nhập: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public class LoginViewModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Vui lòng nhập tên đăng nhập")]
+        public string Username { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Vui lòng nhập mật khẩu")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

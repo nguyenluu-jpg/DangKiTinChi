@@ -5,7 +5,7 @@
 @inject ICurrentUserStateStore CurrentUserStateStore
 @implements IDisposable
 
-<!-- Hero Banner Gọn Gàng & Thông Tin Sinh Viên -->
+<!-- Hero Banner Gọn Gàng & Phù Hợp Thực Tế -->
 <div class="hero-portal p-3 p-md-4 mb-4 rounded-4 shadow-sm">
     <div class="row align-items-center g-3">
         <div class="col-lg-7">
@@ -24,74 +24,157 @@
 
             <div class="d-flex flex-wrap gap-2">
                 <a href="/sections" class="btn btn-light px-3 py-2 fw-semibold text-primary shadow-sm d-inline-flex align-items-center">
-                    <i class="bi bi-search me-2"></i> Đăng Ký Môn Ngay
+                    <i class="bi bi-search me-2"></i> Tra Cứu Học Phần
                 </a>
-                <a href="/cart" class="btn btn-outline-light px-3 py-2 position-relative d-inline-flex align-items-center">
-                    <i class="bi bi-cart3 me-1"></i> Giỏ Môn
-                    @if (cartCount > 0)
-                    {
-                        <span class="badge rounded-pill bg-danger ms-1">@cartCount</span>
-                    }
-                </a>
-                <a href="/schedule" class="btn btn-outline-light px-3 py-2 d-inline-flex align-items-center">
-                    <i class="bi bi-calendar3 me-1"></i> Thời Khóa Biểu
-                </a>
+                @if (isAuthenticated)
+                {
+                    <a href="/cart" class="btn btn-outline-light px-3 py-2 position-relative d-inline-flex align-items-center">
+                        <i class="bi bi-cart3 me-1"></i> Giỏ Đăng Ký
+                        @if (cartCount > 0)
+                        {
+                            <span class="badge rounded-pill bg-danger ms-1">@cartCount</span>
+                        }
+                    </a>
+                    <a href="/schedule" class="btn btn-outline-light px-3 py-2 d-inline-flex align-items-center">
+                        <i class="bi bi-calendar3 me-1"></i> Thời Khóa Biểu
+                    </a>
+                }
+                else
+                {
+                    <a href="/login" class="btn btn-warning px-3 py-2 fw-bold text-dark shadow-sm d-inline-flex align-items-center">
+                        <i class="bi bi-box-arrow-in-right me-2"></i> Đăng Nhập Hệ Thống
+                    </a>
+                    <a href="/schedule" class="btn btn-outline-light px-3 py-2 d-inline-flex align-items-center">
+                        <i class="bi bi-calendar3 me-1"></i> Thời Khóa Biểu
+                    </a>
+                }
             </div>
         </div>
 
         <div class="col-lg-5">
-            <!-- Thẻ Sinh Viên Nhanh Gọn -->
-            <div class="student-badge-card text-white">
-                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
-                    <span class="fw-bold small text-uppercase">
-                        <i class="bi bi-person-circle me-1"></i>Tài khoản sinh viên
-                    </span>
-                    <span class="badge bg-success text-white px-2 py-1 small">Đang đăng nhập</span>
-                </div>
+            @if (!isAuthenticated)
+            {
+                <!-- Thẻ Chưa Đăng Nhập (Mặc định khi mở F5) -->
+                <div class="student-badge-card text-white">
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
+                        <span class="fw-bold small text-uppercase">
+                            <i class="bi bi-shield-lock me-1"></i>Cổng Xác Thực
+                        </span>
+                        <span class="badge bg-secondary text-white px-2 py-1 small">Chưa đăng nhập</span>
+                    </div>
 
-                @if (currentStudent != null)
-                {
+                    <div class="mb-3">
+                        <h5 class="fw-bold mb-1 text-white">Chào Mừng Bạn!</h5>
+                        <p class="small text-white-50 mb-0" style="line-height: 1.5;">
+                            Vui lòng đăng nhập để bắt đầu tra cứu, thêm học phần vào giỏ và gửi phiếu đăng ký tín chỉ chính thức.
+                        </p>
+                    </div>
+
+                    <a href="/login" class="btn btn-warning w-100 py-2 fw-bold text-dark rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-2">
+                        <i class="bi bi-box-arrow-in-right fs-5"></i>
+                        <span>Đăng Nhập Ngay</span>
+                    </a>
+
+                    <div class="text-center text-white-50 small" style="font-size: 0.75rem;">
+                        Admin: <code>admin</code> (admin123) &bull; SV: <code>sv21001</code> / <code>sv22002</code> (123456)
+                    </div>
+                </div>
+            }
+            else if (currentRole == "Admin")
+            {
+                <!-- Thẻ Quản Trị Viên (Có công cụ kiểm tra theo toàn bộ sinh viên) -->
+                <div class="student-badge-card text-white">
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
+                        <span class="fw-bold small text-uppercase">
+                            <i class="bi bi-shield-lock-fill me-1"></i>Quản trị viên hệ thống
+                        </span>
+                        <span class="badge bg-danger text-white px-2 py-1 small">Phòng Đào Tạo</span>
+                    </div>
+
                     <div class="mb-2">
-                        <h5 class="fw-bold mb-0 text-white">@currentStudent.FullName</h5>
+                        <h5 class="fw-bold mb-0 text-white">Cán bộ Quản lý Đào tạo</h5>
                         <div class="small text-white-50">
-                            MSSV: <strong>@currentStudent.StudentCode</strong> &bull; @currentStudent.Major
+                            Tài khoản: <strong>admin</strong> &bull; Toàn quyền quản trị hệ thống
                         </div>
                     </div>
 
-                    <div class="p-2 bg-black bg-opacity-25 rounded-3 mb-2 small">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-white-50">Hạn mức tín chỉ kỳ này:</span>
-                            <span class="fw-bold text-warning">Tối đa @currentStudent.MaxCreditsPerSemester TC</span>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <span class="text-white-50">Điều kiện tiên quyết:</span>
-                            @if (currentStudent.StudentId == 1)
-                            {
-                                <span class="badge bg-success text-white">✓ Đạt chuẩn (TIN101 & 102)</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-warning text-dark">⚠️ Chưa đạt TIN102 (OOP)</span>
-                            }
-                        </div>
+                    <div class="d-flex gap-2 mb-2">
+                        <a href="/admin/courses" class="btn btn-sm btn-outline-light flex-fill">
+                            <i class="bi bi-book me-1"></i>Môn học
+                        </a>
+                        <a href="/admin/sections" class="btn btn-sm btn-outline-light flex-fill">
+                            <i class="bi bi-collection me-1"></i>Lớp HP
+                        </a>
+                        <a href="/admin/enrollments" class="btn btn-sm btn-outline-light flex-fill">
+                            <i class="bi bi-people me-1"></i>DS Đăng ký
+                        </a>
                     </div>
-                }
 
-                <!-- Demo Selector Switcher -->
-                <div class="pt-2 border-top border-white border-opacity-25">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <label class="small text-white-50 mb-0">Đổi SV demo:</label>
-                        <select class="form-select form-select-sm bg-dark text-white border-secondary w-auto" @onchange="OnStudentChange">
-                            @foreach (var s in students)
-                            {
-                                <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
-                                    @s.StudentCode - @s.FullName
-                                </option>
-                            }
-                        </select>
+                    <!-- Admin Tool: Kiểm tra theo từng sinh viên -->
+                    <div class="pt-2 border-top border-white border-opacity-25">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <label class="small text-white-50 mb-0 text-nowrap me-2">Kiểm tra theo SV:</label>
+                            <select class="form-select form-select-sm bg-dark text-white border-secondary w-auto" @onchange="OnStudentChange">
+                                @foreach (var s in students)
+                                {
+                                    <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
+                                        @s.StudentCode - @s.FullName
+                                    </option>
+                                }
+                            </select>
+                        </div>
                     </div>
                 </div>
-            </div>
+            }
+            else
+            {
+                <!-- Thẻ Sinh Viên Đăng Nhập (Chỉ hiện thông tin cá nhân của chính sinh viên đó) -->
+                <div class="student-badge-card text-white">
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
+                        <span class="fw-bold small text-uppercase">
+                            <i class="bi bi-person-circle me-1"></i>Tài khoản sinh viên
+                        </span>
+                        <span class="badge bg-success text-white px-2 py-1 small">Đang đăng nhập</span>
+                    </div>
+
+                    @if (currentStudent != null)
+                    {
+                        <div class="mb-2">
+                            <h5 class="fw-bold mb-0 text-white">@currentStudent.FullName</h5>
+                            <div class="small text-white-50">
+                                MSSV: <strong>@currentStudent.StudentCode</strong> &bull; @currentStudent.Major
+                            </div>
+                        </div>
+
+                        <div class="p-2 bg-black bg-opacity-25 rounded-3 mb-2 small">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-white-50">Hạn mức tín chỉ kỳ này:</span>
+                                <span class="fw-bold text-warning">Tối đa @currentStudent.MaxCreditsPerSemester TC</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-white-50">Điều kiện tiên quyết:</span>
+                                @if (currentStudent.StudentId == 1)
+                                {
+                                    <span class="badge bg-success text-white">✓ Đạt chuẩn (TIN101 & 102)</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">⚠️ Chưa đạt TIN102 (OOP)</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <a href="/cart" class="btn btn-outline-light btn-sm flex-fill">
+                                <i class="bi bi-cart3 me-1"></i>Giỏ đăng ký (@cartCount)
+                            </a>
+                            <a href="/schedule" class="btn btn-outline-light btn-sm flex-fill">
+                                <i class="bi bi-calendar3 me-1"></i>Lịch học cá nhân
+                            </a>
+                        </div>
+                    }
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -113,7 +196,7 @@
             <div class="portal-icon bg-success-subtle text-success mb-2 mx-auto mx-md-0">
                 <i class="bi bi-cart-check"></i>
             </div>
-            <h6 class="fw-bold text-dark mb-1">Giỏ Môn Dự Kiến</h6>
+            <h6 class="fw-bold text-dark mb-1">Giỏ Đăng Ký</h6>
             <div class="small text-muted">Xác nhận đăng ký</div>
         </a>
     </div>
@@ -129,13 +212,36 @@
     </div>
 
     <div class="col-6 col-md-3">
-        <a href="/admin/enrollments" class="card border-0 shadow-sm p-3 text-decoration-none h-100 portal-card text-center text-md-start">
-            <div class="portal-icon bg-secondary-subtle text-secondary mb-2 mx-auto mx-md-0">
-                <i class="bi bi-shield-lock"></i>
-            </div>
-            <h6 class="fw-bold text-dark mb-1">Phòng Đào Tạo</h6>
-            <div class="small text-muted">Quản lý lớp & sĩ số</div>
-        </a>
+        @if (currentRole == "Admin")
+        {
+            <a href="/admin/courses" class="card border-0 shadow-sm p-3 text-decoration-none h-100 portal-card text-center text-md-start">
+                <div class="portal-icon bg-danger-subtle text-danger mb-2 mx-auto mx-md-0">
+                    <i class="bi bi-shield-lock"></i>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">Phòng Đào Tạo</h6>
+                <div class="small text-muted">Quản lý môn & lớp HP</div>
+            </a>
+        }
+        else if (!isAuthenticated)
+        {
+            <a href="/login" class="card border-0 shadow-sm p-3 text-decoration-none h-100 portal-card text-center text-md-start">
+                <div class="portal-icon bg-warning-subtle text-warning-emphasis mb-2 mx-auto mx-md-0">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">Đăng Nhập</h6>
+                <div class="small text-muted">Truy cập tài khoản</div>
+            </a>
+        }
+        else
+        {
+            <a href="/schedule" class="card border-0 shadow-sm p-3 text-decoration-none h-100 portal-card text-center text-md-start">
+                <div class="portal-icon bg-secondary-subtle text-secondary mb-2 mx-auto mx-md-0">
+                    <i class="bi bi-mortarboard"></i>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">Cổng Sinh Viên</h6>
+                <div class="small text-muted">Kết quả học vụ</div>
+            </a>
+        }
     </div>
 </div>
 
@@ -247,8 +353,10 @@
 @code {
     private List<Student> students = new();
     private Student? currentStudent;
-    private int selectedStudentId = 1;
+    private int selectedStudentId = 0;
     private int cartCount = 0;
+    private bool isAuthenticated = false;
+    private string currentRole = string.Empty;
 
     // Trạng thái thu gọn/mở rộng của các mục Accordion (Mặc định false = Thu gọn gọn gàng)
     private bool isTimelineOpen = false;
@@ -260,12 +368,19 @@
         var all = await StudentRepository.GetAllStudentsAsync();
         students = all.ToList();
 
-        selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
-        currentStudent = students.FirstOrDefault(s => s.StudentId == selectedStudentId);
-
         CartStateStore.AddStateChangeListeners(HandleCartChange);
         CurrentUserStateStore.AddStateChangeListeners(HandleUserChange);
+
+        await RefreshUserState();
         await LoadCartCount();
+    }
+
+    private async Task RefreshUserState()
+    {
+        isAuthenticated = await CurrentUserStateStore.IsAuthenticatedAsync();
+        currentRole = await CurrentUserStateStore.GetCurrentRoleAsync();
+        selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+        currentStudent = students.FirstOrDefault(s => s.StudentId == selectedStudentId);
     }
 
     private async Task OnStudentChange(ChangeEventArgs e)
@@ -280,8 +395,7 @@
 
     private async void HandleUserChange()
     {
-        selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
-        currentStudent = students.FirstOrDefault(s => s.StudentId == selectedStudentId);
+        await RefreshUserState();
         await InvokeAsync(StateHasChanged);
     }
 

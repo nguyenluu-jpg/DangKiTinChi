@@ -1,229 +1,260 @@
-using System.Data;
 using CourseRegistration.CoreBusiness.Models;
 using CourseRegistration.UseCases.PluginInterfaces.DataStore;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace CourseRegistration.DataStore.SqlServer
 {
     public class EnrollmentRepository : IEnrollmentRepository
     {
-        private readonly ISqlConnectionFactory _connectionFactory;
-        private readonly ISectionRepository _sectionRepository;
-        private readonly IStudentRepository _studentRepository;
+        private readonly IDbContextFactory<CourseRegistrationContext> _contextFactory;
 
-        public EnrollmentRepository(
-            ISqlConnectionFactory connectionFactory,
-            ISectionRepository sectionRepository,
-            IStudentRepository studentRepository)
+        public EnrollmentRepository(IDbContextFactory<CourseRegistrationContext> contextFactory)
         {
-            _connectionFactory = connectionFactory;
-            _sectionRepository = sectionRepository;
-            _studentRepository = studentRepository;
-        }
-
-        public async Task<int> CreateEnrollmentAsync(Enrollment enrollment)
-        {
-            using var connection = (Microsoft.Data.SqlClient.SqlConnection)_connectionFactory.CreateConnection();
-            await connection.OpenAsync();
-            using var transaction = connection.BeginTransaction();
-
-            try
-            {
-                const string insertEnrollmentSql = @"
-                    INSERT INTO Enrollments (StudentId, Semester, DateRegistered, Status, UniqueId)
-                    VALUES (@StudentId, @Semester, @DateRegistered, @Status, @UniqueId);
-                    SELECT CAST(SCOPE_IDENTITY() as int);";
-
-                var enrollmentId = await connection.ExecuteScalarAsync<int>(
-                    insertEnrollmentSql,
-                    new
-                    {
-                        enrollment.StudentId,
-                        enrollment.Semester,
-                        DateRegistered = enrollment.DateRegistered ?? DateTime.Now,
-                        enrollment.Status,
-                        enrollment.UniqueId
-                    },
-                    transaction
-                );
-
-                enrollment.EnrollmentId = enrollmentId;
-
-                const string insertLineSql = @"
-                    INSERT INTO EnrollmentLines (EnrollmentId, SectionId)
-                    VALUES (@EnrollmentId, @SectionId);";
-
-                foreach (var line in enrollment.EnrollmentLines)
-                {
-                    await connection.ExecuteAsync(
-                        insertLineSql,
-                        new { EnrollmentId = enrollmentId, line.SectionId },
-                        transaction
-                    );
-                }
-
-                transaction.Commit();
-                return enrollmentId;
-            }
-            catch
-            {
-                transaction.Rollback();
-                throw;
-            }
-        }
-
-        public async Task CancelEnrollmentAsync(int enrollmentId)
-        {
-            using var connection = (Microsoft.Data.SqlClient.SqlConnection)_connectionFactory.CreateConnection();
-            await connection.OpenAsync();
-            using var transaction = connection.BeginTransaction();
-
-            try
-            {
-                // Cập nhật trạng thái phiếu và lưu thời gian hủy
-                const string cancelEnrollmentSql = @"
-                    UPDATE Enrollments 
-                    SET Status = 'Cancelled', DateCancelled = GETDATE()
-                    WHERE EnrollmentId = @EnrollmentId;";
-
-                await connection.ExecuteAsync(cancelEnrollmentSql, new { EnrollmentId = enrollmentId }, transaction);
-
-                // Giảm sĩ số hoàn lại cho các lớp trong phiếu
-                const string decrementSectionSql = @"
-                    UPDATE s
-                    SET s.CurrentEnrollment = s.CurrentEnrollment - 1
-                    FROM Sections s
-                    INNER JOIN EnrollmentLines el ON s.SectionId = el.SectionId
-                    WHERE el.EnrollmentId = @EnrollmentId AND s.CurrentEnrollment > 0;";
-
-                await connection.ExecuteAsync(decrementSectionSql, new { EnrollmentId = enrollmentId }, transaction);
-
-                transaction.Commit();
-            }
-            catch
-            {
-                transaction.Rollback();
-                throw;
-            }
+            _contextFactory = contextFactory;
         }
 
         public async Task<Enrollment?> GetEnrollmentByIdAsync(int enrollmentId)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = "SELECT * FROM Enrollments WHERE EnrollmentId = @EnrollmentId;";
-            var enrollment = await connection.QueryFirstOrDefaultAsync<Enrollment>(sql, new { EnrollmentId = enrollmentId });
-            if (enrollment == null) return null;
-
-            enrollment.Student = await _studentRepository.GetStudentByIdAsync(enrollment.StudentId);
-
-            const string linesSql = "SELECT * FROM EnrollmentLines WHERE EnrollmentId = @EnrollmentId;";
-            var lines = (await connection.QueryAsync<EnrollmentLine>(linesSql, new { EnrollmentId = enrollmentId })).ToList();
-
-            foreach (var line in lines)
-            {
-                line.Section = await _sectionRepository.GetSectionByIdAsync(line.SectionId);
-            }
-
-            enrollment.EnrollmentLines = lines;
-            return enrollment;
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Enrollments
+                .AsNoTracking()
+                .Include(e => e.Student)
+                .Include(e => e.EnrollmentLines)
+                    .ThenInclude(el => el.Section)
+                        .ThenInclude(s => s!.Course)
+                .Include(e => e.EnrollmentLines)
+                    .ThenInclude(el => el.Section)
+                        .ThenInclude(s => s!.Schedules)
+                .FirstOrDefaultAsync(e => e.EnrollmentId == enrollmentId);
         }
 
         public async Task<IEnumerable<Enrollment>> GetEnrollmentsByStudentIdAsync(int studentId)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = "SELECT * FROM Enrollments WHERE StudentId = @StudentId ORDER BY DateRegistered DESC;";
-            var enrollments = (await connection.QueryAsync<Enrollment>(sql, new { StudentId = studentId })).ToList();
-
-            foreach (var e in enrollments)
-            {
-                e.Student = await _studentRepository.GetStudentByIdAsync(e.StudentId);
-
-                const string linesSql = "SELECT * FROM EnrollmentLines WHERE EnrollmentId = @EnrollmentId;";
-                var lines = (await connection.QueryAsync<EnrollmentLine>(linesSql, new { EnrollmentId = e.EnrollmentId })).ToList();
-
-                foreach (var line in lines)
-                {
-                    line.Section = await _sectionRepository.GetSectionByIdAsync(line.SectionId);
-                }
-
-                e.EnrollmentLines = lines;
-            }
-
-            return enrollments;
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Enrollments
+                .AsNoTracking()
+                .Include(e => e.Student)
+                .Include(e => e.EnrollmentLines)
+                    .ThenInclude(el => el.Section)
+                        .ThenInclude(s => s!.Course)
+                .Where(e => e.StudentId == studentId)
+                .OrderByDescending(e => e.DateRegistered)
+                .ToListAsync();
         }
 
         public async Task<IEnumerable<Enrollment>> GetEnrollmentsBySemesterAsync(string semester)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = "SELECT * FROM Enrollments WHERE Semester = @Semester ORDER BY DateRegistered DESC;";
-            var enrollments = (await connection.QueryAsync<Enrollment>(sql, new { Semester = semester })).ToList();
-
-            foreach (var e in enrollments)
-            {
-                e.Student = await _studentRepository.GetStudentByIdAsync(e.StudentId);
-
-                const string linesSql = "SELECT * FROM EnrollmentLines WHERE EnrollmentId = @EnrollmentId;";
-                var lines = (await connection.QueryAsync<EnrollmentLine>(linesSql, new { EnrollmentId = e.EnrollmentId })).ToList();
-
-                foreach (var line in lines)
-                {
-                    line.Section = await _sectionRepository.GetSectionByIdAsync(line.SectionId);
-                }
-
-                e.EnrollmentLines = lines;
-            }
-
-            return enrollments;
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Enrollments
+                .AsNoTracking()
+                .Include(e => e.Student)
+                .Include(e => e.EnrollmentLines)
+                    .ThenInclude(el => el.Section)
+                        .ThenInclude(s => s!.Course)
+                .Where(e => e.Semester == semester)
+                .OrderByDescending(e => e.DateRegistered)
+                .ToListAsync();
         }
 
         public async Task<IEnumerable<Section>> GetRegisteredSectionsByStudentAsync(int studentId, string semester)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = @"
-                SELECT DISTINCT el.SectionId
-                FROM Enrollments e
-                INNER JOIN EnrollmentLines el ON e.EnrollmentId = el.EnrollmentId
-                WHERE e.StudentId = @StudentId 
-                  AND e.Semester = @Semester 
-                  AND e.Status = 'Confirmed';";
+            using var context = _contextFactory.CreateDbContext();
+            var confirmedEnrollmentIds = await context.Enrollments
+                .AsNoTracking()
+                .Where(e => e.StudentId == studentId && e.Semester == semester && e.Status == "Confirmed")
+                .Select(e => e.EnrollmentId)
+                .ToListAsync();
 
-            var sectionIds = (await connection.QueryAsync<int>(sql, new { StudentId = studentId, Semester = semester })).ToList();
+            var sectionIds = await context.EnrollmentLines
+                .AsNoTracking()
+                .Where(el => el.EnrollmentId.HasValue && confirmedEnrollmentIds.Contains(el.EnrollmentId.Value))
+                .Select(el => el.SectionId)
+                .Distinct()
+                .ToListAsync();
 
-            var sections = new List<Section>();
-            foreach (var id in sectionIds)
+            return await context.Sections
+                .AsNoTracking()
+                .Include(s => s.Course)
+                .Include(s => s.Schedules)
+                .Where(s => sectionIds.Contains(s.SectionId))
+                .ToListAsync();
+        }
+
+        public async Task<int> CreateEnrollmentAsync(Enrollment enrollment)
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // Đảm bảo không chèn lại các thực thể liên kết đã có
+            enrollment.Student = null;
+            if (enrollment.EnrollmentLines != null)
             {
-                var sec = await _sectionRepository.GetSectionByIdAsync(id);
-                if (sec != null)
+                foreach (var line in enrollment.EnrollmentLines)
                 {
-                    sections.Add(sec);
+                    line.Section = null;
                 }
             }
 
-            return sections;
+            await context.Enrollments.AddAsync(enrollment);
+            await context.SaveChangesAsync();
+
+            return enrollment.EnrollmentId;
+        }
+
+        public async Task CancelEnrollmentAsync(int enrollmentId)
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var enrollment = await context.Enrollments.FindAsync(enrollmentId);
+            if (enrollment != null)
+            {
+                enrollment.Status = "Cancelled";
+                enrollment.DateCancelled = DateTime.Now;
+                await context.SaveChangesAsync();
+            }
         }
 
         public async Task<IEnumerable<Enrollment>> GetEnrollmentsBySectionIdAsync(int sectionId)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = @"
-                SELECT DISTINCT e.EnrollmentId
-                FROM Enrollments e
-                INNER JOIN EnrollmentLines el ON e.EnrollmentId = el.EnrollmentId
-                WHERE el.SectionId = @SectionId AND e.Status = 'Confirmed';";
+            using var context = _contextFactory.CreateDbContext();
+            var enrollmentIds = await context.EnrollmentLines
+                .AsNoTracking()
+                .Where(el => el.SectionId == sectionId && el.EnrollmentId.HasValue)
+                .Select(el => el.EnrollmentId!.Value)
+                .Distinct()
+                .ToListAsync();
 
-            var enrollmentIds = await connection.QueryAsync<int>(sql, new { SectionId = sectionId });
+            return await context.Enrollments
+                .AsNoTracking()
+                .Include(e => e.Student)
+                .Include(e => e.EnrollmentLines)
+                    .ThenInclude(el => el.Section)
+                        .ThenInclude(s => s!.Course)
+                .Where(e => enrollmentIds.Contains(e.EnrollmentId))
+                .OrderByDescending(e => e.DateRegistered)
+                .ToListAsync();
+        }
 
-            var list = new List<Enrollment>();
-            foreach (var eId in enrollmentIds)
+        public async Task<IEnumerable<EnrollmentLine>> GetActiveEnrollmentLinesByStudentAsync(int studentId, string semester)
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var confirmedEnrollmentIds = await context.Enrollments
+                .AsNoTracking()
+                .Where(e => e.StudentId == studentId && e.Semester == semester && e.Status == "Confirmed")
+                .Select(e => e.EnrollmentId)
+                .ToListAsync();
+
+            return await context.EnrollmentLines
+                .AsNoTracking()
+                .Include(el => el.Section)
+                    .ThenInclude(s => s!.Course)
+                .Include(el => el.Section)
+                    .ThenInclude(s => s!.Schedules)
+                .Where(el => el.EnrollmentId.HasValue && confirmedEnrollmentIds.Contains(el.EnrollmentId.Value))
+                .ToListAsync();
+        }
+
+        public async Task<bool> DropSectionForStudentAsync(int studentId, int sectionId, string? reason = null)
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // Tìm phiếu đăng ký có chứa sectionId của sinh viên
+            var enrollment = await context.Enrollments
+                .Include(e => e.EnrollmentLines)
+                .FirstOrDefaultAsync(e => e.StudentId == studentId && e.Status == "Confirmed" && e.EnrollmentLines.Any(el => el.SectionId == sectionId));
+
+            if (enrollment == null)
             {
-                var enrollment = await GetEnrollmentByIdAsync(eId);
-                if (enrollment != null)
-                {
-                    list.Add(enrollment);
-                }
+                enrollment = await context.Enrollments
+                    .Include(e => e.EnrollmentLines)
+                    .FirstOrDefaultAsync(e => e.StudentId == studentId && e.EnrollmentLines.Any(el => el.SectionId == sectionId));
             }
 
-            return list;
+            if (enrollment == null) return false;
+
+            var line = enrollment.EnrollmentLines.FirstOrDefault(el => el.SectionId == sectionId);
+            if (line == null) return false;
+
+            // Xóa dòng đăng ký
+            context.EnrollmentLines.Remove(line);
+
+            // Nếu phiếu đăng ký không còn môn nào khác thì chuyển trạng thái Cancelled
+            if (enrollment.EnrollmentLines.Count <= 1)
+            {
+                enrollment.Status = "Cancelled";
+                enrollment.DateCancelled = DateTime.Now;
+            }
+
+            // Giảm sĩ số hiện tại của lớp học phần
+            var section = await context.Sections.FindAsync(sectionId);
+            if (section != null && section.CurrentEnrollment > 0)
+            {
+                section.CurrentEnrollment--;
+            }
+
+            await context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<(bool IsSuccess, string? ErrorMessage)> AddSectionForStudentAsync(int studentId, int sectionId, string semester)
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            var section = await context.Sections
+                .Include(s => s.Course)
+                .Include(s => s.Schedules)
+                .FirstOrDefaultAsync(s => s.SectionId == sectionId);
+
+            if (section == null)
+                return (false, "Không tìm thấy lớp học phần.");
+
+            var confirmedEnrollments = await context.Enrollments
+                .Include(e => e.EnrollmentLines)
+                    .ThenInclude(el => el.Section)
+                .Where(e => e.StudentId == studentId && e.Semester == semester && e.Status == "Confirmed")
+                .ToListAsync();
+
+            var alreadyRegistered = confirmedEnrollments
+                .SelectMany(e => e.EnrollmentLines)
+                .Any(el => el.SectionId == sectionId);
+
+            if (alreadyRegistered)
+                return (false, $"Sinh viên đã đăng ký lớp {section.SectionCode} rồi.");
+
+            var sameCourseRegistered = confirmedEnrollments
+                .SelectMany(e => e.EnrollmentLines)
+                .Any(el => el.Section != null && el.Section.CourseId == section.CourseId);
+
+            if (sameCourseRegistered)
+                return (false, $"Sinh viên đã đăng ký một lớp khác của môn {section.Course?.CourseName} trong kỳ này.");
+
+            // Tìm phiếu đăng ký đã xác nhận hiện có của SV trong kỳ
+            var enrollment = confirmedEnrollments.FirstOrDefault();
+
+            if (enrollment == null)
+            {
+                enrollment = new Enrollment
+                {
+                    StudentId = studentId,
+                    Semester = semester,
+                    DateRegistered = DateTime.Now,
+                    Status = "Confirmed",
+                    UniqueId = Guid.NewGuid().ToString()
+                };
+                await context.Enrollments.AddAsync(enrollment);
+                await context.SaveChangesAsync();
+            }
+
+            var newLine = new EnrollmentLine
+            {
+                EnrollmentId = enrollment.EnrollmentId,
+                SectionId = sectionId
+            };
+            await context.EnrollmentLines.AddAsync(newLine);
+
+            // Tăng sĩ số lớp
+            section.CurrentEnrollment++;
+            await context.SaveChangesAsync();
+
+            return (true, null);
         }
     }
 }

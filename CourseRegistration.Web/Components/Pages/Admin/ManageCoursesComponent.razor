@@ -2,6 +2,8 @@
 @namespace CourseRegistration.Web.Components.Pages.Admin
 @inject IViewCoursesUseCase ViewCoursesUseCase
 @inject IAddCourseUseCase AddCourseUseCase
+@inject ICurrentUserStateStore CurrentUserStateStore
+@inject NavigationManager NavigationManager
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
@@ -104,9 +106,18 @@
     private IEnumerable<Course> courses = new List<Course>();
     private Course newCourse = new Course { Credits = 3 };
     private bool showAddModal = false;
+    private bool isAuthorized = false;
 
     protected override async Task OnInitializedAsync()
     {
+        var role = await CurrentUserStateStore.GetCurrentRoleAsync();
+        if (role != "Admin")
+        {
+            NavigationManager.NavigateTo("/access-denied");
+            return;
+        }
+
+        isAuthorized = true;
         await LoadCourses();
     }
 

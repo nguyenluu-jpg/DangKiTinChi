@@ -17,21 +17,40 @@
         <button class="btn btn-outline-secondary" onclick="window.print()">
             <i class="bi bi-printer me-1"></i> In Thời Khóa Biểu
         </button>
-        <div class="d-flex align-items-center gap-1">
-            <label class="small text-muted fw-bold d-none d-sm-inline">Sinh viên:</label>
-            <select class="form-select form-select-sm" style="min-width: 220px;" @onchange="OnStudentChanged">
-                @foreach (var s in students)
-                {
-                    <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
-                        @s.StudentCode - @s.FullName
-                    </option>
-                }
-            </select>
-        </div>
+        @if (currentRole == "Admin")
+        {
+            <div class="d-flex align-items-center gap-1">
+                <span class="badge bg-danger text-white">Admin</span>
+                <label class="small text-muted fw-bold d-none d-sm-inline">Xem lịch SV:</label>
+                <select class="form-select form-select-sm" style="min-width: 220px;" @onchange="OnStudentChanged">
+                    @foreach (var s in students)
+                    {
+                        <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
+                            @s.StudentCode - @s.FullName
+                        </option>
+                    }
+                </select>
+            </div>
+        }
     </div>
 </div>
 
-@if (isLoading)
+@if (!isAuthenticated)
+{
+    <div class="card border-0 shadow-sm text-center py-5 bg-white rounded-4 mb-4">
+        <i class="bi bi-calendar-x fs-1 text-muted mb-3"></i>
+        <h4 class="fw-bold text-dark">Vui Lòng Đăng Nhập</h4>
+        <p class="text-muted small mb-4 mx-auto" style="max-width: 500px;">
+            Để xem thời khóa biểu chi tiết, vui lòng đăng nhập bằng tài khoản Sinh viên của bạn hoặc tài khoản Quản trị viên.
+        </p>
+        <div>
+            <a href="/login" class="btn btn-primary px-4 py-2 fw-bold">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Ngay
+            </a>
+        </div>
+    </div>
+}
+else if (isLoading)
 {
     <div class="text-center py-5">
         <div class="spinner-border text-primary" role="status"></div>
@@ -133,7 +152,9 @@ else
 @code {
     private List<Student> students = new List<Student>();
     private Student? currentStudent;
-    private int selectedStudentId = 1;
+    private int selectedStudentId = 0;
+    private bool isAuthenticated = false;
+    private string currentRole = string.Empty;
     private IEnumerable<Section> registeredSections = new List<Section>();
     private bool isLoading = true;
 
@@ -142,16 +163,21 @@ else
         CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
         students = (await StudentRepository.GetAllStudentsAsync()).ToList();
 
+        await RefreshUserState();
+        await LoadSchedule();
+    }
+
+    private async Task RefreshUserState()
+    {
+        isAuthenticated = await CurrentUserStateStore.IsAuthenticatedAsync();
+        currentRole = await CurrentUserStateStore.GetCurrentRoleAsync();
         selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
         currentStudent = students.FirstOrDefault(s => s.StudentId == selectedStudentId);
-
-        await LoadSchedule();
     }
 
     private async void HandleUserStateChange()
     {
-        selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
-        currentStudent = students.FirstOrDefault(s => s.StudentId == selectedStudentId);
+        await RefreshUserState();
         await LoadSchedule();
         await InvokeAsync(StateHasChanged);
     }
@@ -159,7 +185,14 @@ else
     private async Task LoadSchedule()
     {
         isLoading = true;
-        registeredSections = await ViewScheduleUseCase.ExecuteAsync(selectedStudentId, "2025_HK1");
+        if (selectedStudentId > 0)
+        {
+            registeredSections = await ViewScheduleUseCase.ExecuteAsync(selectedStudentId, "2025_HK1");
+        }
+        else
+        {
+            registeredSections = new List<Section>();
+        }
         isLoading = false;
     }
 

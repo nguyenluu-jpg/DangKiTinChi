@@ -5,197 +5,569 @@
 @inject ISectionRepository SectionRepository
 @inject ICourseRepository CourseRepository
 @inject IStudentRepository StudentRepository
+@inject ICurrentUserStateStore CurrentUserStateStore
 @inject NavigationManager NavigationManager
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h2 class="fw-bold mb-1">
-            <i class="bi bi-people-fill text-primary me-2"></i>Danh Sách Đăng Ký Theo Lớp
+            <i class="bi bi-person-gear text-danger me-2"></i>Quản Lý Đăng Ký & Hủy / Rút Môn Học Vụ
         </h2>
-        <p class="text-muted mb-0">Phòng Đào Tạo &bull; Theo dõi sĩ số và danh sách sinh viên đăng ký từng lớp học phần</p>
+        <p class="text-muted mb-0">Phòng Đào Tạo &bull; Xử lý đơn xin hủy / rút học phần khi đã hết hạn và đăng ký bổ sung cứu xét cho sinh viên</p>
     </div>
     <div class="d-flex gap-2">
         <a href="/admin/sections" class="btn btn-outline-secondary">
-            <i class="bi bi-collection me-1"></i> Quản lý lớp học phần
+            <i class="bi bi-collection me-1"></i> Quản lý lớp HP
         </a>
-        <button class="btn btn-primary" onclick="window.print()">
+        <button class="btn btn-outline-secondary" onclick="window.print()">
             <i class="bi bi-printer me-1"></i> In danh sách
         </button>
     </div>
 </div>
 
-<!-- Bộ lọc chọn lớp học phần -->
-<div class="card border-0 shadow-sm p-3 mb-4 bg-white">
-    <div class="row g-3 align-items-center">
-        <div class="col-md-6">
-            <label class="form-label fw-bold small text-muted mb-1">
-                <i class="bi bi-filter me-1"></i>Chọn lớp học phần để xem danh sách:
-            </label>
-            <select class="form-select" @onchange="OnSectionSelected">
-                <option value="0">-- Vui lòng chọn lớp học phần --</option>
-                @foreach (var sec in allSections)
-                {
-                    <option value="@sec.SectionId" selected="@(sec.SectionId == currentSectionId)">
-                        @sec.SectionCode - @(sec.Course?.CourseName) (GV: @sec.Instructor | Sĩ số: @sec.CurrentEnrollment/@sec.MaxCapacity)
-                    </option>
-                }
-            </select>
+<!-- Thông báo thao tác thành công hoặc lỗi -->
+@if (!string.IsNullOrEmpty(feedbackSuccess))
+{
+    <div class="alert alert-success alert-dismissible fade show shadow-sm d-flex align-items-center justify-content-between p-3 mb-4 rounded-3" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-check-circle-fill fs-4 text-success me-2"></i>
+            <div>
+                <strong>Thành công!</strong> @feedbackSuccess
+            </div>
         </div>
+        <button type="button" class="btn-close" @onclick="() => feedbackSuccess = string.Empty"></button>
+    </div>
+}
+@if (!string.IsNullOrEmpty(feedbackError))
+{
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm d-flex align-items-center justify-content-between p-3 mb-4 rounded-3" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-triangle-fill fs-4 text-danger me-2"></i>
+            <div>
+                <strong>Lỗi học vụ:</strong> @feedbackError
+            </div>
+        </div>
+        <button type="button" class="btn-close" @onclick="() => feedbackError = string.Empty"></button>
+    </div>
+}
 
-        <div class="col-md-6">
-            <label class="form-label fw-bold small text-muted mb-1">
-                <i class="bi bi-search me-1"></i>Tìm nhanh sinh viên trong lớp:
-            </label>
-            <div class="input-group">
-                <input type="text" class="form-control" placeholder="Tìm theo MSSV, họ tên, email..." 
-                       @bind="searchKeyword" @bind:event="oninput" />
-                @if (!string.IsNullOrEmpty(searchKeyword))
+<!-- Chuyển đổi 2 Chế độ Quản lý trực quan (Tabs) -->
+<div class="card border-0 shadow-sm p-2 mb-4 bg-white rounded-3">
+    <div class="nav nav-pills nav-fill gap-2" role="tablist">
+        <button class="nav-link py-2 fw-bold d-flex align-items-center justify-content-center gap-2 @(activeTab == "student" ? "active bg-danger text-white" : "text-dark")" 
+                type="button" 
+                @onclick="@(() => SwitchTab("student"))">
+            <i class="bi bi-person-lines-fill fs-5"></i>
+            <span>1. Quản Lý Theo Từng Sinh Viên (Rút môn & Cứu xét)</span>
+        </button>
+        <button class="nav-link py-2 fw-bold d-flex align-items-center justify-content-center gap-2 @(activeTab == "section" ? "active bg-primary text-white" : "text-dark")" 
+                type="button" 
+                @onclick="@(() => SwitchTab("section"))">
+            <i class="bi bi-collection fs-5"></i>
+            <span>2. Danh Sách & Sĩ Số Theo Lớp Học Phần</span>
+        </button>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- CHẾ ĐỘ 1: QUẢN LÝ THEO TỪNG SINH VIÊN (XỬ LÝ ĐƠN HỦY/RÚT MÔN QUÁ HẠN)     -->
+<!-- ========================================================================= -->
+@if (activeTab == "student")
+{
+    <div class="card border-0 shadow-sm p-3 mb-4 bg-white">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-7">
+                <label class="form-label fw-bold small text-muted mb-1">
+                    <i class="bi bi-search me-1"></i>Chọn sinh viên cần xử lý học vụ:
+                </label>
+                <select class="form-select" @onchange="OnStudentChange">
+                    <option value="0">-- Chọn sinh viên từ danh sách trường --</option>
+                    @foreach (var s in allStudents)
+                    {
+                        <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
+                            @s.StudentCode - @s.FullName (@s.Major &bull; Hạn mức: @s.MaxCreditsPerSemester TC)
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-5 d-flex align-items-end justify-content-md-end gap-2">
+                @if (selectedStudent != null)
                 {
-                    <button class="btn btn-outline-secondary" @onclick="() => searchKeyword = string.Empty">
-                        <i class="bi bi-x-lg"></i>
+                    <button class="btn btn-success d-flex align-items-center gap-1" @onclick="OpenAddSectionModal">
+                        <i class="bi bi-plus-circle-fill"></i>
+                        <span>Đăng ký bổ sung môn (Cứu xét)</span>
                     </button>
                 }
             </div>
         </div>
     </div>
-</div>
 
-@if (isLoading)
-{
-    <div class="text-center py-5">
-        <div class="spinner-border text-primary" role="status"></div>
-        <p class="mt-2 text-muted">Đang tải danh sách sinh viên...</p>
-    </div>
-}
-else if (selectedSection == null)
-{
-    <div class="card border-0 shadow-sm text-center py-5 bg-white">
-        <i class="bi bi-inbox fs-1 text-muted mb-2"></i>
-        <h5 class="fw-bold text-muted">Vui lòng chọn lớp học phần</h5>
-        <p class="text-muted small mb-0">Chọn một lớp trong danh sách phía trên để xem chi tiết sinh viên đã đăng ký</p>
-    </div>
-}
-else
-{
-    <!-- Thẻ tóm tắt thông tin lớp học phần -->
-    <div class="card border-0 shadow-sm p-4 mb-4 bg-white">
-        <div class="row g-3 align-items-center">
-            <div class="col-md-8">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <span class="badge bg-primary fs-6 px-3 py-1">@selectedSection.SectionCode</span>
-                    <span class="badge bg-secondary fs-6">@(selectedSection.Course?.Credits ?? 0) Tín chỉ</span>
-                    <span class="badge @(selectedSection.HasAvailableSlot ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger")">
-                        @(selectedSection.HasAvailableSlot ? $"Còn {selectedSection.AvailableSlots} chỗ" : "Đã đủ sĩ số")
-                    </span>
-                </div>
-                <h4 class="fw-bold mb-1 text-dark">@(selectedSection.Course?.CourseName)</h4>
-                <div class="text-muted small d-flex flex-wrap gap-3 mt-2">
-                    <span><i class="bi bi-person-badge text-primary me-1"></i>Giảng viên: <strong>@selectedSection.Instructor</strong></span>
-                    <span><i class="bi bi-geo-alt text-primary me-1"></i>Phòng: <strong>@(string.IsNullOrEmpty(selectedSection.Room) ? "Chưa xếp" : selectedSection.Room)</strong></span>
-                    <span><i class="bi bi-calendar-event text-primary me-1"></i>Học kỳ: <strong>@selectedSection.Semester</strong></span>
-                </div>
-            </div>
+    @if (selectedStudent == null)
+    {
+        <div class="card border-0 shadow-sm text-center py-5 bg-white rounded-4">
+            <i class="bi bi-person-check fs-1 text-muted mb-2"></i>
+            <h5 class="fw-bold text-muted">Vui lòng chọn sinh viên cần quản lý</h5>
+            <p class="text-muted small mb-0">Chọn một sinh viên phía trên để tra cứu toàn bộ môn đã đăng ký và thao tác hủy môn hoặc bổ sung môn sau hạn.</p>
+        </div>
+    }
+    else
+    {
+        int studentRegisteredCredits = studentRegisteredLines.Sum(l => l.Section?.Course?.Credits ?? 0);
+        int maxCredits = selectedStudent.MaxCreditsPerSemester;
 
-            <div class="col-md-4">
-                <div class="p-3 bg-light rounded-3 border">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="small text-muted fw-bold">Sĩ số lớp:</span>
-                        <span class="fw-bold text-dark">@selectedSection.CurrentEnrollment / @selectedSection.MaxCapacity</span>
-                    </div>
-                    <div class="progress mb-2" style="height: 8px;">
-                        <div class="progress-bar @(selectedSection.CurrentEnrollment >= selectedSection.MaxCapacity ? "bg-danger" : "bg-primary")" 
-                             role="progressbar" 
-                             style="width: @(selectedSection.MaxCapacity > 0 ? (selectedSection.CurrentEnrollment * 100 / selectedSection.MaxCapacity) : 0)%">
+        <!-- Thẻ tóm tắt thông tin Sinh viên -->
+        <div class="card border-0 shadow-sm p-4 mb-4 bg-white border-start border-danger border-4">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-7">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="user-avatar @(selectedStudent.StudentId == 1 ? "bg-primary text-white" : "bg-warning text-dark") fs-4">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <div>
+                            <h4 class="fw-bold mb-1 text-dark">@selectedStudent.FullName</h4>
+                            <div class="text-muted small">
+                                MSSV: <strong>@selectedStudent.StudentCode</strong> &bull; Chuyên ngành: <strong>@selectedStudent.Major</strong> &bull; Niên khóa: @selectedStudent.AcademicYear
+                            </div>
+                            <div class="text-muted small">
+                                Email: <strong>@selectedStudent.Email</strong> &bull; SĐT: <strong>@selectedStudent.PhoneNumber</strong>
+                            </div>
                         </div>
                     </div>
-                    <div class="d-flex justify-content-between small text-muted">
-                        <span>Tỷ lệ lấp đầy:</span>
-                        <span class="fw-bold">@(selectedSection.MaxCapacity > 0 ? (selectedSection.CurrentEnrollment * 100 / selectedSection.MaxCapacity) : 0)%</span>
+                </div>
+
+                <div class="col-md-5">
+                    <div class="p-3 bg-light rounded-3 border">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted fw-bold">Tổng tín chỉ đã đăng ký kỳ này:</span>
+                            <span class="fw-bold text-primary fs-6">@studentRegisteredCredits / @maxCredits TC</span>
+                        </div>
+                        <div class="progress mb-2" style="height: 8px;">
+                            <div class="progress-bar @(studentRegisteredCredits > maxCredits ? "bg-danger" : "bg-success")" 
+                                 style="width: @(Math.Min(100, maxCredits > 0 ? (studentRegisteredCredits * 100 / maxCredits) : 0))%">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between small text-muted">
+                            <span>Số lớp đang học: <strong>@studentRegisteredLines.Count lớp</strong></span>
+                            <span>Trạng thái: <strong class="text-success">Đang hiệu lực</strong></span>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bảng danh sách các môn SV đã đăng ký & Nút HỦY MÔN HỌC VỤ -->
+        <div class="card border-0 shadow-sm bg-white overflow-hidden mb-4">
+            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-card-checklist text-danger me-2"></i>Các Lớp Học Phần Sinh Viên Đang Đăng Ký (@studentRegisteredLines.Count lớp)
+                </h5>
+                <span class="badge bg-secondary-subtle text-secondary small">Học kỳ 1 (2025 - 2026)</span>
+            </div>
+
+            @if (!studentRegisteredLines.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-journal-x fs-1 text-muted mb-2 d-block"></i>
+                    <h6 class="text-muted fw-bold">Sinh viên chưa đăng ký môn học nào trong học kỳ này</h6>
+                    <p class="small text-muted mb-3">Phòng Đào Tạo có thể nhấn nút "Đăng ký bổ sung môn" để hỗ trợ sinh viên đăng ký cứu xét.</p>
+                    <button class="btn btn-outline-success btn-sm" @onclick="OpenAddSectionModal">
+                        <i class="bi bi-plus-circle me-1"></i>Đăng ký bổ sung ngay
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50px;">STT</th>
+                                <th>Mã Lớp</th>
+                                <th>Tên Môn Học</th>
+                                <th>Số TC</th>
+                                <th>Giảng Viên</th>
+                                <th>Lịch Học & Phòng</th>
+                                <th>Sĩ Số Lớp</th>
+                                <th class="text-end" style="min-width: 170px;">Thao Tác Học Vụ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ int lineIdx = 1; }
+                            @foreach (var line in studentRegisteredLines)
+                            {
+                                var sec = line.Section;
+                                <tr>
+                                    <td class="text-muted fw-bold">@(lineIdx++)</td>
+                                    <td>
+                                        <span class="badge bg-primary-subtle text-primary fw-bold fs-6">
+                                            @sec?.SectionCode
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">@sec?.Course?.CourseName</div>
+                                        <div class="small text-muted">Mã môn: @sec?.Course?.CourseCode</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">@(sec?.Course?.Credits ?? 0) TC</span>
+                                    </td>
+                                    <td class="small">
+                                        @sec?.Instructor
+                                    </td>
+                                    <td class="small">
+                                        @if (sec?.Schedules != null && sec.Schedules.Any())
+                                        {
+                                            foreach (var sched in sec.Schedules)
+                                            {
+                                                <div class="text-secondary text-nowrap">
+                                                    @sched.DayOfWeekName (Tiết @sched.StartPeriod-@sched.EndPeriod) - @(string.IsNullOrEmpty(sched.Room) ? sec.Room : sched.Room)
+                                                </div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@(sec?.Room ?? "Chưa xếp phòng")</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="small @(sec?.CurrentEnrollment >= sec?.MaxCapacity ? "text-danger fw-bold" : "text-dark")">
+                                            @sec?.CurrentEnrollment / @sec?.MaxCapacity
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-1 shadow-sm"
+                                                title="Hủy môn học phần này cho sinh viên (Rút môn quá hạn)"
+                                                @onclick="() => OpenDropModal(selectedStudent.StudentId, line.SectionId, selectedStudent.FullName, sec?.SectionCode, sec?.Course?.CourseName)">
+                                            <i class="bi bi-trash3-fill"></i>
+                                            <span class="fw-semibold">Hủy môn / Rút môn</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+}
+
+<!-- ========================================================================= -->
+<!-- CHẾ ĐỘ 2: DANH SÁCH & SĨ SỐ THEO LỚP HỌC PHẦN (SECTION VIEW)             -->
+<!-- ========================================================================= -->
+@if (activeTab == "section")
+{
+    <!-- Bộ lọc chọn lớp học phần -->
+    <div class="card border-0 shadow-sm p-3 mb-4 bg-white">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-6">
+                <label class="form-label fw-bold small text-muted mb-1">
+                    <i class="bi bi-filter me-1"></i>Chọn lớp học phần để xem danh sách:
+                </label>
+                <select class="form-select" @onchange="OnSectionSelected">
+                    <option value="0">-- Vui lòng chọn lớp học phần --</option>
+                    @foreach (var sec in allSections)
+                    {
+                        <option value="@sec.SectionId" selected="@(sec.SectionId == currentSectionId)">
+                            @sec.SectionCode - @(sec.Course?.CourseName) (GV: @sec.Instructor | Sĩ số: @sec.CurrentEnrollment/@sec.MaxCapacity)
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-bold small text-muted mb-1">
+                    <i class="bi bi-search me-1"></i>Tìm nhanh sinh viên trong lớp:
+                </label>
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Tìm theo MSSV, họ tên, email..." 
+                           @bind="searchKeyword" @bind:event="oninput" />
+                    @if (!string.IsNullOrEmpty(searchKeyword))
+                    {
+                        <button class="btn btn-outline-secondary" @onclick="() => searchKeyword = string.Empty">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    }
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Danh sách sinh viên đã đăng ký -->
-    var filteredList = GetFilteredEnrollments();
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Đang tải danh sách sinh viên...</p>
+        </div>
+    }
+    else if (selectedSection == null)
+    {
+        <div class="card border-0 shadow-sm text-center py-5 bg-white">
+            <i class="bi bi-inbox fs-1 text-muted mb-2"></i>
+            <h5 class="fw-bold text-muted">Vui lòng chọn lớp học phần</h5>
+            <p class="text-muted small mb-0">Chọn một lớp trong danh sách phía trên để xem chi tiết sinh viên đã đăng ký</p>
+        </div>
+    }
+    else
+    {
+        <!-- Thẻ tóm tắt thông tin lớp học phần -->
+        <div class="card border-0 shadow-sm p-4 mb-4 bg-white">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-primary fs-6 px-3 py-1">@selectedSection.SectionCode</span>
+                        <span class="badge bg-secondary fs-6">@(selectedSection.Course?.Credits ?? 0) Tín chỉ</span>
+                        <span class="badge @(selectedSection.HasAvailableSlot ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger")">
+                            @(selectedSection.HasAvailableSlot ? $"Còn {selectedSection.AvailableSlots} chỗ" : "Đã đủ sĩ số")
+                        </span>
+                    </div>
+                    <h4 class="fw-bold mb-1 text-dark">@(selectedSection.Course?.CourseName)</h4>
+                    <div class="text-muted small d-flex flex-wrap gap-3 mt-2">
+                        <span><i class="bi bi-person-badge text-primary me-1"></i>Giảng viên: <strong>@selectedSection.Instructor</strong></span>
+                        <span><i class="bi bi-geo-alt text-primary me-1"></i>Phòng: <strong>@(string.IsNullOrEmpty(selectedSection.Room) ? "Chưa xếp" : selectedSection.Room)</strong></span>
+                        <span><i class="bi bi-calendar-event text-primary me-1"></i>Học kỳ: <strong>@selectedSection.Semester</strong></span>
+                    </div>
+                </div>
 
-    <div class="card border-0 shadow-sm bg-white overflow-hidden">
-        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <h5 class="fw-bold mb-0">
-                <i class="bi bi-card-checklist text-primary me-2"></i>Danh Sách Sinh Viên (@filteredList.Count sinh viên)
-            </h5>
-            <span class="text-muted small">Cập nhật theo thời gian thực</span>
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded-3 border">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted fw-bold">Sĩ số lớp:</span>
+                            <span class="fw-bold text-dark">@selectedSection.CurrentEnrollment / @selectedSection.MaxCapacity</span>
+                        </div>
+                        <div class="progress mb-2" style="height: 8px;">
+                            <div class="progress-bar @(selectedSection.CurrentEnrollment >= selectedSection.MaxCapacity ? "bg-danger" : "bg-primary")" 
+                                 role="progressbar" 
+                                 style="width: @(selectedSection.MaxCapacity > 0 ? (selectedSection.CurrentEnrollment * 100 / selectedSection.MaxCapacity) : 0)%">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between small text-muted">
+                            <span>Tỷ lệ lấp đầy:</span>
+                            <span class="fw-bold">@(selectedSection.MaxCapacity > 0 ? (selectedSection.CurrentEnrollment * 100 / selectedSection.MaxCapacity) : 0)%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        @if (!filteredList.Any())
-        {
-            <div class="text-center py-5">
-                <i class="bi bi-person-x fs-1 text-muted mb-2"></i>
-                <h6 class="text-muted">Chưa có sinh viên nào đăng ký lớp học phần này</h6>
-                @if (!string.IsNullOrEmpty(searchKeyword))
-                {
-                    <p class="small text-muted">Không tìm thấy sinh viên khớp với từ khóa "@searchKeyword"</p>
-                }
+        var filteredList = GetFilteredEnrollments();
+
+        <div class="card border-0 shadow-sm bg-white overflow-hidden">
+            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="fw-bold mb-0">
+                    <i class="bi bi-card-checklist text-primary me-2"></i>Danh Sách Sinh Viên (@filteredList.Count sinh viên)
+                </h5>
+                <span class="text-muted small">Cập nhật thời gian thực</span>
             </div>
-        }
-        else
-        {
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 60px;">STT</th>
-                            <th>Mã Sinh Viên</th>
-                            <th>Họ và Tên</th>
-                            <th>Chuyên Ngành</th>
-                            <th>Email Liên Hệ</th>
-                            <th>Ngày Đăng Ký</th>
-                            <th>Mã Biên Nhận</th>
-                            <th class="text-center">Trạng Thái</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @{ int idx = 1; }
-                        @foreach (var item in filteredList)
-                        {
-                            var student = item.Student;
+
+            @if (!filteredList.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-person-x fs-1 text-muted mb-2"></i>
+                    <h6 class="text-muted">Chưa có sinh viên nào đăng ký lớp học phần này</h6>
+                    @if (!string.IsNullOrEmpty(searchKeyword))
+                    {
+                        <p class="small text-muted">Không tìm thấy sinh viên khớp với từ khóa "@searchKeyword"</p>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
                             <tr>
-                                <td class="text-muted fw-bold">@(idx++)</td>
-                                <td>
-                                    <span class="badge bg-primary-subtle text-primary fw-bold fs-6">
-                                        @(student?.StudentCode ?? "N/A")
-                                    </span>
-                                </td>
-                                <td class="fw-bold text-dark">
-                                    @(student?.FullName ?? "N/A")
-                                </td>
-                                <td>
-                                    <span class="text-secondary small">@(student?.Major ?? "N/A")</span>
-                                    <span class="badge bg-light text-dark border ms-1">@(student?.AcademicYear)</span>
-                                </td>
-                                <td class="small text-muted">
-                                    <i class="bi bi-envelope me-1"></i>@(student?.Email ?? "N/A")
-                                </td>
-                                <td class="small text-muted">
-                                    <i class="bi bi-clock me-1"></i>@(item.DateRegistered?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")
-                                </td>
-                                <td>
-                                    <a href="/enrollment/@(item.EnrollmentId)" class="small text-decoration-none" title="Xem phiếu đăng ký">
-                                        #@item.EnrollmentId (@(item.UniqueId?.Substring(0, Math.Min(8, item.UniqueId.Length)) ?? ""))
-                                    </a>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-success-subtle text-success px-2 py-1">
-                                        <i class="bi bi-check2 me-1"></i>Đã xác nhận
-                                    </span>
-                                </td>
+                                <th style="width: 50px;">STT</th>
+                                <th>Mã Sinh Viên</th>
+                                <th>Họ và Tên</th>
+                                <th>Chuyên Ngành</th>
+                                <th>Email</th>
+                                <th>Ngày Đăng Ký</th>
+                                <th>Biên Nhận</th>
+                                <th class="text-end" style="min-width: 150px;">Thao Tác</th>
                             </tr>
+                        </thead>
+                        <tbody>
+                            @{ int idx = 1; }
+                            @foreach (var item in filteredList)
+                            {
+                                var student = item.Student;
+                                <tr>
+                                    <td class="text-muted fw-bold">@(idx++)</td>
+                                    <td>
+                                        <span class="badge bg-primary-subtle text-primary fw-bold fs-6">
+                                            @(student?.StudentCode ?? "N/A")
+                                        </span>
+                                    </td>
+                                    <td class="fw-bold text-dark">
+                                        @(student?.FullName ?? "N/A")
+                                    </td>
+                                    <td>
+                                        <span class="text-secondary small">@(student?.Major ?? "N/A")</span>
+                                        <span class="badge bg-light text-dark border ms-1">@(student?.AcademicYear)</span>
+                                    </td>
+                                    <td class="small text-muted">
+                                        @(student?.Email ?? "N/A")
+                                    </td>
+                                    <td class="small text-muted">
+                                        @(item.DateRegistered?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")
+                                    </td>
+                                    <td>
+                                        <a href="/enrollment/@(item.EnrollmentId)" class="small text-decoration-none">
+                                            #@item.EnrollmentId
+                                        </a>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
+                                                title="Hủy đăng ký lớp này cho sinh viên"
+                                                @onclick="() => OpenDropModal(item.StudentId, selectedSection.SectionId, student?.FullName, selectedSection.SectionCode, selectedSection.Course?.CourseName)">
+                                            <i class="bi bi-x-circle-fill"></i>
+                                            <span>Rút tên SV</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+}
+
+<!-- ========================================================================= -->
+<!-- MODAL XÁC NHẬN HỦY / RÚT HỌC PHẦN (QUYỀN PHÒNG ĐÀO TẠO)                   -->
+<!-- ========================================================================= -->
+@if (isDropModalOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-danger text-white py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác Nhận Hủy / Rút Môn Học Vụ
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseDropModal"></button>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                    <p class="mb-3 text-dark">
+                        Bạn đang thực hiện thao tác rút học phần với tư cách <strong>Phòng Đào Tạo</strong>:
+                    </p>
+
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="mb-1">
+                            <span class="text-muted small">Sinh viên:</span>
+                            <strong class="text-dark d-block">@targetStudentName</strong>
+                        </div>
+                        <div>
+                            <span class="text-muted small">Lớp học phần:</span>
+                            <strong class="text-danger d-block">@targetSectionCode - @targetCourseName</strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">Lý do hủy môn / rút học phần <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="dropReason">
+                            <option value="Sinh viên nộp đơn xin rút môn sau hạn (Có lý do chính đáng)">Sinh viên nộp đơn xin rút môn sau hạn (Có lý do chính đáng)</option>
+                            <option value="Lý do sức khỏe / điều trị y tế (Có giấy chứng nhận)">Lý do sức khỏe / điều trị y tế (Có giấy chứng nhận)</option>
+                            <option value="Trùng lịch học ngoài ý muốn / xin chuyển lớp">Trùng lịch học ngoài ý muốn / xin chuyển lớp</option>
+                            <option value="Bảo lưu kết quả học phần kỳ này">Bảo lưu kết quả học phần kỳ này</option>
+                            <option value="Quyết định học vụ đặc biệt của Phòng Đào Tạo">Quyết định học vụ đặc biệt của Phòng Đào Tạo</option>
+                        </select>
+                    </div>
+
+                    <div class="alert alert-warning py-2 px-3 small rounded-3 mb-0">
+                        <i class="bi bi-info-circle-fill me-1"></i>
+                        Hệ thống sẽ xóa dòng đăng ký của sinh viên và <strong>giảm sĩ số lớp đi 1 chỗ</strong> ngay lập tức, giải phóng slot cho sinh viên khác.
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDropModal" disabled="@isProcessing">
+                        Hủy bỏ
+                    </button>
+                    <button type="button" class="btn btn-danger fw-bold d-flex align-items-center gap-1" @onclick="HandleConfirmDrop" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            <span>Đang xử lý...</span>
                         }
-                    </tbody>
-                </table>
+                        else
+                        {
+                            <i class="bi bi-trash3-fill"></i>
+                            <span>Xác Nhận Hủy Môn Cho SV</span>
+                        }
+                    </button>
+                </div>
             </div>
-        }
+        </div>
+    </div>
+}
+
+<!-- ========================================================================= -->
+<!-- MODAL ĐĂNG KÝ BỔ SUNG MÔN CHO SINH VIÊN (CỨU XÉT QUÁ HẠN)                  -->
+<!-- ========================================================================= -->
+@if (isAddSectionModalOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-success text-white py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-plus-circle-fill me-2"></i>Đăng Ký Bổ Sung Môn Cho Sinh Viên
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAddSectionModal"></button>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <span class="text-muted small">Sinh viên xét duyệt:</span>
+                                <strong class="text-dark d-block">@selectedStudent?.FullName (@selectedStudent?.StudentCode)</strong>
+                            </div>
+                            <div class="col-sm-6">
+                                <span class="text-muted small">Chuyên ngành:</span>
+                                <strong class="text-primary d-block">@selectedStudent?.Major</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">Chọn lớp học phần muốn đăng ký bổ sung <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="addSectionId">
+                            <option value="0">-- Chọn lớp học phần --</option>
+                            @foreach (var sec in allSections)
+                            {
+                                bool isAlreadyRegistered = studentRegisteredLines.Any(l => l.SectionId == sec.SectionId);
+                                <option value="@sec.SectionId" disabled="@isAlreadyRegistered">
+                                    @sec.SectionCode - @sec.Course?.CourseName (@(sec.Course?.Credits) TC) - GV: @sec.Instructor | Sĩ số: @sec.CurrentEnrollment/@sec.MaxCapacity @(isAlreadyRegistered ? " [Đã đăng ký]" : "")
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 small rounded-3 mb-0">
+                        <i class="bi bi-shield-check me-1"></i>
+                        Thao tác này cho phép Phòng Đào Tạo hỗ trợ sinh viên đăng ký môn học sau khi cổng trực tuyến của sinh viên đã đóng. Sĩ số lớp sẽ tự động tăng 1 khi lưu.
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAddSectionModal" disabled="@isProcessing">
+                        Đóng
+                    </button>
+                    <button type="button" class="btn btn-success fw-bold d-flex align-items-center gap-1" @onclick="HandleConfirmAddSection" disabled="@(isProcessing || addSectionId == 0)">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            <span>Đang lưu...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-check2-circle"></i>
+                            <span>Xác Nhận Đăng Ký Cho SV</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 }
 
@@ -203,20 +575,59 @@ else
     [Parameter]
     public int? SectionId { get; set; }
 
+    private string activeTab = "student"; // "student" hoặc "section"
+    private List<Student> allStudents = new List<Student>();
+    private Student? selectedStudent;
+    private int selectedStudentId = 0;
+    private List<EnrollmentLine> studentRegisteredLines = new List<EnrollmentLine>();
+
     private List<Section> allSections = new List<Section>();
     private Section? selectedSection;
     private int currentSectionId = 0;
     private List<Enrollment> enrolledList = new List<Enrollment>();
     private string searchKeyword = string.Empty;
+
     private bool isLoading = true;
+    private bool isProcessing = false;
+    private string feedbackSuccess = string.Empty;
+    private string feedbackError = string.Empty;
+
+    // Drop Modal state
+    private bool isDropModalOpen = false;
+    private int targetStudentId = 0;
+    private int targetSectionId = 0;
+    private string targetStudentName = string.Empty;
+    private string targetSectionCode = string.Empty;
+    private string targetCourseName = string.Empty;
+    private string dropReason = "Sinh viên nộp đơn xin rút môn sau hạn (Có lý do chính đáng)";
+
+    // Add Section Modal state
+    private bool isAddSectionModalOpen = false;
+    private int addSectionId = 0;
 
     protected override async Task OnInitializedAsync()
     {
+        var role = await CurrentUserStateStore.GetCurrentRoleAsync();
+        if (role != "Admin")
+        {
+            NavigationManager.NavigateTo("/access-denied");
+            return;
+        }
+
+        allStudents = (await StudentRepository.GetAllStudentsAsync()).ToList();
         allSections = (await SectionRepository.GetAllSectionsAsync()).ToList();
+
+        if (allStudents.Any())
+        {
+            selectedStudentId = allStudents.First().StudentId;
+            selectedStudent = allStudents.First();
+            await LoadStudentEnrollments();
+        }
 
         if (SectionId.HasValue && SectionId.Value > 0)
         {
             currentSectionId = SectionId.Value;
+            activeTab = "section";
         }
         else if (allSections.Any())
         {
@@ -226,12 +637,46 @@ else
         await LoadSectionData();
     }
 
+    private void SwitchTab(string tab)
+    {
+        activeTab = tab;
+        feedbackSuccess = string.Empty;
+        feedbackError = string.Empty;
+    }
+
+    private async Task OnStudentChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int id))
+        {
+            selectedStudentId = id;
+            selectedStudent = allStudents.FirstOrDefault(s => s.StudentId == id);
+            feedbackSuccess = string.Empty;
+            feedbackError = string.Empty;
+            await LoadStudentEnrollments();
+        }
+    }
+
+    private async Task LoadStudentEnrollments()
+    {
+        if (selectedStudentId > 0)
+        {
+            var lines = await ViewEnrollmentListUseCase.GetStudentRegisteredLinesAsync(selectedStudentId, "2025_HK1");
+            studentRegisteredLines = lines.ToList();
+        }
+        else
+        {
+            studentRegisteredLines.Clear();
+        }
+    }
+
     private async Task OnSectionSelected(ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out int id))
         {
             currentSectionId = id;
             searchKeyword = string.Empty;
+            feedbackSuccess = string.Empty;
+            feedbackError = string.Empty;
             await LoadSectionData();
         }
     }
@@ -265,5 +710,107 @@ else
             (e.Student?.FullName != null && e.Student.FullName.Contains(searchKeyword, StringComparison.OrdinalIgnoreCase)) ||
             (e.Student?.Email != null && e.Student.Email.Contains(searchKeyword, StringComparison.OrdinalIgnoreCase))
         ).ToList();
+    }
+
+    // Handlers for Drop Modal
+    private void OpenDropModal(int studentId, int sectionId, string? studentName, string? sectionCode, string? courseName)
+    {
+        targetStudentId = studentId;
+        targetSectionId = sectionId;
+        targetStudentName = studentName ?? "Sinh viên";
+        targetSectionCode = sectionCode ?? string.Empty;
+        targetCourseName = courseName ?? string.Empty;
+        isDropModalOpen = true;
+        feedbackSuccess = string.Empty;
+        feedbackError = string.Empty;
+    }
+
+    private void CloseDropModal()
+    {
+        isDropModalOpen = false;
+    }
+
+    private async Task HandleConfirmDrop()
+    {
+        isProcessing = true;
+        feedbackSuccess = string.Empty;
+        feedbackError = string.Empty;
+
+        try
+        {
+            bool success = await ViewEnrollmentListUseCase.DropSectionForStudentAsync(targetStudentId, targetSectionId, dropReason);
+            if (success)
+            {
+                feedbackSuccess = $"Đã xử lý hủy học phần {targetSectionCode} ({targetCourseName}) cho sinh viên {targetStudentName} thành công. Sĩ số lớp đã được giảm tương ứng!";
+                isDropModalOpen = false;
+
+                // Reload cả 2 view và làm mới danh mục lớp
+                allSections = (await SectionRepository.GetAllSectionsAsync()).ToList();
+                await LoadStudentEnrollments();
+                await LoadSectionData();
+            }
+            else
+            {
+                feedbackError = "Không tìm thấy dữ liệu đăng ký tương ứng để hủy môn. Vui lòng thử lại.";
+            }
+        }
+        catch (Exception ex)
+        {
+            feedbackError = $"Lỗi khi hủy môn học phần: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    // Handlers for Add Section Modal
+    private void OpenAddSectionModal()
+    {
+        addSectionId = 0;
+        isAddSectionModalOpen = true;
+        feedbackSuccess = string.Empty;
+        feedbackError = string.Empty;
+    }
+
+    private void CloseAddSectionModal()
+    {
+        isAddSectionModalOpen = false;
+    }
+
+    private async Task HandleConfirmAddSection()
+    {
+        if (addSectionId == 0 || selectedStudentId == 0) return;
+
+        isProcessing = true;
+        feedbackSuccess = string.Empty;
+        feedbackError = string.Empty;
+
+        try
+        {
+            var result = await ViewEnrollmentListUseCase.AddSectionForStudentAsync(selectedStudentId, addSectionId, "2025_HK1");
+            if (result.IsSuccess)
+            {
+                var addedSection = allSections.FirstOrDefault(s => s.SectionId == addSectionId);
+                feedbackSuccess = $"Đã đăng ký bổ sung lớp {addedSection?.SectionCode} ({addedSection?.Course?.CourseName}) cho sinh viên {selectedStudent?.FullName} thành công!";
+                isAddSectionModalOpen = false;
+
+                allSections = (await SectionRepository.GetAllSectionsAsync()).ToList();
+                await LoadStudentEnrollments();
+                await LoadSectionData();
+            }
+            else
+            {
+                feedbackError = result.ErrorMessage ?? "Không thể đăng ký lớp học phần này.";
+            }
+        }
+        catch (Exception ex)
+        {
+            feedbackError = $"Lỗi khi đăng ký bổ sung lớp học phần: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
     }
 }

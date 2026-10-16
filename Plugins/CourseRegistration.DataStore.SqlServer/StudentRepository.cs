@@ -1,91 +1,74 @@
-using System.Data;
 using CourseRegistration.CoreBusiness.Models;
 using CourseRegistration.UseCases.PluginInterfaces.DataStore;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace CourseRegistration.DataStore.SqlServer
 {
     public class StudentRepository : IStudentRepository
     {
-        private readonly ISqlConnectionFactory _connectionFactory;
+        private readonly IDbContextFactory<CourseRegistrationContext> _contextFactory;
 
-        public StudentRepository(ISqlConnectionFactory connectionFactory)
+        public StudentRepository(IDbContextFactory<CourseRegistrationContext> contextFactory)
         {
-            _connectionFactory = connectionFactory;
+            _contextFactory = contextFactory;
         }
 
         public async Task<IEnumerable<Student>> GetAllStudentsAsync()
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = "SELECT * FROM Students ORDER BY StudentCode ASC;";
-            return await connection.QueryAsync<Student>(sql);
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Students
+                .AsNoTracking()
+                .OrderBy(s => s.StudentCode)
+                .ToListAsync();
         }
 
         public async Task<Student?> GetStudentByIdAsync(int studentId)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = "SELECT * FROM Students WHERE StudentId = @StudentId;";
-            return await connection.QueryFirstOrDefaultAsync<Student>(sql, new { StudentId = studentId });
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.StudentId == studentId);
         }
 
         public async Task<Student?> GetStudentByCodeAsync(string studentCode)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = "SELECT * FROM Students WHERE StudentCode = @StudentCode;";
-            return await connection.QueryFirstOrDefaultAsync<Student>(sql, new { StudentCode = studentCode });
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.StudentCode == studentCode);
         }
 
         public async Task AddStudentAsync(Student student)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = @"
-                INSERT INTO Students (StudentCode, FullName, Email, PhoneNumber, AcademicYear, Major, MaxCreditsPerSemester)
-                VALUES (@StudentCode, @FullName, @Email, @PhoneNumber, @AcademicYear, @Major, @MaxCreditsPerSemester);
-                SELECT CAST(SCOPE_IDENTITY() as int);";
-
-            var id = await connection.ExecuteScalarAsync<int>(sql, student);
-            student.StudentId = id;
+            using var context = _contextFactory.CreateDbContext();
+            await context.Students.AddAsync(student);
+            await context.SaveChangesAsync();
         }
 
         public async Task UpdateStudentAsync(Student student)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = @"
-                UPDATE Students 
-                SET StudentCode = @StudentCode,
-                    FullName = @FullName,
-                    Email = @Email,
-                    PhoneNumber = @PhoneNumber,
-                    AcademicYear = @AcademicYear,
-                    Major = @Major,
-                    MaxCreditsPerSemester = @MaxCreditsPerSemester
-                WHERE StudentId = @StudentId;";
-
-            await connection.ExecuteAsync(sql, student);
+            using var context = _contextFactory.CreateDbContext();
+            var existing = await context.Students.FindAsync(student.StudentId);
+            if (existing != null)
+            {
+                existing.FullName = student.FullName;
+                existing.Email = student.Email;
+                existing.PhoneNumber = student.PhoneNumber;
+                existing.AcademicYear = student.AcademicYear;
+                existing.Major = student.Major;
+                existing.MaxCreditsPerSemester = student.MaxCreditsPerSemester;
+                await context.SaveChangesAsync();
+            }
         }
 
         public async Task<IEnumerable<CompletedCourse>> GetCompletedCoursesByStudentIdAsync(int studentId)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            const string sql = @"
-                SELECT cc.CompletedCourseId, cc.StudentId, cc.CourseId, cc.Semester, cc.Grade,
-                       c.CourseId, c.CourseCode, c.CourseName, c.Credits, c.Description
-                FROM CompletedCourses cc
-                INNER JOIN Courses c ON cc.CourseId = c.CourseId
-                WHERE cc.StudentId = @StudentId;";
-
-            var result = await connection.QueryAsync<CompletedCourse, Course, CompletedCourse>(
-                sql,
-                (completedCourse, course) =>
-                {
-                    completedCourse.Course = course;
-                    return completedCourse;
-                },
-                new { StudentId = studentId },
-                splitOn: "CourseId"
-            );
-
-            return result;
+            using var context = _contextFactory.CreateDbContext();
+            return await context.CompletedCourses
+                .AsNoTracking()
+                .Include(cc => cc.Course)
+                .Where(cc => cc.StudentId == studentId)
+                .ToListAsync();
         }
     }
 }

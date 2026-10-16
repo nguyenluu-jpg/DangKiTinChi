@@ -1,11 +1,8 @@
 # Hệ thống Đăng ký Học phần
 
 ## 1. Giới thiệu
-
 **Course Registration – Đăng ký học phần** là dự án website mô phỏng quy trình đăng ký học phần theo học kỳ, được thực hiện phục vụ học tập và thực hành phát triển ứng dụng Web.
-
 Dự án hướng đến hai nhóm người dùng chính: **Sinh viên** và **cán bộ quản trị/Phòng Đào tạo**. Hệ thống sử dụng dữ liệu mẫu để minh họa việc tra cứu học phần, lớp học phần, lịch học và thông tin đăng ký.
-
 > Đây là dự án mô phỏng phục vụ học tập, không phải hệ thống chính thức của một trường đại học.
 
 ## 2. Công nghệ sử dụng
@@ -23,9 +20,7 @@ Dự án hướng đến hai nhóm người dùng chính: **Sinh viên** và **c
 **Lưu ý:** Mã nguồn hiện tại tham chiếu Microsoft.EntityFrameworkCore.SqlServer; README này không mô tả Dapper là công nghệ truy xuất dữ liệu chính.
 
 ## 3. Cấu trúc dự án
-
 Solution chính: **CourseRegistration.sln**
-
 | Project/thư mục | Vai trò |
 |---|---|
 | **CourseRegistration.Web** | Ứng dụng Web Blazor, cấu hình dịch vụ và giao diện |
@@ -35,33 +30,23 @@ Solution chính: **CourseRegistration.sln**
 | **Plugins/CourseRegistration.DataStore.SqlServer** | Thành phần truy xuất dữ liệu với SQL Server |
 | **Plugins/CourseRegistration.StateStore.DI** | Thành phần đăng ký/cấu hình state store và dependency injection |
 | **DangKyTinChi_Database.sql** | Script tạo cơ sở dữ liệu và nạp dữ liệu mẫu |
-
 Ứng dụng được tổ chức theo hướng tách giao diện, logic ứng dụng, mô hình cốt lõi và các thành phần lưu trữ dữ liệu. Việc sử dụng dữ liệu mẫu hay SQL Server phụ thuộc vào cấu hình triển khai trong mã nguồn.
 
 ## 4. Nhóm chức năng và phạm vi
-
 Dự án tập trung vào các nghiệp vụ đăng ký học phần sau:
-
 - Tra cứu học phần và lớp học phần.
 - Xem thông tin lớp học phần và lịch học.
 - Quản lý lựa chọn lớp học phần và thông tin đăng ký.
 - Quản lý dữ liệu học phần, sinh viên, lớp học phần và lịch học.
 - Xây dựng các điều kiện nghiệp vụ cần kiểm tra khi đăng ký.
-
 Các quy tắc nghiệp vụ mục tiêu của đề tài gồm:
-
 1. Kiểm tra học phần tiên quyết.
 2. Phát hiện trùng lịch học.
 3. Kiểm tra giới hạn tín chỉ của sinh viên trong học kỳ.
 4. Kiểm tra sức chứa tối đa của lớp học phần, kể cả trường hợp nhiều yêu cầu đăng ký đồng thời.
 5. Xét trạng thái và thời gian mở/đóng đăng ký khi chức năng này được triển khai.
 
-Không nên hiểu toàn bộ các quy tắc trên đã hoàn tất chỉ dựa trên README. Mức độ hoạt động thực tế cần được xác nhận bằng việc chạy và kiểm thử từng chức năng trong phiên bản hiện tại.
-
 ## 5. Cơ sở dữ liệu
-
-Script **DangKyTinChi_Database.sql** tạo cơ sở dữ liệu **DangKyTinChi** và định nghĩa các bảng sau:
-
 | Bảng | Mục đích |
 |---|---|
 | **Courses** | Danh mục học phần |
@@ -73,11 +58,9 @@ Script **DangKyTinChi_Database.sql** tạo cơ sở dữ liệu **DangKyTinChi**
 | **Enrollments** | Phiếu đăng ký học phần |
 | **EnrollmentLines** | Chi tiết lớp học phần trong phiếu đăng ký |
 | **UserAccounts** | Tài khoản người dùng và vai trò |
-
 Script có dữ liệu mẫu để hỗ trợ thử nghiệm các tình huống như điều kiện tiên quyết, trùng lịch và lớp đã đủ sức chứa. Script có lệnh xóa rồi tạo lại các bảng; hãy chỉ chạy trên cơ sở dữ liệu thử nghiệm vì dữ liệu hiện có trong các bảng này sẽ bị xóa khi chạy lại.
 
 ## 6. Định hướng phát triển
-
 - Tiếp tục đối chiếu các use case với chức năng thực tế trên giao diện.
 - Kiểm thử các quy tắc tiên quyết, trùng lịch, giới hạn tín chỉ và sức chứa lớp.
 - Kiểm tra tính nhất quán giữa model, repository và cấu trúc SQL Server.
@@ -85,14 +68,12 @@ Script có dữ liệu mẫu để hỗ trợ thử nghiệm các tình huống 
 - Cải thiện kiểm thử và tài liệu sử dụng khi các chức năng được hoàn thiện.
 
 ## 7. Tác giả
-
 **Nguyễn Thị Lưu**  
 - Ngành: Tin học Kinh tế  
 - Khoa: Hệ thống Thông tin Kinh tế  
 - Trường: Trường Đại học Kinh tế – Đại học Huế
 
 ## 8. Mã nguồn
-
 Repository: [https://github.com/nguyenluu-jpg/DangKiTinChi](https://github.com/nguyenluu-jpg/DangKiTinChi)
 
 ---

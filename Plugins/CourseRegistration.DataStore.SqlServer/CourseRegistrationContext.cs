@@ -86,6 +86,12 @@ namespace CourseRegistration.DataStore.SqlServer
             {
                 entity.ToTable("CompletedCourses");
                 entity.HasKey(cc => cc.CompletedCourseId);
+                entity.Property(cc => cc.Semester)
+                      .HasColumnName("SemesterCompleted")
+                      .HasMaxLength(20);
+                entity.Property(cc => cc.Grade)
+                      .HasConversion<decimal>()
+                      .HasPrecision(4, 2);
                 entity.HasOne(cc => cc.Student)
                       .WithMany()
                       .HasForeignKey(cc => cc.StudentId)

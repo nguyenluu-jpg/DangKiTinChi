@@ -7,7 +7,7 @@ namespace CourseRegistration.DataStore.HardCoded
     {
         private static readonly List<Student> _students = new List<Student>
         {
-            //  Đã hoàn thành TIN101 và TIN102 -> Đủ điều kiện học WEB301, KTPM302
+            // SV21001: Đã hoàn thành TIN101 và TIN102 -> Đủ điều kiện học WEB301, KTPM302
             new Student
             {
                 StudentId = 1,
@@ -19,28 +19,102 @@ namespace CourseRegistration.DataStore.HardCoded
                 Major = "Công nghệ Thông tin",
                 MaxCreditsPerSemester = 24
             },
-            // MỚI CHỈ HOÀN THÀNH TIN101 (CHƯA HỌC TIN102) -> DEMO VI PHẠM TIÊN QUYẾT KHI ĐĂNG KÝ WEB301!
+            // SV21002: MỚI CHỈ HOÀN THÀNH TIN101 (CHƯA HỌC TIN102) -> DEMO VI PHẠM TIÊN QUYẾT KHI ĐĂNG KÝ WEB301!
             new Student
             {
                 StudentId = 2,
-                StudentCode = "SV22002",
+                StudentCode = "SV21002",
                 FullName = "Trần Thị Mai",
                 Email = "mai.tt@student.edu.vn",
                 PhoneNumber = "0912345678",
-                AcademicYear = "K22",
+                AcademicYear = "K21",
                 Major = "Hệ thống Thông tin",
                 MaxCreditsPerSemester = 20
+            },
+            new Student
+            {
+                StudentId = 3,
+                StudentCode = "SV21003",
+                FullName = "Lê Hoàng Nam",
+                Email = "nam.lh@student.edu.vn",
+                PhoneNumber = "0923456789",
+                AcademicYear = "K21",
+                Major = "Kỹ thuật Phần mềm",
+                MaxCreditsPerSemester = 24
+            },
+            new Student
+            {
+                StudentId = 4,
+                StudentCode = "SV21004",
+                FullName = "Phạm Minh Anh",
+                Email = "anh.pm@student.edu.vn",
+                PhoneNumber = "0934567890",
+                AcademicYear = "K21",
+                Major = "Công nghệ Thông tin",
+                MaxCreditsPerSemester = 20
+            },
+            new Student
+            {
+                StudentId = 5,
+                StudentCode = "SV21005",
+                FullName = "Hoàng Đức Huy",
+                Email = "huy.hd@student.edu.vn",
+                PhoneNumber = "0945678901",
+                AcademicYear = "K21",
+                Major = "Khoa học Máy tính",
+                MaxCreditsPerSemester = 24
+            },
+            new Student
+            {
+                StudentId = 6,
+                StudentCode = "SV21006",
+                FullName = "Vũ Thảo Linh",
+                Email = "linh.vt@student.edu.vn",
+                PhoneNumber = "0956789012",
+                AcademicYear = "K21",
+                Major = "Hệ thống Thông tin",
+                MaxCreditsPerSemester = 22
+            },
+            new Student
+            {
+                StudentId = 7,
+                StudentCode = "SV21007",
+                FullName = "Đặng Quốc Bảo",
+                Email = "bao.dq@student.edu.vn",
+                PhoneNumber = "0967890123",
+                AcademicYear = "K21",
+                Major = "An toàn Thông tin",
+                MaxCreditsPerSemester = 24
             }
         };
 
         private static readonly List<CompletedCourse> _completedCourses = new List<CompletedCourse>
         {
-            // SV 1 đã học xong TIN101 và TIN102
-            new CompletedCourse { CompletedCourseId = 1, StudentId = 1, CourseId = 1, Semester = "2023_HK1", Grade = 8.5 },
-            new CompletedCourse { CompletedCourseId = 2, StudentId = 1, CourseId = 2, Semester = "2023_HK2", Grade = 7.5 },
+            // SV21001 đã học xong TIN101 và TIN102
+            new CompletedCourse { CompletedCourseId = 1, StudentId = 1, CourseId = 1, Semester = "2024_HK1", Grade = 8.5 },
+            new CompletedCourse { CompletedCourseId = 2, StudentId = 1, CourseId = 2, Semester = "2024_HK2", Grade = 7.5 },
             
+            // SV21002 mới chỉ học TIN101 (chưa học TIN102) -> Demo chặn tiên quyết
+            new CompletedCourse { CompletedCourseId = 3, StudentId = 2, CourseId = 1, Semester = "2025_HK1", Grade = 9.0 },
 
-            new CompletedCourse { CompletedCourseId = 3, StudentId = 2, CourseId = 1, Semester = "2024_HK1", Grade = 9.0 }
+            // SV21003 đã học TIN101, TIN102, CSDL201
+            new CompletedCourse { CompletedCourseId = 4, StudentId = 3, CourseId = 1, Semester = "2024_HK1", Grade = 7.5 },
+            new CompletedCourse { CompletedCourseId = 5, StudentId = 3, CourseId = 2, Semester = "2024_HK2", Grade = 8.0 },
+            new CompletedCourse { CompletedCourseId = 6, StudentId = 3, CourseId = 3, Semester = "2025_HK1", Grade = 8.5 },
+
+            // SV21004 đã học TIN101
+            new CompletedCourse { CompletedCourseId = 7, StudentId = 4, CourseId = 1, Semester = "2025_HK1", Grade = 8.5 },
+
+            // SV21005 đã học TIN101, TIN102
+            new CompletedCourse { CompletedCourseId = 8, StudentId = 5, CourseId = 1, Semester = "2024_HK1", Grade = 7.0 },
+            new CompletedCourse { CompletedCourseId = 9, StudentId = 5, CourseId = 2, Semester = "2024_HK2", Grade = 7.0 },
+
+            // SV21006 đã học TIN101
+            new CompletedCourse { CompletedCourseId = 10, StudentId = 6, CourseId = 1, Semester = "2025_HK1", Grade = 8.0 },
+
+            // SV21007 đã học TIN101, TIN102
+            new CompletedCourse { CompletedCourseId = 11, StudentId = 7, CourseId = 1, Semester = "2024_HK1", Grade = 9.0 },
+            new CompletedCourse { CompletedCourseId = 12, StudentId = 7, CourseId = 2, Semester = "2024_HK2", Grade = 8.5 }
         };
 
         public Task<IEnumerable<Student>> GetAllStudentsAsync()

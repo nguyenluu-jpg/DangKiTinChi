@@ -21,26 +21,32 @@
 | **9** | **EditForm + DataAnnotations; lỗi nhập liệu hiển thị cạnh ô nhập** | • `CourseRegistration.Web/Components/Pages/LoginComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ManageCoursesComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ManageSectionsComponent.razor` | • `LoginComponent.razor`: **Dòng 34 - 66**<br>• `ManageCoursesComponent.razor`: **Dòng 37 - 80**<br>• `ManageSectionsComponent.razor`: **Dòng 37 - 100**<br>• Có `<EditForm>`, `<DataAnnotationsValidator />`, `<ValidationMessage For="..." />` cạnh từng ô nhập. | **Đạt** |
 | **10** | **Ca vi phạm 2 luật nghiệp vụ hiện thông báo thân thiện, không văng lỗi** | • `CourseRegistration.Web/Components/Pages/RegistrationCartComponent.razor`<br>• `CourseRegistration.Web/Components/Shared/ValidationAlertComponent.razor` | • Không văng exception (crash).<br>• Hiển thị alert thông báo lỗi chi tiết lý do vi phạm (tên môn tiên quyết chưa đạt / tên lớp và tiết học bị trùng). | **Đạt** |
 | **11** | **Dùng được trên màn hình điện thoại DevTools, bề rộng 390px** | • `CourseRegistration.Web/Components/Layout/NavMenu.razor`<br>• `CourseRegistration.Web/Components/Shared/ScheduleTableComponent.razor` | • Navbar có nút hamburger thu gọn trên mobile.<br>• Thời khóa biểu có chế độ **Agenda xem theo ngày cuộn ngang**, thiết kế tối ưu riêng cho mobile 390px. | **Đạt** |
-| **12** | **Đăng nhập, đăng xuất; ít nhất 2 vai trò** | • `CourseRegistration.Web/Components/Pages/LoginComponent.razor`<br>• `CourseRegistration.Web/Components/Layout/NavMenu.razor` | • **Vai trò 1 (Student):** `sv21001` / `123456`, `sv22002` / `123456`<br>• **Vai trò 2 (Admin):** `admin` / `admin123`<br>• Có nút Đăng xuất xóa phiên làm việc. | **Đạt** |
-| **13** | **Tài khoản thường gõ thẳng URL trang quản trị bị chặn** | • `CourseRegistration.Web/Components/Pages/Admin/ManageCoursesComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ManageSectionsComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ViewEnrollmentListComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/AccessDeniedComponent.razor` | • `ManageCoursesComponent.razor`: **Dòng 121 - 127**<br>• `ManageSectionsComponent.razor`: **Dòng 180 - 186**<br>• `ViewEnrollmentListComponent.razor`: **Dòng 620 - 626**<br>• Kiểm tra `role != "Admin"` trong `OnInitializedAsync`, gõ thẳng URL tự động chuyển hướng về `/access-denied`. | **Đạt** |
+| **12** | **Đăng nhập, đăng xuất; ít nhất 2 vai trò** | • `CourseRegistration.Web/Components/Pages/LoginComponent.razor`<br>• `CourseRegistration.Web/Components/Layout/NavMenu.razor` | • **Vai trò 1 (Student):** 7 sinh viên tuần tự `sv21001` đến `sv21007` / `123456`<br>• **Vai trò 2 (Admin):** `admin` / `admin123`<br>• Có nút Đăng xuất xóa phiên làm việc. | **Đạt** |
+| **13** | **Tài khoản thường gõ thẳng URL trang quản trị bị chặn** | • `CourseRegistration.Web/Components/Pages/Admin/ManageCoursesComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ManageSectionsComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ViewEnrollmentListComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/AccessDeniedComponent.razor` | • `ManageCoursesComponent.razor`<br>• `ManageSectionsComponent.razor`<br>• `ViewEnrollmentListComponent.razor`<br>• Kiểm tra `role != "Admin"` trong `OnInitializedAsync`, gõ thẳng URL hoặc truy cập trái phép bị chặn ngay với thông báo HTTP 403 Forbidden giải thích rõ ràng lý do bị từ chối truy cập. | **Đạt** |
 
 ---
 
 ### HƯỚNG DẪN DEMO NHANH CHO GIẢNG VIÊN CHẤM THI
 
 #### 1. Tài khoản đăng nhập hệ thống:
-* **Quản trị viên (Admin):** `admin` / mật khẩu: `admin123`
-* **Sinh viên 1 (Đạt chuẩn tiên quyết):** `sv21001` (Nguyễn Văn Tuấn) / mật khẩu: `123456`
-* **Sinh viên 2 (Chưa đạt OOP - TIN102):** `sv22002` (Trần Thị Mai) / mật khẩu: `123456`
+* **Quản trị viên (Admin - Phòng Đào Tạo):** `admin` / mật khẩu: `admin123`
+* **Sinh viên 1 (Đã đạt chuẩn tiên quyết TIN101 & TIN102):** `sv21001` (Nguyễn Văn Tuấn) / mật khẩu: `123456`
+* **Sinh viên 2 (CHƯA học OOP - TIN102 -> DEMO CHẶN TIÊN QUYẾT):** `sv21002` (Trần Thị Mai) / mật khẩu: `123456`
+* **Các sinh viên khác (Dữ liệu tuần tự):**
+  * `sv21003` (Lê Hoàng Nam) / mật khẩu: `123456`
+  * `sv21004` (Phạm Minh Anh) / mật khẩu: `123456`
+  * `sv21005` (Hoàng Đức Huy) / mật khẩu: `123456`
+  * `sv21006` (Vũ Thảo Linh) / mật khẩu: `123456`
+  * `sv21007` (Đặng Quốc Bảo) / mật khẩu: `123456`
 
 ---
 
 #### 2. Kịch bản Demo 2 Luật nghiệp vụ (Tiêu chí 3 & Tiêu chí 10):
 * **Demo Luật 1 (Vi phạm học phần tiên quyết):**
-  1. Đăng nhập bằng sinh viên `sv22002`.
+  1. Đăng nhập bằng sinh viên `sv21002`.
   2. Vào **Tra cứu học phần**, tìm môn **Lập trình Ứng dụng Web (WEB301)**.
   3. Hệ thống hiển thị cảnh báo: *"Chưa đạt học phần tiên quyết: Lập trình Hướng đối tượng (TIN102)"*.
-  4. Nếu cố tình đưa vào giỏ và bấm *"Gửi phiếu đăng ký"*, hệ thống từ chối giao dịch và hiển thị thông báo thân thiện: *"Không thể thực hiện đăng ký: Chưa hoàn thành học phần tiên quyết: Lập trình Hướng đối tượng"*.
+  4. Nếu cố tình đưa vào giỏ và bấm *"Gửi phiếu đăng ký"*, hệ thống CHẶN GIAO DỊCH và hiển thị thông báo thân thiện: *"Hệ Thống Chặn Đăng Ký (Vi Phạm Luật Nghiệp Vụ) - Chưa tích lũy môn học tiên quyết: Lập trình Hướng đối tượng"*.
 * **Demo Luật 2 (Vi phạm chống trùng lịch học):**
   1. Đăng nhập bằng sinh viên `sv21001`.
   2. Chọn môn `WEB301_01` (Lịch học: Thứ 2, tiết 1-4) vào giỏ.

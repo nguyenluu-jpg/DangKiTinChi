@@ -58,19 +58,22 @@ else if (currentRole == "Admin")
             </div>
             <div class="col-md-5">
                 <div class="p-2 bg-light rounded-3 small border">
-                    @if (selectedStudentId == 1)
+                    @{
+                        var selStu = availableStudents.FirstOrDefault(s => s.StudentId == selectedStudentId);
+                    }
+                    @if (selStu?.StudentCode == "SV21002")
                     {
-                        <div class="text-success fw-semibold">
-                            <i class="bi bi-patch-check-fill me-1"></i><strong>SV Tuấn (K21):</strong> Đã đạt TIN101 & TIN102
+                        <div class="text-danger fw-semibold">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i><strong>SV Mai (SV21002):</strong> CHƯA học TIN102 (OOP)
                         </div>
-                        <div class="text-muted" style="font-size: 0.76rem;">Đủ điều kiện đăng ký tất cả các môn học nâng cao.</div>
+                        <div class="text-danger" style="font-size: 0.76rem;">Sẽ bị hệ thống CHẶN NGAY khi đăng ký môn Web hoặc CNPM (Luật 1).</div>
                     }
                     else
                     {
-                        <div class="text-danger fw-semibold">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i><strong>SV Mai (K22):</strong> CHƯA học TIN102 (OOP)
+                        <div class="text-success fw-semibold">
+                            <i class="bi bi-patch-check-fill me-1"></i><strong>@(selStu?.FullName) (@(selStu?.StudentCode)):</strong> Đã đạt chuẩn tiên quyết
                         </div>
-                        <div class="text-danger" style="font-size: 0.76rem;">Sẽ bị hệ thống CHẶN NGAY khi đăng ký môn Web hoặc CNPM.</div>
+                        <div class="text-muted" style="font-size: 0.76rem;">Đủ điều kiện đăng ký các môn học trong chương trình.</div>
                     }
                 </div>
             </div>
@@ -84,7 +87,7 @@ else
     <div class="card border-0 shadow-sm p-3 mb-4 bg-white">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div class="d-flex align-items-center gap-3">
-                <div class="user-avatar @(selectedStudentId == 1 ? "bg-primary text-white" : "bg-warning text-dark")">
+                <div class="user-avatar @(curStudent?.StudentCode == "SV21002" ? "bg-warning text-dark" : "bg-primary text-white")">
                     <i class="bi bi-person-fill fs-5"></i>
                 </div>
                 <div>
@@ -98,16 +101,16 @@ else
                 </div>
             </div>
             <div>
-                @if (selectedStudentId == 1)
+                @if (curStudent?.StudentCode == "SV21002")
                 {
-                    <span class="badge bg-success-subtle text-success px-3 py-2 small">
-                        <i class="bi bi-patch-check-fill me-1"></i>Đã đạt chuẩn tiên quyết (TIN101 & 102)
+                    <span class="badge bg-danger-subtle text-danger px-3 py-2 small rounded-pill">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Chưa đạt môn tiên quyết TIN102 &bull; Hệ thống sẽ từ chối và chặn khi bấm Gửi phiếu
                     </span>
                 }
                 else
                 {
-                    <span class="badge bg-warning-subtle text-danger px-3 py-2 small">
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Chưa đạt môn tiên quyết TIN102
+                    <span class="badge bg-success-subtle text-success px-3 py-2 small">
+                        <i class="bi bi-patch-check-fill me-1"></i>Đã đạt chuẩn tiên quyết môn học
                     </span>
                 }
             </div>

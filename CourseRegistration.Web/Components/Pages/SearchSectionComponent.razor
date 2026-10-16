@@ -109,16 +109,16 @@ else if (currentStudent != null)
             </div>
 
             <div>
-                @if (currentStudent.StudentId == 1)
+                @if (currentStudent.StudentCode == "SV21002")
                 {
-                    <span class="badge bg-success-subtle text-success px-2 py-1 small">
-                        <i class="bi bi-check2-circle me-1"></i>Đã đạt TIN101 & TIN102
+                    <span class="badge bg-danger-subtle text-danger px-3 py-2 small rounded-pill">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Chưa đạt môn tiên quyết TIN102 &bull; Hệ thống sẽ chặn khi gửi phiếu đăng ký môn Web (WEB301)
                     </span>
                 }
                 else
                 {
-                    <span class="badge bg-warning-subtle text-warning-emphasis px-2 py-1 small">
-                        <i class="bi bi-exclamation-triangle me-1"></i>Chưa đạt TIN102 (Bị chặn WEB301 & KTPM302)
+                    <span class="badge bg-success-subtle text-success px-3 py-2 small rounded-pill">
+                        <i class="bi bi-check2-circle me-1"></i>Đã đạt đủ điều kiện học phần tiên quyết
                     </span>
                 }
             </div>
@@ -185,7 +185,22 @@ else if (currentStudent != null)
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Đang tải...</span>
         </div>
-        <p class="mt-2 text-muted">Đang tải danh sách lớp học phần...</p>
+        <p class="mt-2 text-muted fw-semibold">Đang tải danh sách lớp học phần...</p>
+    </div>
+}
+else if (!string.IsNullOrEmpty(loadErrorMessage))
+{
+    <div class="alert alert-danger d-flex align-items-center justify-content-between p-3 my-4 rounded-3 shadow-sm border-danger-subtle">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-triangle-fill fs-4 text-danger me-3"></i>
+            <div>
+                <div class="fw-bold">Lỗi khi tải dữ liệu</div>
+                <div class="small text-danger-emphasis">@loadErrorMessage</div>
+            </div>
+        </div>
+        <button class="btn btn-danger btn-sm px-3" @onclick="LoadMasterData">
+            <i class="bi bi-arrow-clockwise me-1"></i> Thử lại
+        </button>
     </div>
 }
 else if (!filteredSections.Any())
@@ -240,6 +255,7 @@ else
     private int selectedCourseId = 0;
     private bool onlyAvailable = false;
     private bool isLoading = true;
+    private string? loadErrorMessage;
     private bool isAuthenticated = false;
     private string currentRole = string.Empty;
     private string? feedbackMessage;
@@ -252,24 +268,43 @@ else
 
     private async void HandleUserOrCartChanged()
     {
-        await LoadStudentData();
-        await LoadCartData();
-        FilterSections();
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            await LoadStudentData();
+            await LoadCartData();
+            FilterSections();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            loadErrorMessage = ex.Message;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task LoadMasterData()
     {
         isLoading = true;
-        allCourses = (await CourseRepository.GetAllCoursesAsync()).ToList();
-        allPrerequisites = (await CourseRepository.GetAllPrerequisitesAsync()).ToList();
-        var rawSections = await SearchSectionUseCase.ExecuteAsync(string.Empty, "2026_HK1");
-        allSections = rawSections.ToList();
+        loadErrorMessage = null;
+        try
+        {
+            allCourses = (await CourseRepository.GetAllCoursesAsync()).ToList();
+            allPrerequisites = (await CourseRepository.GetAllPrerequisitesAsync()).ToList();
+            var rawSections = await SearchSectionUseCase.ExecuteAsync(string.Empty, "2026_HK1");
+            allSections = rawSections.ToList();
 
-        await LoadStudentData();
-        await LoadCartData();
-        FilterSections();
-        isLoading = false;
+            await LoadStudentData();
+            await LoadCartData();
+            FilterSections();
+        }
+        catch (Exception ex)
+        {
+            loadErrorMessage = "Không thể kết nối hoặc tải dữ liệu học phần: " + ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task LoadStudentData()

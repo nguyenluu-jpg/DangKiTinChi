@@ -31,7 +31,7 @@
                 }
 
                 <!-- EditForm + DataAnnotationsValidator theo tiêu chí K3.2 -->
-                <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+                <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" autocomplete="off">
                     <DataAnnotationsValidator />
 
                     <div class="mb-3">
@@ -42,6 +42,11 @@
                             </span>
                             <InputText class="form-control border-start-0 ps-0 bg-light" 
                                        placeholder="vd: admin hoặc sv21001" 
+                                       autocomplete="off"
+                                       autocorrect="off"
+                                       spellcheck="false"
+                                       data-lpignore="true"
+                                       data-ms-editor="false"
                                        @bind-Value="loginModel.Username" />
                         </div>
                         <div class="text-danger small mt-1">
@@ -58,6 +63,9 @@
                             <InputText type="password" 
                                        class="form-control border-start-0 ps-0 bg-light" 
                                        placeholder="Mật khẩu của bạn" 
+                                       autocomplete="new-password"
+                                       data-lpignore="true"
+                                       data-ms-editor="false"
                                        @bind-Value="loginModel.Password" />
                         </div>
                         <div class="text-danger small mt-1">
@@ -66,7 +74,7 @@
                     </div>
 
                     <button type="submit" 
-                            class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2"
+                            class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-3"
                             disabled="@isLoading">
                         @if (isLoading)
                         {
@@ -81,41 +89,15 @@
                     </button>
                 </EditForm>
 
-                <!-- Thẻ Hướng Dẫn Tài Khoản Mẫu Tiện Chấm Thi -->
-                <div class="mt-4 pt-3 border-top text-center">
-                    <div class="small fw-bold text-muted mb-2 text-uppercase" style="font-size: 0.72rem;">
-                        Tài khoản chấm thi (Bấm để điền nhanh)
+                <!-- Hỗ trợ đăng nhập chuẩn cổng trường -->
+                <div class="mt-3 pt-3 border-top text-center text-muted small">
+                    <i class="bi bi-shield-check text-primary me-1"></i>
+                    Hệ thống xác thực tài khoản sinh viên &amp; cán bộ quản trị.
+                    <div class="mt-1 text-secondary" style="font-size: 0.78rem;">
+                        Quên mật khẩu hoặc cần cấp lại tài khoản? Vui lòng liên hệ <span class="fw-semibold text-dark">Phòng Đào Tạo</span>.
                     </div>
-                    <div class="d-flex flex-column gap-2">
-                        <button type="button" 
-                                class="btn btn-outline-danger btn-sm text-start d-flex justify-content-between align-items-center py-2 px-3 rounded-3"
-                                @onclick="@(() => SetCredentials("admin", "admin123"))">
-                            <div>
-                                <div class="fw-bold"><i class="bi bi-shield-lock-fill me-1"></i> Quản trị viên (Admin)</div>
-                                <div class="small text-muted" style="font-size: 0.75rem;">admin &bull; Toàn quyền quản trị</div>
-                            </div>
-                            <span class="badge bg-danger">admin123</span>
-                        </button>
-
-                        <button type="button" 
-                                class="btn btn-outline-primary btn-sm text-start d-flex justify-content-between align-items-center py-2 px-3 rounded-3"
-                                @onclick="@(() => SetCredentials("sv21001", "123456"))">
-                            <div>
-                                <div class="fw-bold"><i class="bi bi-person-check-fill me-1"></i> SV: Nguyễn Văn Tuấn</div>
-                                <div class="small text-muted" style="font-size: 0.75rem;">sv21001 &bull; Đã qua TIN101, 102</div>
-                            </div>
-                            <span class="badge bg-primary">123456</span>
-                        </button>
-
-                        <button type="button" 
-                                class="btn btn-outline-warning btn-sm text-start d-flex justify-content-between align-items-center py-2 px-3 rounded-3"
-                                @onclick="@(() => SetCredentials("sv22002", "123456"))">
-                            <div>
-                                <div class="fw-bold"><i class="bi bi-person-exclamation me-1"></i> SV: Trần Thị Mai</div>
-                                <div class="small text-muted" style="font-size: 0.75rem;">sv22002 &bull; Chưa qua TIN102 (Demo chặn)</div>
-                            </div>
-                            <span class="badge bg-warning text-dark">123456</span>
-                        </button>
+                    <div class="mt-2 text-muted" style="font-size: 0.75rem;">
+                        Admin: <code>admin</code> (admin123) &bull; SV: <code>sv21001</code> đến <code>sv21007</code> (123456)
                     </div>
                 </div>
             </div>
@@ -127,13 +109,6 @@
     private LoginViewModel loginModel = new LoginViewModel();
     private string errorMessage = string.Empty;
     private bool isLoading = false;
-
-    private void SetCredentials(string u, string p)
-    {
-        loginModel.Username = u;
-        loginModel.Password = p;
-        errorMessage = string.Empty;
-    }
 
     private async Task HandleLogin()
     {

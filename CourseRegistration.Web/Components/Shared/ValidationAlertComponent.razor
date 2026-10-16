@@ -2,18 +2,24 @@
 
 @if (Errors != null && Errors.Any())
 {
-    <div class="alert alert-danger alert-dismissible fade show shadow-sm border-danger-subtle my-3" role="alert">
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm border-danger-subtle my-3 rounded-3" role="alert">
         <div class="d-flex align-items-center mb-2">
-            <i class="bi bi-exclamation-triangle-fill fs-4 text-danger me-2"></i>
-            <h5 class="alert-heading mb-0 fw-bold">Không thể thực hiện đăng ký</h5>
+            <i class="bi bi-shield-x fs-4 text-danger me-2"></i>
+            <h5 class="alert-heading mb-0 fw-bold">Hệ Thống Chặn Đăng Ký (Vi Phạm Luật Nghiệp Vụ)</h5>
         </div>
-        <p class="mb-2 text-secondary small">Vui lòng kiểm tra lại các điều kiện sau trước khi tiếp tục:</p>
-        <ul class="mb-0 ps-3">
+        <p class="mb-2 text-secondary small">
+            Giao dịch đăng ký học phần bị từ chối do vi phạm quy chế đào tạo sau đây:
+        </p>
+        <ul class="mb-2 ps-3">
             @foreach (var error in Errors)
             {
-                <li class="fw-semibold text-danger-emphasis">@error</li>
+                <li class="fw-bold text-danger">@error</li>
             }
         </ul>
+        <div class="small text-muted border-top pt-2 mt-2">
+            <i class="bi bi-info-circle me-1"></i>
+            <em>Hệ thống đã tự động hủy bỏ giao dịch (Rollback) để đảm bảo toàn vẹn dữ liệu học vụ.</em>
+        </div>
         @if (OnDismiss.HasDelegate)
         {
             <button type="button" class="btn-close" aria-label="Close" @onclick="HandleDismiss"></button>

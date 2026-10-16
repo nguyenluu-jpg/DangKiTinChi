@@ -101,12 +101,12 @@
                             {
                                 var displayName = currentStudent?.FullName ?? currentUser?.FullName ?? "Sinh viên";
                                 var displayCode = currentStudent?.StudentCode ?? currentUser?.Username ?? "SV";
-                                <div class="user-avatar @(currentStudent?.StudentId == 1 ? "bg-primary" : "bg-warning text-dark")">
+                                <div class="user-avatar @(currentStudent?.StudentCode == "SV21002" ? "bg-warning text-dark" : "bg-primary")">
                                     <i class="bi bi-person-fill"></i>
                                 </div>
                                 <div class="text-start d-none d-sm-block">
                                     <div class="fw-bold small lh-1 text-white">@displayName</div>
-                                    <span class="badge @(currentStudent?.StudentId == 1 ? "bg-primary-subtle text-primary" : "bg-warning-subtle text-warning") px-1 py-0" style="font-size: 0.68rem;">
+                                    <span class="badge @(currentStudent?.StudentCode == "SV21002" ? "bg-warning-subtle text-warning" : "bg-primary-subtle text-primary") px-1 py-0" style="font-size: 0.68rem;">
                                         @displayCode &bull; @(currentStudent?.MaxCreditsPerSemester ?? 24) TC
                                     </span>
                                 </div>
@@ -147,7 +147,7 @@
                                         <button class="dropdown-item rounded-2 py-2 d-flex align-items-center justify-content-between @(isCurrent ? "bg-light-subtle border-start border-primary border-3" : "")" 
                                                 @onclick="() => SwitchStudent(s.StudentId)">
                                             <div class="d-flex align-items-center gap-2">
-                                                <div class="user-avatar-sm @(s.StudentId == 1 ? "bg-primary text-white" : "bg-warning text-dark")">
+                                                <div class="user-avatar-sm @(s.StudentCode == "SV21002" ? "bg-warning text-dark" : "bg-primary text-white")">
                                                     <i class="bi bi-person"></i>
                                                 </div>
                                                 <div>
@@ -155,8 +155,8 @@
                                                     <div class="text-muted" style="font-size: 0.72rem;">
                                                         @s.StudentCode &bull; @s.Major
                                                     </div>
-                                                    <div class="extra-info-text @(s.StudentId == 1 ? "text-success" : "text-danger")" style="font-size: 0.7rem;">
-                                                        @(s.StudentId == 1 ? "✓ Đã học TIN101 & 102" : "⚠️ Chưa học TIN102")
+                                                    <div class="extra-info-text @(s.StudentCode == "SV21002" ? "text-danger fw-semibold" : "text-success")" style="font-size: 0.7rem;">
+                                                        @(s.StudentCode == "SV21002" ? "⚠️ Chưa học TIN102 (Demo chặn Tiên quyết)" : "✓ Đạt chuẩn môn tiên quyết")
                                                     </div>
                                                 </div>
                                             </div>

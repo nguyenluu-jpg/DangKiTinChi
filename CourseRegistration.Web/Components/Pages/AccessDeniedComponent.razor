@@ -7,19 +7,24 @@
             <div class="mb-3 text-danger">
                 <i class="bi bi-shield-slash-fill display-1"></i>
             </div>
-            <h2 class="fw-bold text-dark mb-2">Từ Chối Truy Cập</h2>
-            <div class="badge bg-danger-subtle text-danger px-3 py-1 mb-3 fs-6">HTTP 403 Forbidden - Quyền Hạn Bị Giới Hạn</div>
+            <h2 class="fw-bold text-dark mb-2">Hệ Thống Chặn Truy Cập</h2>
+            <div class="badge bg-danger-subtle text-danger px-3 py-1 mb-3 fs-6">HTTP 403 Forbidden &bull; Phân quyền bảo vệ trang Quản trị</div>
             
-            <p class="text-muted mb-4 lead fs-6">
-                Khu vực này thuộc phân hệ <strong>Quản Trị Đào Tạo</strong>. Bạn đang đăng nhập bằng tài khoản sinh viên hoặc chưa được cấp quyền quản trị viên.
-            </p>
+            <div class="alert alert-warning text-start small mb-4">
+                <div class="fw-bold mb-1 text-dark"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Lý do bị chặn:</div>
+                <ul class="mb-0 ps-3 text-secondary">
+                    <li>Bạn đang truy cập vào phân hệ <strong>Quản trị đào tạo (Admin)</strong>.</li>
+                    <li>Tài khoản hiện tại của bạn là vai trò <strong>Sinh viên (Student)</strong> hoặc chưa đăng nhập.</li>
+                    <li>Theo quy chế hệ thống, các trang quản lý học phần, mở lớp và rút môn học vụ chỉ dành riêng cho cán bộ quản trị.</li>
+                </ul>
+            </div>
 
             <div class="d-flex flex-wrap gap-2 justify-content-center">
-                <a href="/login" class="btn btn-danger px-4 py-2 fw-semibold">
-                    <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Tài Khoản Admin
+                <a href="/login" class="btn btn-primary px-4 py-2 fw-semibold">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Tài Khoản Quản Trị Viên (Admin)
                 </a>
                 <a href="/" class="btn btn-outline-secondary px-4 py-2">
-                    <i class="bi bi-house-door me-1"></i> Trở Về Trang Chủ
+                    <i class="bi bi-house-door me-1"></i> Trở Về Cổng Sinh Viên
                 </a>
             </div>
         </div>

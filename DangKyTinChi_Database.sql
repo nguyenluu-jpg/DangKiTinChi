@@ -1,4 +1,4 @@
--- ==============================================================================
+﻿-- ==============================================================================
 -- DỰ ÁN: ĐĂNG KÝ HỌC PHẦN TRỰC TUYẾN (ĐỀ 15)
 -- CƠ SỞ DỮ LIỆU: DangKyTinChi
 -- TIÊU CHÍ CHẤM THI: Tiêu chí 4 (Từ 5 bảng, 3NF, có khóa ngoại, chạy được trên CSDL trống)
@@ -163,16 +163,30 @@ GO
 -- C. Dữ liệu Sinh viên (Students)
 INSERT INTO dbo.Students (StudentCode, FullName, Major, AcademicYear, MaxCreditsPerSemester, Email, PhoneNumber) VALUES
 (N'SV21001', N'Nguyễn Văn Tuấn', N'Công nghệ Thông tin', N'K21', 24, N'tuan.nv@student.edu.vn', N'0901234567'),
-(N'SV22002', N'Trần Thị Mai', N'Hệ thống Thông tin', N'K22', 20, N'mai.tt@student.edu.vn', N'0912345678');
+(N'SV21002', N'Trần Thị Mai', N'Hệ thống Thông tin', N'K21', 20, N'mai.tt@student.edu.vn', N'0912345678'),
+(N'SV21003', N'Lê Hoàng Nam', N'Kỹ thuật Phần mềm', N'K21', 24, N'nam.lh@student.edu.vn', N'0923456789'),
+(N'SV21004', N'Phạm Minh Anh', N'Công nghệ Thông tin', N'K21', 20, N'anh.pm@student.edu.vn', N'0934567890'),
+(N'SV21005', N'Hoàng Đức Huy', N'Khoa học Máy tính', N'K21', 24, N'huy.hd@student.edu.vn', N'0945678901'),
+(N'SV21006', N'Vũ Thảo Linh', N'Hệ thống Thông tin', N'K21', 22, N'linh.vt@student.edu.vn', N'0956789012'),
+(N'SV21007', N'Đặng Quốc Bảo', N'An toàn Thông tin', N'K21', 24, N'bao.dq@student.edu.vn', N'0967890123');
 GO
 
 -- D. Dữ liệu Môn đã hoàn thành (CompletedCourses)
 -- SV21001 đã học đạt TIN101 và TIN102 -> Đủ điều kiện học mọi môn
--- SV22002 CHƯA ĐẠT TIN102 -> Dùng để DEMO ca vi phạm Luật 1 (Học phần tiên quyết)!
+-- SV21002 CHƯA ĐẠT TIN102 -> Dùng để DEMO ca vi phạm Luật 1 (Học phần tiên quyết)!
 INSERT INTO dbo.CompletedCourses (StudentId, CourseId, Grade, SemesterCompleted) VALUES
 ((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21001'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN101'), 8.0, N'2024_HK1'),
 ((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21001'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN102'), 7.5, N'2024_HK2'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV22002'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN101'), 6.5, N'2025_HK1');
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21002'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN101'), 6.5, N'2025_HK1'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21003'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN101'), 7.5, N'2024_HK1'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21003'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN102'), 8.0, N'2024_HK2'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21003'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'CSDL201'), 8.5, N'2025_HK1'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21004'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN101'), 8.5, N'2025_HK1'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21005'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN101'), 7.0, N'2024_HK1'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21005'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN102'), 7.0, N'2024_HK2'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21006'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN101'), 8.0, N'2025_HK1'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21007'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN101'), 9.0, N'2024_HK1'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21007'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN102'), 8.5, N'2024_HK2');
 GO
 
 -- E. Dữ liệu Lớp học phần mở trong kỳ (Sections)
@@ -208,7 +222,12 @@ GO
 INSERT INTO dbo.UserAccounts (Username, Password, FullName, Role, StudentId) VALUES
 (N'admin', N'admin123', N'Cán bộ Quản trị Đào tạo', N'Admin', NULL),
 (N'sv21001', N'123456', N'Nguyễn Văn Tuấn', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21001')),
-(N'sv22002', N'123456', N'Trần Thị Mai', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV22002'));
+(N'sv21002', N'123456', N'Trần Thị Mai', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21002')),
+(N'sv21003', N'123456', N'Lê Hoàng Nam', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21003')),
+(N'sv21004', N'123456', N'Phạm Minh Anh', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21004')),
+(N'sv21005', N'123456', N'Hoàng Đức Huy', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21005')),
+(N'sv21006', N'123456', N'Vũ Thảo Linh', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21006')),
+(N'sv21007', N'123456', N'Đặng Quốc Bảo', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21007'));
 GO
 
 -- H. Dữ liệu Phiếu Đăng Ký Mẫu (Enrollments & EnrollmentLines)

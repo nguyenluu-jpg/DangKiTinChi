@@ -1,3 +1,4 @@
+@page "/admin"
 @page "/admin/courses"
 @namespace CourseRegistration.Web.Components.Pages.Admin
 @inject IViewCoursesUseCase ViewCoursesUseCase
@@ -7,9 +8,34 @@
 
 @if (!isAuthorized)
 {
-    <div class="text-center py-5 text-muted">
-        <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
-        <span>Đang kiểm tra quyền hạn truy cập...</span>
+    <div class="row justify-content-center py-4">
+        <div class="col-md-8 text-center">
+            <div class="card border-0 shadow-sm p-4 p-md-5 rounded-4 bg-white">
+                <div class="mb-3 text-danger">
+                    <i class="bi bi-shield-slash-fill display-2"></i>
+                </div>
+                <h3 class="fw-bold text-dark mb-2">Hệ Thống Chặn Truy Cập</h3>
+                <div class="badge bg-danger-subtle text-danger px-3 py-1 mb-3 fs-6">HTTP 403 Forbidden &bull; Phân quyền bảo vệ trang Quản trị</div>
+                
+                <div class="alert alert-warning text-start small mb-4">
+                    <div class="fw-bold mb-1 text-dark"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Lý do bị chặn:</div>
+                    <ul class="mb-0 ps-3 text-secondary">
+                        <li>Bạn đang cố gắng truy cập vào phân hệ <strong>Quản lý học phần (Phòng Đào Tạo)</strong>.</li>
+                        <li>Tài khoản hiện tại của bạn là vai trò <strong>Sinh viên (Student)</strong> hoặc chưa đăng nhập.</li>
+                        <li>Theo quy chế hệ thống (Tiêu chí 13), khu vực này chỉ dành riêng cho cán bộ quản lý (Admin).</li>
+                    </ul>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                    <a href="/login" class="btn btn-primary px-4 py-2 fw-semibold">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Tài Khoản Admin
+                    </a>
+                    <a href="/" class="btn btn-outline-secondary px-4 py-2">
+                        <i class="bi bi-house-door me-1"></i> Trở Về Cổng Sinh Viên
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 }
 else
@@ -123,7 +149,7 @@ else
         var role = await CurrentUserStateStore.GetCurrentRoleAsync();
         if (role != "Admin")
         {
-            NavigationManager.NavigateTo("/access-denied");
+            isAuthorized = false;
             return;
         }
 

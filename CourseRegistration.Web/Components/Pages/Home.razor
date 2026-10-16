@@ -5,7 +5,7 @@
 @inject ICurrentUserStateStore CurrentUserStateStore
 @implements IDisposable
 
-<!-- Banner Gọn Gàng - Trường Đại học Kinh tế - Đại học Huế -->
+<!-- Banner Gọn Gàng - Cổng Đăng Ký Học Phần Trực Tuyến -->
 <div class="hero-portal p-3 p-md-4 mb-4 rounded-4 shadow-sm">
     <div class="row align-items-center g-3">
         <div class="col-lg-7">
@@ -76,7 +76,7 @@
                     </a>
 
                     <div class="text-center text-white-50 small" style="font-size: 0.75rem;">
-                        Admin: <code>admin</code> (admin123) &bull; SV: <code>sv21001</code> / <code>sv22002</code> (123456)
+                        Admin: <code>admin</code> (admin123) &bull; SV: <code>sv21001</code> đến <code>sv21007</code> (123456)
                     </div>
                 </div>
             }
@@ -238,7 +238,7 @@
                     <i class="bi bi-mortarboard"></i>
                 </div>
                 <h6 class="fw-bold text-dark mb-1">Cổng Sinh Viên</h6>
-                <div class="small text-muted">Trường ĐH Kinh tế Huế</div>
+                <div class="small text-muted">Dành cho Sinh viên</div>
             </a>
         }
     </div>
@@ -253,14 +253,14 @@
             <h5 class="fw-bold mb-0 text-dark">
                 <i class="bi bi-info-circle text-primary me-2"></i>Thông Tin Hướng Dẫn & Quy Chế Đào Tạo
             </h5>
-            <small class="text-muted">Thông tin học vụ tham khảo (ĐH Kinh tế - ĐH Huế) &bull; Giai đoạn Học kỳ 1 (2026 - 2027)</small>
+            <small class="text-muted">Cổng Thông Tin Học Vụ &bull; Giai đoạn Học kỳ 1 (2026 - 2027)</small>
         </div>
         <span class="badge bg-light text-muted border small d-none d-sm-inline">
             <i class="bi bi-arrows-expand me-1"></i>Nhấn để mở / đóng
         </span>
     </div>
 
-    <div class="accordion accordion-flush" id="hceAccordion">
+    <div class="accordion accordion-flush" id="portalAccordion">
         <!-- MỤC 1: LỘ TRÌNH ĐỢT ĐĂNG KÝ -->
         <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
             <h2 class="accordion-header">
@@ -312,25 +312,84 @@
                 <button class="accordion-button @(isRulesOpen ? "" : "collapsed") fw-bold py-3" 
                         type="button" 
                         @onclick="() => isRulesOpen = !isRulesOpen">
-                    <i class="bi bi-shield-check text-success me-2"></i> 2. Quy chế Đào tạo Tín chỉ & Hủy / Rút môn sau hạn (ĐH Huế)
+                    <i class="bi bi-shield-check text-success me-2 fs-5"></i> 2. Quy chế Đào tạo Tín chỉ &amp; Hủy / Rút môn học vụ
                 </button>
             </h2>
             <div class="accordion-collapse collapse @(isRulesOpen ? "show" : "")">
-                <div class="accordion-body bg-light-subtle pt-2">
-                    <ul class="list-group list-group-flush small">
-                        <li class="list-group-item bg-transparent px-0">
-                            <strong>1. Hạn mức tín chỉ đăng ký:</strong> Tối thiểu <strong>14 tín chỉ</strong> đối với sinh viên học lực bình thường; tối đa <strong>24 tín chỉ</strong> đối với sinh viên có GPA $\ge$ 2.50. Sinh viên diện cảnh báo học vụ đăng ký tối đa 14 tín chỉ.
-                        </li>
-                        <li class="list-group-item bg-transparent px-0">
-                            <strong>2. Học phần tiên quyết:</strong> Bắt buộc phải tích lũy điểm đạt ($\ge$ 4.0/10) ở môn tiên quyết trước đó (Ví dụ: phải qua TIN102 mới được học WEB301 hoặc KTPM302). Hệ thống tự động kiểm tra CSDL và khóa đăng ký nếu chưa đạt.
-                        </li>
-                        <li class="list-group-item bg-transparent px-0">
-                            <strong>3. Chống trùng lịch & Sĩ số lớp:</strong> Không được đăng ký 2 lớp có lịch học trùng tiết. Khi lớp đủ sĩ số (<code>CurrentEnrollment = MaxCapacity</code>), hệ thống khóa đăng ký.
-                        </li>
-                        <li class="list-group-item bg-transparent px-0">
-                            <strong>4. Quy chế Hủy / Rút môn khi hết hạn trực tuyến:</strong> Sau 23h59 ngày 22/10/2026, cổng sinh viên khóa chức năng tự hủy. Sinh viên nộp đơn có xác nhận của Cố vấn học tập lên <strong>Phòng Đào Tạo (99 Hồ Đắc Di)</strong> để cán bộ quản trị rút môn trên hệ thống, ghi điểm <strong>W (Withdrawn)</strong> và giải phóng slot cho lớp.
-                        </li>
-                    </ul>
+                <div class="accordion-body bg-light-subtle p-3 p-md-4">
+                    <div class="row g-3">
+                        <!-- Quy định 1 -->
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm p-3 rounded-3 bg-white">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="d-inline-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle" style="width: 36px; height: 36px;">
+                                            <i class="bi bi-mortarboard-fill"></i>
+                                        </div>
+                                        <span class="fw-bold text-dark">1. Hạn mức tín chỉ đăng ký</span>
+                                    </div>
+                                    <span class="badge bg-primary-subtle text-primary px-2 py-1 small">14 - 24 Tín chỉ</span>
+                                </div>
+                                <p class="text-secondary small mb-0" style="line-height: 1.6;">
+                                    Sinh viên có học lực bình thường được đăng ký tối thiểu <strong>14 tín chỉ</strong> và tối đa <strong>24 tín chỉ</strong> trong một học kỳ (đối với sinh viên có điểm trung bình tích lũy GPA từ <strong>2.50</strong> trở lên). Sinh viên thuộc diện cảnh báo học vụ được phép đăng ký tối đa <strong>14 tín chỉ</strong>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Quy định 2 -->
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm p-3 rounded-3 bg-white">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="d-inline-flex align-items-center justify-content-center bg-warning-subtle text-warning-emphasis rounded-circle" style="width: 36px; height: 36px;">
+                                            <i class="bi bi-diagram-3-fill"></i>
+                                        </div>
+                                        <span class="fw-bold text-dark">2. Điều kiện học phần tiên quyết</span>
+                                    </div>
+                                    <span class="badge bg-warning-subtle text-warning-emphasis px-2 py-1 small">Điểm đạt ≥ 4.0 / 10</span>
+                                </div>
+                                <p class="text-secondary small mb-0" style="line-height: 1.6;">
+                                    Bắt buộc sinh viên phải tích lũy điểm đạt (từ <strong>4.0 / 10</strong> trở lên) ở học phần tiên quyết mới đủ điều kiện đăng ký môn học kế tiếp. <em>Ví dụ: Phải qua môn Lập trình Hướng đối tượng (TIN102) mới được đăng ký môn Lập trình Ứng dụng Web (WEB301)</em>. Hệ thống tự động kiểm tra CSDL và khóa đăng ký nếu chưa đạt.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Quy định 3 -->
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm p-3 rounded-3 bg-white">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="d-inline-flex align-items-center justify-content-center bg-info-subtle text-info-emphasis rounded-circle" style="width: 36px; height: 36px;">
+                                            <i class="bi bi-calendar2-week-fill"></i>
+                                        </div>
+                                        <span class="fw-bold text-dark">3. Chống trùng lịch &amp; Sĩ số lớp</span>
+                                    </div>
+                                    <span class="badge bg-info-subtle text-info-emphasis px-2 py-1 small">Thời gian thực</span>
+                                </div>
+                                <p class="text-secondary small mb-0" style="line-height: 1.6;">
+                                    Sinh viên không được đăng ký 2 lớp học phần có tiết học bị trùng nhau trong tuần. Khi lớp học phần đã đủ sĩ số tối đa theo quy định (sĩ số hiện tại bằng sĩ số tối đa), hệ thống sẽ tự động khóa và chuyển sang trạng thái <strong>"Đã hết chỗ"</strong>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Quy định 4 -->
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm p-3 rounded-3 bg-white border-start border-danger border-3">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="d-inline-flex align-items-center justify-content-center bg-danger-subtle text-danger rounded-circle" style="width: 36px; height: 36px;">
+                                            <i class="bi bi-file-earmark-text-fill"></i>
+                                        </div>
+                                        <span class="fw-bold text-dark">4. Hủy &amp; Rút môn sau khi đóng cổng</span>
+                                    </div>
+                                    <span class="badge bg-danger-subtle text-danger px-2 py-1 small">Điểm W (Withdrawn)</span>
+                                </div>
+                                <p class="text-secondary small mb-0" style="line-height: 1.6;">
+                                    Sau <strong>23h59 ngày 22/10/2026</strong>, cổng sinh viên sẽ tự động khóa tính năng tự hủy môn. Mọi yêu cầu rút môn sau hạn trực tuyến phải nộp đơn có xác nhận của Cố vấn học tập lên <strong>Phòng Đào Tạo</strong> để cán bộ quản trị rút môn trên hệ thống, ghi điểm <strong>W</strong> và giải phóng chỉ tiêu cho lớp.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -357,27 +416,27 @@
             </div>
         </div>
 
-        <!-- MỤC 4: THÔNG TIN LIÊN HỆ PHÒNG ĐÀO TẠO ĐẠI HỌC KINH TẾ HUẾ -->
+        <!-- MỤC 4: THÔNG TIN LIÊN HỆ PHÒNG ĐÀO TẠO -->
         <div class="accordion-item border rounded-3 overflow-hidden">
             <h2 class="accordion-header">
                 <button class="accordion-button @(isContactOpen ? "" : "collapsed") fw-bold py-3" 
                         type="button" 
                         @onclick="() => isContactOpen = !isContactOpen">
-                    <i class="bi bi-geo-alt-fill text-danger me-2"></i> 4. Thông tin liên hệ & Hỗ trợ - Trường Đại học Kinh tế, Đại học Huế
+                    <i class="bi bi-geo-alt-fill text-danger me-2"></i> 4. Thông tin liên hệ & Hỗ trợ học vụ - Phòng Đào Tạo
                 </button>
             </h2>
             <div class="accordion-collapse collapse @(isContactOpen ? "show" : "")">
                 <div class="accordion-body bg-light-subtle pt-2 small">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <div><i class="bi bi-building text-primary me-2"></i><strong>Đơn vị:</strong> Phòng Đào Tạo - Trường Đại học Kinh tế, Đại học Huế</div>
-                            <div class="mt-1"><i class="bi bi-geo-alt text-danger me-2"></i><strong>Địa chỉ:</strong> 99 Hồ Đắc Di, Phường An Cựu, TP. Huế</div>
+                            <div><i class="bi bi-building text-primary me-2"></i><strong>Đơn vị:</strong> Phòng Đào Tạo - Bộ phận Tiếp nhận & Xử lý Học vụ</div>
+                            <div class="mt-1"><i class="bi bi-geo-alt text-danger me-2"></i><strong>Địa chỉ:</strong> Tòa nhà Điều hành Đào tạo &bull; Bộ phận Một Cửa Sinh Viên</div>
                             <div class="mt-1"><i class="bi bi-clock text-secondary me-2"></i><strong>Giờ làm việc:</strong> Sáng: 07h30 - 11h30 &bull; Chiều: 13h30 - 17h00 (Thứ 2 - Thứ 6)</div>
                         </div>
                         <div class="col-md-6">
-                            <div><i class="bi bi-telephone-fill text-success me-2"></i><strong>Hotline Đào tạo:</strong> (0234) 3883 144</div>
-                            <div class="mt-1"><i class="bi bi-envelope-fill text-primary me-2"></i><strong>Email tiếp nhận:</strong> <a href="mailto:daotao@hce.edu.vn" class="text-decoration-none">daotao@hce.edu.vn</a></div>
-                            <div class="mt-1"><i class="bi bi-globe text-info me-2"></i><strong>Website:</strong> <a href="https://hce.edu.vn" target="_blank" class="text-decoration-none">hce.edu.vn</a></div>
+                            <div><i class="bi bi-telephone-fill text-success me-2"></i><strong>Hotline Đào tạo:</strong> 1900 6868 &bull; (024) 3883 144</div>
+                            <div class="mt-1"><i class="bi bi-envelope-fill text-primary me-2"></i><strong>Email tiếp nhận:</strong> <a href="mailto:daotao@edu.vn" class="text-decoration-none">daotao@edu.vn</a></div>
+                            <div class="mt-1"><i class="bi bi-globe text-info me-2"></i><strong>Cổng thông tin:</strong> <a href="/" class="text-decoration-none">Cổng Đăng Ký Học Phần Trực Tuyến</a></div>
                         </div>
                     </div>
                 </div>

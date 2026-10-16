@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace CourseRegistration.CoreBusiness.Models
 {
     // Học phần đã hoàn thành - CompletedCourse
@@ -7,6 +9,8 @@ namespace CourseRegistration.CoreBusiness.Models
         public int CompletedCourseId { get; set; }
         public int StudentId { get; set; }
         public int CourseId { get; set; }
+
+        [Column("SemesterCompleted")]
         public string Semester { get; set; } = string.Empty; // HK đã hoàn thành
         public double Grade { get; set; } // Điểm đạt
 

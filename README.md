@@ -1,9 +1,8 @@
 ## 1. Giới thiệu dự án
-**DangKiHocPhan** là dự án xây dựng website đăng ký học phần dành cho sinh viên, được phát triển nhằm phục vụ quá trình học tập và thực hành lập trình ứng dụng Web.
+**Đăng Ký Học Phần** là dự án xây dựng website đăng ký học phần dành cho sinh viên, được phát triển nhằm phục vụ quá trình học tập và thực hành lập trình ứng dụng Web.
 Hệ thống hướng đến việc hỗ trợ sinh viên tra cứu học phần, xem thông tin lớp học phần, lựa chọn lịch học và quản lý đăng ký học phần. Dự án đồng thời nghiên cứu việc kiểm tra các điều kiện đăng ký như học phần tiên quyết, trùng lịch học và giới hạn số tín chỉ.
 
 ## 2. Mục tiêu dự án
-
 - Xây dựng website đăng ký học phần với giao diện dễ sử dụng.
 - Quản lý thông tin sinh viên, học phần và lớp học phần.
 - Quản lý lịch học của từng lớp học phần.
@@ -13,7 +12,6 @@ Hệ thống hướng đến việc hỗ trợ sinh viên tra cứu học phần
 - Thực hành quy trình phát triển phần mềm, quản lý mã nguồn bằng Git và GitHub.
 
 ## 3. Công nghệ sử dụng
-
 | Công nghệ | Mục đích |
 |---|---|
 | C# | Ngôn ngữ lập trình chính |
@@ -27,9 +25,7 @@ Hệ thống hướng đến việc hỗ trợ sinh viên tra cứu học phần
 *Lưu ý: Các công nghệ SQL Server và Dapper được sử dụng trong quá trình xây dựng, tích hợp dữ liệu; mức độ tích hợp thực tế phụ thuộc vào phiên bản mã nguồn hiện tại.*
 
 ## 4. Chức năng của hệ thống
-
 ### 4.1. Chức năng dành cho sinh viên
-
 - Tra cứu và tìm kiếm học phần.
 - Xem thông tin lớp học phần.
 - Xem lịch học theo ngày và tiết học.
@@ -39,7 +35,6 @@ Hệ thống hướng đến việc hỗ trợ sinh viên tra cứu học phần
 - Xem thông tin đăng ký học phần.
 
 ### 4.2. Quản lý nghiệp vụ đăng ký
-
 Hệ thống hướng đến việc hỗ trợ các quy tắc nghiệp vụ:
 - Kiểm tra điều kiện học phần tiên quyết.
 - Kiểm tra trùng lịch học.
@@ -49,7 +44,6 @@ Hệ thống hướng đến việc hỗ trợ các quy tắc nghiệp vụ:
 Các chức năng cần được kiểm thử và hoàn thiện trong code trước khi xác nhận là đã triển khai đầy đủ.
 
 ## 5. Kiến trúc dự án
-
 Dự án được tổ chức theo hướng phân tách trách nhiệm giữa các thành phần.
 | Project | Vai trò |
 |---|---|
@@ -60,7 +54,6 @@ Dự án được tổ chức theo hướng phân tách trách nhiệm giữa c�
 Cấu trúc thực tế có thể được mở rộng tùy theo các repository và plugin đang được sử dụng trong từng giai đoạn phát triển.
 
 ## 6. Thiết kế cơ sở dữ liệu
-
 Cơ sở dữ liệu dự kiến gồm 8 bảng chính:
 | Bảng | Chức năng |
 |---|---|
@@ -72,7 +65,6 @@ Cơ sở dữ liệu dự kiến gồm 8 bảng chính:
 | `SectionSchedules` | Lưu lịch học của lớp học phần |
 | `Enrollments` | Quản lý phiếu đăng ký |
 | `EnrollmentLines` | Lưu chi tiết các lớp học phần trong phiếu đăng ký |
-
 Các quan hệ chính gồm:
 - Một sinh viên có thể có nhiều phiếu đăng ký.
 - Một phiếu đăng ký có thể có nhiều dòng đăng ký.

@@ -1,98 +1,100 @@
-## 1. Giới thiệu dự án
-**Đăng Ký Học Phần** là dự án xây dựng website đăng ký học phần dành cho sinh viên, được phát triển nhằm phục vụ quá trình học tập và thực hành lập trình ứng dụng Web.
-Hệ thống hướng đến việc hỗ trợ sinh viên tra cứu học phần, xem thông tin lớp học phần, lựa chọn lịch học và quản lý đăng ký học phần. Dự án đồng thời nghiên cứu việc kiểm tra các điều kiện đăng ký như học phần tiên quyết, trùng lịch học và giới hạn số tín chỉ.
+# Hệ thống Đăng ký Học phần
 
-## 2. Mục tiêu dự án
-- Xây dựng website đăng ký học phần với giao diện dễ sử dụng.
-- Quản lý thông tin sinh viên, học phần và lớp học phần.
-- Quản lý lịch học của từng lớp học phần.
-- Hỗ trợ tạo và quản lý phiếu đăng ký học phần.
-- Thiết kế cơ sở dữ liệu có các khóa chính, khóa ngoại và quan hệ giữa các bảng.
-- Tổ chức chương trình theo kiến trúc phân lớp, tách biệt giao diện, nghiệp vụ và truy xuất dữ liệu.
-- Thực hành quy trình phát triển phần mềm, quản lý mã nguồn bằng Git và GitHub.
+## 1. Giới thiệu
 
-## 3. Công nghệ sử dụng
-| Công nghệ | Mục đích |
+**Course Registration – Đăng ký học phần** là dự án website mô phỏng quy trình đăng ký học phần theo học kỳ, được thực hiện phục vụ học tập và thực hành phát triển ứng dụng Web.
+
+Dự án hướng đến hai nhóm người dùng chính: **Sinh viên** và **cán bộ quản trị/Phòng Đào tạo**. Hệ thống sử dụng dữ liệu mẫu để minh họa việc tra cứu học phần, lớp học phần, lịch học và thông tin đăng ký.
+
+> Đây là dự án mô phỏng phục vụ học tập, không phải hệ thống chính thức của một trường đại học.
+
+## 2. Công nghệ sử dụng
+
+| Công nghệ | Vai trò |
 |---|---|
-| C# | Ngôn ngữ lập trình chính |
-| .NET 8 | Nền tảng phát triển ứng dụng |
+| C# | Ngôn ngữ lập trình |
+| .NET 8 | Nền tảng ứng dụng |
 | Blazor | Xây dựng giao diện Web |
-| SQL Server | Thiết kế và quản lý cơ sở dữ liệu |
-| Dapper | Hỗ trợ truy vấn dữ liệu bằng SQL |
+| Entity Framework Core 8 | Truy xuất dữ liệu theo mô hình DbContext |
+| SQL Server | Lưu trữ dữ liệu quan hệ |
+| Git và GitHub | Quản lý phiên bản mã nguồn |
 | Visual Studio | Môi trường phát triển |
-| Git & GitHub | Quản lý phiên bản và lưu trữ mã nguồn |
-| PlantUML / diagrams.net | Thiết kế sơ đồ hệ thống và ERD |
-*Lưu ý: Các công nghệ SQL Server và Dapper được sử dụng trong quá trình xây dựng, tích hợp dữ liệu; mức độ tích hợp thực tế phụ thuộc vào phiên bản mã nguồn hiện tại.*
 
-## 4. Chức năng của hệ thống
-### 4.1. Chức năng dành cho sinh viên
-- Tra cứu và tìm kiếm học phần.
-- Xem thông tin lớp học phần.
-- Xem lịch học theo ngày và tiết học.
-- Lựa chọn lớp học phần để đăng ký.
-- Quản lý các học phần đã chọn.
-- Xác nhận hoặc hủy đăng ký theo quy tắc nghiệp vụ được triển khai.
-- Xem thông tin đăng ký học phần.
+**Lưu ý:** Mã nguồn hiện tại tham chiếu Microsoft.EntityFrameworkCore.SqlServer; README này không mô tả Dapper là công nghệ truy xuất dữ liệu chính.
 
-### 4.2. Quản lý nghiệp vụ đăng ký
-Hệ thống hướng đến việc hỗ trợ các quy tắc nghiệp vụ:
-- Kiểm tra điều kiện học phần tiên quyết.
-- Kiểm tra trùng lịch học.
-- Kiểm tra số lượng sinh viên tối đa của lớp học phần.
-- Kiểm tra giới hạn số tín chỉ trong học kỳ.
-- Quản lý trạng thái đăng ký và thời gian mở/đóng đăng ký.
-Các chức năng cần được kiểm thử và hoàn thiện trong code trước khi xác nhận là đã triển khai đầy đủ.
+## 3. Cấu trúc dự án
 
-## 5. Kiến trúc dự án
-Dự án được tổ chức theo hướng phân tách trách nhiệm giữa các thành phần.
-| Project | Vai trò |
+Solution chính: **CourseRegistration.sln**
+
+| Project/thư mục | Vai trò |
 |---|---|
-| `CourseRegistration.Web` | Giao diện và xử lý tương tác Web |
-| `CourseRegistration.CoreBusiness` | Chứa các model và dữ liệu cốt lõi của hệ thống |
-| `CourseRegistration.UseCases` | Tổ chức các trường hợp sử dụng và nghiệp vụ |
-| `CourseRegistration.DataStore` | Thành phần liên quan đến lưu trữ và truy xuất dữ liệu |
-Cấu trúc thực tế có thể được mở rộng tùy theo các repository và plugin đang được sử dụng trong từng giai đoạn phát triển.
+| **CourseRegistration.Web** | Ứng dụng Web Blazor, cấu hình dịch vụ và giao diện |
+| **CourseRegistration.CoreBusiness** | Các mô hình dữ liệu và thành phần cốt lõi |
+| **CourseRegistration.UseCases** | Các use case và logic ứng dụng |
+| **Plugins/CourseRegistration.DataStore.HardCoded** | Thành phần lưu trữ dữ liệu mẫu |
+| **Plugins/CourseRegistration.DataStore.SqlServer** | Thành phần truy xuất dữ liệu với SQL Server |
+| **Plugins/CourseRegistration.StateStore.DI** | Thành phần đăng ký/cấu hình state store và dependency injection |
+| **DangKyTinChi_Database.sql** | Script tạo cơ sở dữ liệu và nạp dữ liệu mẫu |
 
-## 6. Thiết kế cơ sở dữ liệu
-Cơ sở dữ liệu dự kiến gồm 8 bảng chính:
-| Bảng | Chức năng |
+Ứng dụng được tổ chức theo hướng tách giao diện, logic ứng dụng, mô hình cốt lõi và các thành phần lưu trữ dữ liệu. Việc sử dụng dữ liệu mẫu hay SQL Server phụ thuộc vào cấu hình triển khai trong mã nguồn.
+
+## 4. Nhóm chức năng và phạm vi
+
+Dự án tập trung vào các nghiệp vụ đăng ký học phần sau:
+
+- Tra cứu học phần và lớp học phần.
+- Xem thông tin lớp học phần và lịch học.
+- Quản lý lựa chọn lớp học phần và thông tin đăng ký.
+- Quản lý dữ liệu học phần, sinh viên, lớp học phần và lịch học.
+- Xây dựng các điều kiện nghiệp vụ cần kiểm tra khi đăng ký.
+
+Các quy tắc nghiệp vụ mục tiêu của đề tài gồm:
+
+1. Kiểm tra học phần tiên quyết.
+2. Phát hiện trùng lịch học.
+3. Kiểm tra giới hạn tín chỉ của sinh viên trong học kỳ.
+4. Kiểm tra sức chứa tối đa của lớp học phần, kể cả trường hợp nhiều yêu cầu đăng ký đồng thời.
+5. Xét trạng thái và thời gian mở/đóng đăng ký khi chức năng này được triển khai.
+
+Không nên hiểu toàn bộ các quy tắc trên đã hoàn tất chỉ dựa trên README. Mức độ hoạt động thực tế cần được xác nhận bằng việc chạy và kiểm thử từng chức năng trong phiên bản hiện tại.
+
+## 5. Cơ sở dữ liệu
+
+Script **DangKyTinChi_Database.sql** tạo cơ sở dữ liệu **DangKyTinChi** và định nghĩa các bảng sau:
+
+| Bảng | Mục đích |
 |---|---|
-| `Students` | Lưu thông tin sinh viên |
-| `Courses` | Lưu danh mục học phần |
-| `Prerequisites` | Quản lý quan hệ học phần tiên quyết |
-| `CompletedCourses` | Lưu các học phần đã hoàn thành |
-| `Sections` | Quản lý các lớp học phần được mở |
-| `SectionSchedules` | Lưu lịch học của lớp học phần |
-| `Enrollments` | Quản lý phiếu đăng ký |
-| `EnrollmentLines` | Lưu chi tiết các lớp học phần trong phiếu đăng ký |
-Các quan hệ chính gồm:
-- Một sinh viên có thể có nhiều phiếu đăng ký.
-- Một phiếu đăng ký có thể có nhiều dòng đăng ký.
-- Một học phần có thể mở nhiều lớp học phần.
-- Một lớp học phần có thể có nhiều lịch học.
-- Một sinh viên có thể hoàn thành nhiều học phần.
-- Một học phần có thể yêu cầu hoàn thành học phần tiên quyết.
-Sơ đồ ERD được xây dựng để thể hiện các thực thể, khóa chính, khóa ngoại và quan hệ giữa các bảng. Thiết kế cần được đối chiếu với database thực tế để bảo đảm tính nhất quán và đáp ứng chuẩn hóa 3NF.
+| **Courses** | Danh mục học phần |
+| **Students** | Thông tin sinh viên |
+| **Prerequisites** | Quan hệ học phần tiên quyết |
+| **Sections** | Các lớp học phần được mở trong học kỳ |
+| **SectionSchedules** | Lịch học của từng lớp học phần |
+| **CompletedCourses** | Các học phần sinh viên đã hoàn thành |
+| **Enrollments** | Phiếu đăng ký học phần |
+| **EnrollmentLines** | Chi tiết lớp học phần trong phiếu đăng ký |
+| **UserAccounts** | Tài khoản người dùng và vai trò |
 
-## 7. Kết quả hướng đến
-Dự án hướng đến một website đăng ký tín chỉ có cấu trúc rõ ràng, hỗ trợ quản lý học phần, lớp học phần, lịch học và đăng ký học phần.
-Thông qua quá trình thực hiện, người phát triển có cơ hội vận dụng kiến thức về lập trình Web, phân tích nghiệp vụ, thiết kế cơ sở dữ liệu, kiến trúc phần mềm và quản lý mã nguồn.
+Script có dữ liệu mẫu để hỗ trợ thử nghiệm các tình huống như điều kiện tiên quyết, trùng lịch và lớp đã đủ sức chứa. Script có lệnh xóa rồi tạo lại các bảng; hãy chỉ chạy trên cơ sở dữ liệu thử nghiệm vì dữ liệu hiện có trong các bảng này sẽ bị xóa khi chạy lại.
 
-## 8. Hướng phát triển
-- Hoàn thiện việc tích hợp SQL Server với các repository.
-- Hoàn thiện các quy tắc nghiệp vụ đăng ký và hủy đăng ký.
-- Bổ sung dữ liệu mẫu đa dạng cho học phần, lớp học phần và lịch học.
-- Hoàn thiện chức năng quản lý dành cho Phòng Đào tạo.
-- Bổ sung kiểm tra quyền truy cập theo vai trò nếu thuộc phạm vi yêu cầu.
-- Kiểm thử dữ liệu và nghiệp vụ trước khi triển khai.
+## 6. Định hướng phát triển
 
-## 9. Tác giả
+- Tiếp tục đối chiếu các use case với chức năng thực tế trên giao diện.
+- Kiểm thử các quy tắc tiên quyết, trùng lịch, giới hạn tín chỉ và sức chứa lớp.
+- Kiểm tra tính nhất quán giữa model, repository và cấu trúc SQL Server.
+- Hoàn thiện các chức năng quản trị và xử lý đăng ký còn thiếu.
+- Cải thiện kiểm thử và tài liệu sử dụng khi các chức năng được hoàn thiện.
 
-**Nguyễn Thị Lưu**
-- Ngành: Tin học Kinh tế
-- Khoa: Hệ thống Thông tin Kinh tế
+## 7. Tác giả
+
+**Nguyễn Thị Lưu**  
+- Ngành: Tin học Kinh tế  
+- Khoa: Hệ thống Thông tin Kinh tế  
 - Trường: Trường Đại học Kinh tế – Đại học Huế
-## 10. Repository
-GitHub: [https://github.com/nguyenluu-jpg/DangKiTinChi](https://github.com/nguyenluu-jpg/DangKiTinChi)
+
+## 8. Mã nguồn
+
+Repository: [https://github.com/nguyenluu-jpg/DangKiTinChi](https://github.com/nguyenluu-jpg/DangKiTinChi)
+
 ---
-*Dự án được thực hiện với mục đích học tập, thực hành phát triển ứng dụng Web và xây dựng hệ thống đăng ký học phần.*
+
+*Dự án phục vụ mục đích học tập, thực hành lập trình Web, tổ chức kiến trúc phần mềm và thiết kế cơ sở dữ liệu.*

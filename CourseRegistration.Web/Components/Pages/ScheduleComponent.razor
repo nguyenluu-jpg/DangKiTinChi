@@ -10,7 +10,7 @@
         <h2 class="fw-bold mb-1">
             <i class="bi bi-calendar3 text-primary me-2"></i>Thời Khóa Biểu Sinh Viên
         </h2>
-        <p class="text-muted mb-0">Học kỳ 1 (2025 - 2026) &bull; Lịch học theo tuần và từng ngày trực quan</p>
+        <p class="text-muted mb-0">Học kỳ 1 (Năm học 2026 - 2027) &bull; Lịch học theo tuần và từng ngày trực quan</p>
     </div>
     
     <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -187,7 +187,7 @@ else
         isLoading = true;
         if (selectedStudentId > 0)
         {
-            registeredSections = await ViewScheduleUseCase.ExecuteAsync(selectedStudentId, "2025_HK1");
+            registeredSections = await ViewScheduleUseCase.ExecuteAsync(selectedStudentId, "2026_HK1");
         }
         else
         {

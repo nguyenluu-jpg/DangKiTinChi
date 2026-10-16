@@ -161,7 +161,7 @@
                 <h5 class="fw-bold mb-0 text-dark">
                     <i class="bi bi-card-checklist text-danger me-2"></i>Các Lớp Học Phần Sinh Viên Đang Đăng Ký (@studentRegisteredLines.Count lớp)
                 </h5>
-                <span class="badge bg-secondary-subtle text-secondary small">Học kỳ 1 (2025 - 2026)</span>
+                <span class="badge bg-secondary-subtle text-secondary small">Học kỳ 1 (2026 - 2027)</span>
             </div>
 
             @if (!studentRegisteredLines.Any())
@@ -660,7 +660,7 @@
     {
         if (selectedStudentId > 0)
         {
-            var lines = await ViewEnrollmentListUseCase.GetStudentRegisteredLinesAsync(selectedStudentId, "2025_HK1");
+            var lines = await ViewEnrollmentListUseCase.GetStudentRegisteredLinesAsync(selectedStudentId, "2026_HK1");
             studentRegisteredLines = lines.ToList();
         }
         else
@@ -788,7 +788,7 @@
 
         try
         {
-            var result = await ViewEnrollmentListUseCase.AddSectionForStudentAsync(selectedStudentId, addSectionId, "2025_HK1");
+            var result = await ViewEnrollmentListUseCase.AddSectionForStudentAsync(selectedStudentId, addSectionId, "2026_HK1");
             if (result.IsSuccess)
             {
                 var addedSection = allSections.FirstOrDefault(s => s.SectionId == addSectionId);

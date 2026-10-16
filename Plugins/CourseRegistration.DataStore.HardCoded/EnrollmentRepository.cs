@@ -62,7 +62,7 @@ namespace CourseRegistration.DataStore.HardCoded
         public async Task<IEnumerable<Section>> GetRegisteredSectionsByStudentAsync(int studentId, string semester)
         {
             var confirmedEnrollments = _enrollments
-                .Where(e => e.StudentId == studentId && e.Semester.Equals(semester, StringComparison.OrdinalIgnoreCase) && e.Status == "Confirmed")
+                .Where(e => e.StudentId == studentId && (e.Semester.Equals(semester, StringComparison.OrdinalIgnoreCase) || (semester == "2026_HK1" && e.Semester.Equals("2025_HK1", StringComparison.OrdinalIgnoreCase))) && e.Status == "Confirmed")
                 .Select(e => e.EnrollmentId).ToList();
 
             var sectionIds = _enrollmentLines
@@ -132,7 +132,7 @@ namespace CourseRegistration.DataStore.HardCoded
         public async Task<IEnumerable<EnrollmentLine>> GetActiveEnrollmentLinesByStudentAsync(int studentId, string semester)
         {
             var confirmedEnrollmentIds = _enrollments
-                .Where(e => e.StudentId == studentId && e.Semester.Equals(semester, StringComparison.OrdinalIgnoreCase) && e.Status == "Confirmed")
+                .Where(e => e.StudentId == studentId && (e.Semester.Equals(semester, StringComparison.OrdinalIgnoreCase) || (semester == "2026_HK1" && e.Semester.Equals("2025_HK1", StringComparison.OrdinalIgnoreCase))) && e.Status == "Confirmed")
                 .Select(e => e.EnrollmentId)
                 .ToList();
 

@@ -78,7 +78,7 @@
 
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Học kỳ:</label>
-                        <InputText class="form-control" placeholder="2025_HK1" @bind-Value="newSection.Semester" />
+                        <InputText class="form-control" placeholder="2026_HK1" @bind-Value="newSection.Semester" />
                     </div>
 
                     <div class="col-12 d-flex justify-content-end gap-2 mt-3">
@@ -162,7 +162,7 @@
 @code {
     private IEnumerable<Section> sections = new List<Section>();
     private IEnumerable<Course> courses = new List<Course>();
-    private Section newSection = new Section { MaxCapacity = 50, Semester = "2025_HK1" };
+    private Section newSection = new Section { MaxCapacity = 50, Semester = "2026_HK1" };
     private bool showAddModal = false;
     private bool isAttemptedSubmit = false;
     private bool isAuthorized = false;
@@ -194,7 +194,7 @@
         newSection.Course = courses.FirstOrDefault(c => c.CourseId == newSection.CourseId);
         await AddSectionUseCase.ExecuteAsync(newSection);
 
-        newSection = new Section { MaxCapacity = 50, Semester = "2025_HK1" };
+        newSection = new Section { MaxCapacity = 50, Semester = "2026_HK1" };
         showAddModal = false;
         isAttemptedSubmit = false;
         await LoadSections();

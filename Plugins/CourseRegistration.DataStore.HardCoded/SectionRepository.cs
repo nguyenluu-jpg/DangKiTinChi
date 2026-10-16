@@ -42,7 +42,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Instructor = "TS. Nguyễn Văn A",
                         MaxCapacity = 50,
                         CurrentEnrollment = 25,
-                        Semester = "2025_HK1",
+                        Semester = "2026_HK1",
                         Room = "Lab 402"
                     },
                     // Lập trình Web - Nhóm 2 (Thứ 4, tiết 7-10)
@@ -55,7 +55,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Instructor = "ThS. Trần Thị B",
                         MaxCapacity = 50,
                         CurrentEnrollment = 48,
-                        Semester = "2025_HK1",
+                        Semester = "2026_HK1",
                         Room = "Lab 403"
                     },
                     // Cấu trúc Dữ liệu & GT (Thứ 2, tiết 1-3) -> TRÙNG LỊCH VỚI LỚP 1 (Thứ 2 tiết 1-4) ĐỂ DEMO VI PHẠM!
@@ -68,7 +68,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Instructor = "PGS. Lê Hoàng C",
                         MaxCapacity = 60,
                         CurrentEnrollment = 30,
-                        Semester = "2025_HK1",
+                        Semester = "2026_HK1",
                         Room = "Phòng A101"
                     },
                     // Cấu trúc Dữ liệu & GT (Thứ 6, tiết 2-4) -> Không trùng lịch
@@ -81,7 +81,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Instructor = "ThS. Đỗ Minh D",
                         MaxCapacity = 60,
                         CurrentEnrollment = 20,
-                        Semester = "2025_HK1",
+                        Semester = "2026_HK1",
                         Room = "Phòng A102"
                     },
                     // Cơ sở Dữ liệu (Thứ 3, tiết 7-9)
@@ -94,7 +94,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Instructor = "TS. Phạm Thanh E",
                         MaxCapacity = 60,
                         CurrentEnrollment = 45,
-                        Semester = "2025_HK1",
+                        Semester = "2026_HK1",
                         Room = "Phòng B204"
                     },
                     // Công nghệ Phần mềm -> ĐÃ ĐẦY CHỖ (50/50) ĐỂ DEMO VI PHẠM LUẬT 2!
@@ -107,7 +107,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Instructor = "TS. Ngô Bảo F",
                         MaxCapacity = 50,
                         CurrentEnrollment = 50, // Hết chỗ
-                        Semester = "2025_HK1",
+                        Semester = "2026_HK1",
                         Room = "Phòng C301"
                     },
                     // Lập trình OOP (Thứ 7, tiết 1-3)
@@ -120,7 +120,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         Instructor = "ThS. Vũ Mạnh G",
                         MaxCapacity = 60,
                         CurrentEnrollment = 35,
-                        Semester = "2025_HK1",
+                        Semester = "2026_HK1",
                         Room = "Phòng A205"
                     }
                 });

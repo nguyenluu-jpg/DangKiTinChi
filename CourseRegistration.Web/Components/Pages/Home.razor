@@ -5,13 +5,13 @@
 @inject ICurrentUserStateStore CurrentUserStateStore
 @implements IDisposable
 
-<!-- Hero Banner Gọn Gàng & Phù Hợp Thực Tế -->
+<!-- Banner Gọn Gàng - Trường Đại học Kinh tế - Đại học Huế -->
 <div class="hero-portal p-3 p-md-4 mb-4 rounded-4 shadow-sm">
     <div class="row align-items-center g-3">
         <div class="col-lg-7">
             <div class="d-inline-flex align-items-center bg-white bg-opacity-10 border border-white border-opacity-25 rounded-pill px-3 py-1 mb-2">
                 <span class="pulse-indicator"></span>
-                <span class="small fw-semibold text-white">Học kỳ 1 (2025 - 2026) &bull; Cổng Đang Mở</span>
+                <span class="small fw-semibold text-white">TRƯỜNG ĐẠI HỌC KINH TẾ - ĐẠI HỌC HUẾ &bull; HK1 (2026 - 2027)</span>
             </div>
             
             <h1 class="h3 fw-bold mb-2 gradient-heading text-white">
@@ -19,7 +19,7 @@
             </h1>
             
             <p class="mb-3 text-white-50 small" style="line-height: 1.6;">
-                Hệ thống tra cứu lớp học phần, kiểm tra điều kiện tiên quyết và sắp xếp lịch học thời gian thực.
+                Hệ thống đăng ký tín chỉ sinh viên chính quy &bull; Tra cứu lớp học phần, kiểm tra điều kiện tiên quyết và sắp xếp lịch học thời gian thực.
             </p>
 
             <div class="d-flex flex-wrap gap-2">
@@ -42,7 +42,7 @@
                 else
                 {
                     <a href="/login" class="btn btn-warning px-3 py-2 fw-bold text-dark shadow-sm d-inline-flex align-items-center">
-                        <i class="bi bi-box-arrow-in-right me-2"></i> Đăng Nhập Hệ Thống
+                        <i class="bi bi-box-arrow-in-right me-2"></i> Đăng Nhập
                     </a>
                     <a href="/schedule" class="btn btn-outline-light px-3 py-2 d-inline-flex align-items-center">
                         <i class="bi bi-calendar3 me-1"></i> Thời Khóa Biểu
@@ -54,11 +54,11 @@
         <div class="col-lg-5">
             @if (!isAuthenticated)
             {
-                <!-- Thẻ Chưa Đăng Nhập (Mặc định khi mở F5) -->
+                <!-- Thẻ Chưa Đăng Nhập -->
                 <div class="student-badge-card text-white">
                     <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
                         <span class="fw-bold small text-uppercase">
-                            <i class="bi bi-shield-lock me-1"></i>Cổng Xác Thực
+                            <i class="bi bi-person-badge me-1"></i>Cổng Sinh Viên HCE
                         </span>
                         <span class="badge bg-secondary text-white px-2 py-1 small">Chưa đăng nhập</span>
                     </div>
@@ -66,7 +66,7 @@
                     <div class="mb-3">
                         <h5 class="fw-bold mb-1 text-white">Chào Mừng Bạn!</h5>
                         <p class="small text-white-50 mb-0" style="line-height: 1.5;">
-                            Vui lòng đăng nhập để bắt đầu tra cứu, thêm học phần vào giỏ và gửi phiếu đăng ký tín chỉ chính thức.
+                            Đăng nhập bằng tài khoản sinh viên Trường ĐH Kinh tế - ĐH Huế để thực hiện đăng ký và theo dõi học vụ.
                         </p>
                     </div>
 
@@ -82,19 +82,19 @@
             }
             else if (currentRole == "Admin")
             {
-                <!-- Thẻ Quản Trị Viên (Có công cụ kiểm tra theo toàn bộ sinh viên) -->
+                <!-- Thẻ Cán Bộ Quản Trị Đào Tạo -->
                 <div class="student-badge-card text-white">
                     <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
                         <span class="fw-bold small text-uppercase">
-                            <i class="bi bi-shield-lock-fill me-1"></i>Quản trị viên hệ thống
+                            <i class="bi bi-shield-lock-fill me-1"></i>Phòng Đào Tạo HCE
                         </span>
-                        <span class="badge bg-danger text-white px-2 py-1 small">Phòng Đào Tạo</span>
+                        <span class="badge bg-danger text-white px-2 py-1 small">Quản trị viên</span>
                     </div>
 
                     <div class="mb-2">
                         <h5 class="fw-bold mb-0 text-white">Cán bộ Quản lý Đào tạo</h5>
                         <div class="small text-white-50">
-                            Tài khoản: <strong>admin</strong> &bull; Toàn quyền quản trị hệ thống
+                            Đại học Kinh tế - Đại học Huế &bull; HK1 (2026 - 2027)
                         </div>
                     </div>
 
@@ -106,14 +106,13 @@
                             <i class="bi bi-collection me-1"></i>Lớp HP
                         </a>
                         <a href="/admin/enrollments" class="btn btn-sm btn-outline-light flex-fill">
-                            <i class="bi bi-people me-1"></i>DS Đăng ký
+                            <i class="bi bi-person-gear me-1"></i>Rút môn SV
                         </a>
                     </div>
 
-                    <!-- Admin Tool: Kiểm tra theo từng sinh viên -->
                     <div class="pt-2 border-top border-white border-opacity-25">
                         <div class="d-flex align-items-center justify-content-between">
-                            <label class="small text-white-50 mb-0 text-nowrap me-2">Kiểm tra theo SV:</label>
+                            <label class="small text-white-50 mb-0 text-nowrap me-2">Kiểm tra SV:</label>
                             <select class="form-select form-select-sm bg-dark text-white border-secondary w-auto" @onchange="OnStudentChange">
                                 @foreach (var s in students)
                                 {
@@ -128,11 +127,11 @@
             }
             else
             {
-                <!-- Thẻ Sinh Viên Đăng Nhập (Chỉ hiện thông tin cá nhân của chính sinh viên đó) -->
+                <!-- Thẻ Sinh Viên Đăng Nhập -->
                 <div class="student-badge-card text-white">
                     <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
                         <span class="fw-bold small text-uppercase">
-                            <i class="bi bi-person-circle me-1"></i>Tài khoản sinh viên
+                            <i class="bi bi-mortarboard-fill me-1"></i>Sinh viên HCE
                         </span>
                         <span class="badge bg-success text-white px-2 py-1 small">Đang đăng nhập</span>
                     </div>
@@ -148,7 +147,7 @@
 
                         <div class="p-2 bg-black bg-opacity-25 rounded-3 mb-2 small">
                             <div class="d-flex justify-content-between mb-1">
-                                <span class="text-white-50">Hạn mức tín chỉ kỳ này:</span>
+                                <span class="text-white-50">Hạn mức HK1 (2026 - 2027):</span>
                                 <span class="fw-bold text-warning">Tối đa @currentStudent.MaxCreditsPerSemester TC</span>
                             </div>
                             <div class="d-flex justify-content-between">
@@ -159,7 +158,7 @@
                                 }
                                 else
                                 {
-                                    <span class="badge bg-warning text-dark">⚠️ Chưa đạt TIN102 (OOP)</span>
+                                    <span class="badge bg-warning text-dark">⚠️ Chưa đạt TIN102</span>
                                 }
                             </div>
                         </div>
@@ -179,15 +178,15 @@
     </div>
 </div>
 
-<!-- 4 Lối Tắt Dịch Vụ Chính (Gọn Gàng & Dễ Bấm) -->
+<!-- 4 Lối Tắt Dịch Vụ Chính (Gọn Gàng) -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
         <a href="/sections" class="card border-0 shadow-sm p-3 text-decoration-none h-100 portal-card text-center text-md-start">
             <div class="portal-icon bg-primary-subtle text-primary mb-2 mx-auto mx-md-0">
                 <i class="bi bi-search"></i>
             </div>
-            <h6 class="fw-bold text-dark mb-1">Tra Cứu Lớp</h6>
-            <div class="small text-muted">Tìm môn & thêm giỏ</div>
+            <h6 class="fw-bold text-dark mb-1">Tra Cứu Lớp HP</h6>
+            <div class="small text-muted">Lọc theo môn & thêm giỏ</div>
         </a>
     </div>
 
@@ -197,7 +196,7 @@
                 <i class="bi bi-cart-check"></i>
             </div>
             <h6 class="fw-bold text-dark mb-1">Giỏ Đăng Ký</h6>
-            <div class="small text-muted">Xác nhận đăng ký</div>
+            <div class="small text-muted">Kiểm tra & gửi phiếu</div>
         </a>
     </div>
 
@@ -207,19 +206,19 @@
                 <i class="bi bi-calendar3"></i>
             </div>
             <h6 class="fw-bold text-dark mb-1">Thời Khóa Biểu</h6>
-            <div class="small text-muted">Lịch học tuần & ngày</div>
+            <div class="small text-muted">Lịch học tuần & in TKB</div>
         </a>
     </div>
 
     <div class="col-6 col-md-3">
         @if (currentRole == "Admin")
         {
-            <a href="/admin/courses" class="card border-0 shadow-sm p-3 text-decoration-none h-100 portal-card text-center text-md-start">
+            <a href="/admin/enrollments" class="card border-0 shadow-sm p-3 text-decoration-none h-100 portal-card text-center text-md-start">
                 <div class="portal-icon bg-danger-subtle text-danger mb-2 mx-auto mx-md-0">
-                    <i class="bi bi-shield-lock"></i>
+                    <i class="bi bi-person-gear"></i>
                 </div>
-                <h6 class="fw-bold text-dark mb-1">Phòng Đào Tạo</h6>
-                <div class="small text-muted">Quản lý môn & lớp HP</div>
+                <h6 class="fw-bold text-dark mb-1">Học Vụ & Rút Môn</h6>
+                <div class="small text-muted">Phòng Đào Tạo cứu xét</div>
             </a>
         }
         else if (!isAuthenticated)
@@ -229,7 +228,7 @@
                     <i class="bi bi-box-arrow-in-right"></i>
                 </div>
                 <h6 class="fw-bold text-dark mb-1">Đăng Nhập</h6>
-                <div class="small text-muted">Truy cập tài khoản</div>
+                <div class="small text-muted">Tài khoản sinh viên</div>
             </a>
         }
         else
@@ -239,62 +238,67 @@
                     <i class="bi bi-mortarboard"></i>
                 </div>
                 <h6 class="fw-bold text-dark mb-1">Cổng Sinh Viên</h6>
-                <div class="small text-muted">Kết quả học vụ</div>
+                <div class="small text-muted">Trường ĐH Kinh tế Huế</div>
             </a>
         }
     </div>
 </div>
 
-<!-- Mục Kéo / Mở Rộng: Hướng Dẫn & Quy Định (Mặc định thu gọn để trang chủ cực thoáng) -->
+<!-- ============================================================== -->
+<!-- MỤC KÉO MỞ ĐỌC THÔNG TIN & QUY CHẾ (GỌN GÀNG, KHÔNG RƯỜM RÀ) -->
+<!-- ============================================================== -->
 <div class="card border-0 shadow-sm rounded-4 p-3 p-md-4 bg-white mb-4">
-    <div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
         <div>
             <h5 class="fw-bold mb-0 text-dark">
-                <i class="bi bi-info-circle text-primary me-2"></i>Thông Tin Hướng Dẫn & Quy Chế
+                <i class="bi bi-info-circle text-primary me-2"></i>Thông Tin Hướng Dẫn & Quy Chế Đào Tạo
             </h5>
-            <small class="text-muted">Nhấn vào từng mục bên dưới nếu cần xem chi tiết</small>
+            <small class="text-muted">Trường Đại học Kinh tế - Đại học Huế &bull; Giai đoạn Học kỳ 1 (2026 - 2027)</small>
         </div>
+        <span class="badge bg-light text-muted border small d-none d-sm-inline">
+            <i class="bi bi-arrows-expand me-1"></i>Nhấn để mở / đóng
+        </span>
     </div>
 
-    <div class="accordion accordion-flush" id="homeAccordion">
-        <!-- Mục 1: Lộ Trình Đợt Đăng Ký -->
+    <div class="accordion accordion-flush" id="hceAccordion">
+        <!-- MỤC 1: LỘ TRÌNH ĐỢT ĐĂNG KÝ -->
         <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
-            <h2 class="accordion-header" id="headingTimeline">
+            <h2 class="accordion-header">
                 <button class="accordion-button @(isTimelineOpen ? "" : "collapsed") fw-bold py-3" 
                         type="button" 
                         @onclick="() => isTimelineOpen = !isTimelineOpen">
-                    <i class="bi bi-clock-history text-primary me-2"></i> Lộ trình đợt đăng ký Học kỳ 1 (2025 - 2026)
+                    <i class="bi bi-clock-history text-primary me-2"></i> 1. Kế hoạch & Lịch trình Đăng ký Học kỳ 1 (Năm học 2026 - 2027)
                 </button>
             </h2>
-            <div id="collapseTimeline" class="accordion-collapse collapse @(isTimelineOpen ? "show" : "")">
+            <div class="accordion-collapse collapse @(isTimelineOpen ? "show" : "")">
                 <div class="accordion-body bg-light-subtle pt-2">
                     <div class="row g-2">
                         <div class="col-sm-6 col-md-3">
                             <div class="p-2 border rounded bg-white">
                                 <div class="badge bg-secondary mb-1">Giai đoạn 1</div>
-                                <div class="fw-bold small">Khảo Sát Nguyện Vọng</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">01/09 - 15/09/2026</div>
+                                <div class="fw-bold small">Đăng Ký Theo CTĐT Chuẩn</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">01/10 - 07/10/2026 (Đã xong)</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-3">
+                            <div class="p-2 border rounded bg-white">
+                                <div class="badge bg-secondary mb-1">Giai đoạn 2</div>
+                                <div class="fw-bold small">Học Lại & Học Cải Thiện</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">08/10 - 15/10/2026 (Đã xong)</div>
                             </div>
                         </div>
                         <div class="col-sm-6 col-md-3">
                             <div class="p-2 border border-primary rounded bg-white">
-                                <div class="badge bg-primary mb-1">Giai đoạn 2 (Đang mở)</div>
-                                <div class="fw-bold small text-primary">Đăng Ký Chính Thức</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">01/10 - 15/10/2026</div>
+                                <div class="badge bg-primary mb-1">Giai đoạn 3 (Đang Mở)</div>
+                                <div class="fw-bold small text-primary">Hiệu Chỉnh & Tự Hủy Môn</div>
+                                <div class="text-danger fw-bold" style="font-size: 0.75rem;">16/10 - 22/10/2026</div>
                             </div>
                         </div>
                         <div class="col-sm-6 col-md-3">
                             <div class="p-2 border rounded bg-white">
-                                <div class="badge bg-light text-dark border mb-1">Giai đoạn 3</div>
-                                <div class="fw-bold small">Hiệu Chỉnh & Đổi Lớp</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">16/10 - 20/10/2026</div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6 col-md-3">
-                            <div class="p-2 border rounded bg-white">
-                                <div class="badge bg-light text-dark border mb-1">Giai đoạn 4</div>
-                                <div class="fw-bold small">Bắt Đầu Học Kỳ Mới</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">Từ 25/10/2026</div>
+                                <div class="badge bg-warning text-dark mb-1">Giai đoạn 4</div>
+                                <div class="fw-bold small">Rút Môn Tại Phòng Đào Tạo</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Từ 23/10/2026 &bull; Học: 02/11</div>
                             </div>
                         </div>
                     </div>
@@ -302,47 +306,79 @@
             </div>
         </div>
 
-        <!-- Mục 2: 3 Quy Tắc Bắt Buộc Khi Đăng Ký -->
+        <!-- MỤC 2: QUY CHẾ TÍN CHỈ & HỦY RÚT MÔN SAU HẠN -->
         <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
-            <h2 class="accordion-header" id="headingRules">
+            <h2 class="accordion-header">
                 <button class="accordion-button @(isRulesOpen ? "" : "collapsed") fw-bold py-3" 
                         type="button" 
                         @onclick="() => isRulesOpen = !isRulesOpen">
-                    <i class="bi bi-shield-check text-success me-2"></i> 3 Quy định học vụ quan trọng sinh viên cần biết
+                    <i class="bi bi-shield-check text-success me-2"></i> 2. Quy chế Đào tạo Tín chỉ & Hủy / Rút môn sau hạn (ĐH Huế)
                 </button>
             </h2>
-            <div id="collapseRules" class="accordion-collapse collapse @(isRulesOpen ? "show" : "")">
+            <div class="accordion-collapse collapse @(isRulesOpen ? "show" : "")">
                 <div class="accordion-body bg-light-subtle pt-2">
                     <ul class="list-group list-group-flush small">
                         <li class="list-group-item bg-transparent px-0">
-                            <strong>1. Học phần tiên quyết:</strong> Sinh viên phải đạt học phần tiên quyết trước đó (Ví dụ: phải qua TIN102 mới được học WEB301 hoặc KTPM302). Hệ thống tự động chặn nếu chưa đạt.
+                            <strong>1. Hạn mức tín chỉ đăng ký:</strong> Tối thiểu <strong>14 tín chỉ</strong> đối với sinh viên học lực bình thường; tối đa <strong>24 tín chỉ</strong> đối với sinh viên có GPA $\ge$ 2.50. Sinh viên diện cảnh báo học vụ đăng ký tối đa 14 tín chỉ.
                         </li>
                         <li class="list-group-item bg-transparent px-0">
-                            <strong>2. Chống trùng lịch:</strong> Không được đăng ký 2 lớp có lịch học trùng thứ và tiết.
+                            <strong>2. Học phần tiên quyết:</strong> Bắt buộc phải tích lũy điểm đạt ($\ge$ 4.0/10) ở môn tiên quyết trước đó (Ví dụ: phải qua TIN102 mới được học WEB301 hoặc KTPM302). Hệ thống tự động kiểm tra CSDL và khóa đăng ký nếu chưa đạt.
                         </li>
                         <li class="list-group-item bg-transparent px-0">
-                            <strong>3. Giới hạn tín chỉ & Sĩ số:</strong> Tổng số tín chỉ không vượt quá hạn mức (20 - 24 TC). Khi lớp đã hết chỗ (CurrentEnrollment = MaxCapacity), không thể đăng ký thêm.
+                            <strong>3. Chống trùng lịch & Sĩ số lớp:</strong> Không được đăng ký 2 lớp có lịch học trùng tiết. Khi lớp đủ sĩ số (<code>CurrentEnrollment = MaxCapacity</code>), hệ thống khóa đăng ký.
+                        </li>
+                        <li class="list-group-item bg-transparent px-0">
+                            <strong>4. Quy chế Hủy / Rút môn khi hết hạn trực tuyến:</strong> Sau 23h59 ngày 22/10/2026, cổng sinh viên khóa chức năng tự hủy. Sinh viên nộp đơn có xác nhận của Cố vấn học tập lên <strong>Phòng Đào Tạo (99 Hồ Đắc Di)</strong> để cán bộ quản trị rút môn trên hệ thống, ghi điểm <strong>W (Withdrawn)</strong> và giải phóng slot cho lớp.
                         </li>
                     </ul>
                 </div>
             </div>
         </div>
 
-        <!-- Mục 3: Kênh Hỗ Trợ Sinh Viên -->
+        <!-- MỤC 3: QUY TRÌNH 5 BƯỚC ĐĂNG KÝ HỌC PHẦN -->
+        <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
+            <h2 class="accordion-header">
+                <button class="accordion-button @(isGuideOpen ? "" : "collapsed") fw-bold py-3" 
+                        type="button" 
+                        @onclick="() => isGuideOpen = !isGuideOpen">
+                    <i class="bi bi-list-ol text-info me-2"></i> 3. Hướng dẫn quy trình 5 bước đăng ký học phần cho sinh viên
+                </button>
+            </h2>
+            <div class="accordion-collapse collapse @(isGuideOpen ? "show" : "")">
+                <div class="accordion-body bg-light-subtle pt-2 small">
+                    <div class="d-flex flex-column gap-2">
+                        <div class="p-2 border rounded bg-white"><strong>Bước 1:</strong> Đăng nhập bằng mã sinh viên (Ví dụ: <code>sv21001</code> / <code>123456</code>).</div>
+                        <div class="p-2 border rounded bg-white"><strong>Bước 2:</strong> Vào mục <em>Tra cứu học phần</em>, lọc môn học, kiểm tra điều kiện tiên quyết và bấm <em>"Thêm vào giỏ"</em>.</div>
+                        <div class="p-2 border rounded bg-white"><strong>Bước 3:</strong> Vào <em>Giỏ đăng ký</em>, kiểm tra không bị trùng lịch học và không vượt quá hạn mức tín chỉ.</div>
+                        <div class="p-2 border rounded bg-white"><strong>Bước 4:</strong> Bấm <em>"Gửi phiếu đăng ký"</em> để ghi nhận chính thức vào cơ sở dữ liệu.</div>
+                        <div class="p-2 border rounded bg-white"><strong>Bước 5:</strong> Mở mục <em>Thời khóa biểu</em> để kiểm tra lịch học tuần, giảng đường và in phiếu lưu trữ.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MỤC 4: THÔNG TIN LIÊN HỆ PHÒNG ĐÀO TẠO ĐẠI HỌC KINH TẾ HUẾ -->
         <div class="accordion-item border rounded-3 overflow-hidden">
-            <h2 class="accordion-header" id="headingContact">
+            <h2 class="accordion-header">
                 <button class="accordion-button @(isContactOpen ? "" : "collapsed") fw-bold py-3" 
                         type="button" 
                         @onclick="() => isContactOpen = !isContactOpen">
-                    <i class="bi bi-headset text-info me-2"></i> Kênh liên hệ hỗ trợ kỹ thuật & Đào tạo
+                    <i class="bi bi-geo-alt-fill text-danger me-2"></i> 4. Thông tin liên hệ & Hỗ trợ - Trường Đại học Kinh tế, Đại học Huế
                 </button>
             </h2>
-            <div id="collapseContact" class="accordion-collapse collapse @(isContactOpen ? "show" : "")">
+            <div class="accordion-collapse collapse @(isContactOpen ? "show" : "")">
                 <div class="accordion-body bg-light-subtle pt-2 small">
-                    <div class="d-flex flex-wrap gap-4 text-muted">
-                        <div><i class="bi bi-telephone-fill text-primary me-1"></i> Hotline hỗ trợ: <strong>(028) 3835 4409</strong> (Giờ hành chính)</div>
-                        <div><i class="bi bi-envelope-fill text-primary me-1"></i> Email: <strong>daotao@student.edu.vn</strong></div>
-                        <div><i class="bi bi-building text-primary me-1"></i> Phòng tiếp sinh viên: <strong>Phòng A.102</strong></div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div><i class="bi bi-building text-primary me-2"></i><strong>Đơn vị:</strong> Phòng Đào Tạo - Trường Đại học Kinh tế, Đại học Huế</div>
+                            <div class="mt-1"><i class="bi bi-geo-alt text-danger me-2"></i><strong>Địa chỉ:</strong> 99 Hồ Đắc Di, Phường An Cựu, TP. Huế</div>
+                            <div class="mt-1"><i class="bi bi-clock text-secondary me-2"></i><strong>Giờ làm việc:</strong> Sáng: 07h30 - 11h30 &bull; Chiều: 13h30 - 17h00 (Thứ 2 - Thứ 6)</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div><i class="bi bi-telephone-fill text-success me-2"></i><strong>Hotline Đào tạo:</strong> (0234) 3883 144</div>
+                            <div class="mt-1"><i class="bi bi-envelope-fill text-primary me-2"></i><strong>Email tiếp nhận:</strong> <a href="mailto:daotao@hce.edu.vn" class="text-decoration-none">daotao@hce.edu.vn</a></div>
+                            <div class="mt-1"><i class="bi bi-globe text-info me-2"></i><strong>Website:</strong> <a href="https://hce.edu.vn" target="_blank" class="text-decoration-none">hce.edu.vn</a></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -358,9 +394,10 @@
     private bool isAuthenticated = false;
     private string currentRole = string.Empty;
 
-    // Trạng thái thu gọn/mở rộng của các mục Accordion (Mặc định false = Thu gọn gọn gàng)
+    // Trạng thái thu gọn / mở rộng (Mặc định false = Trang chủ gọn gàng, kéo mở khi cần đọc)
     private bool isTimelineOpen = false;
     private bool isRulesOpen = false;
+    private bool isGuideOpen = false;
     private bool isContactOpen = false;
 
     protected override async Task OnInitializedAsync()

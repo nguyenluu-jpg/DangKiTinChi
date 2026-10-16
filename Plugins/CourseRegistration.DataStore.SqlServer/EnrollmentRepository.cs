@@ -51,7 +51,7 @@ namespace CourseRegistration.DataStore.SqlServer
                 .Include(e => e.EnrollmentLines)
                     .ThenInclude(el => el.Section)
                         .ThenInclude(s => s!.Course)
-                .Where(e => e.Semester == semester)
+                .Where(e => e.Semester == semester || (semester == "2026_HK1" && e.Semester == "2025_HK1"))
                 .OrderByDescending(e => e.DateRegistered)
                 .ToListAsync();
         }
@@ -61,7 +61,7 @@ namespace CourseRegistration.DataStore.SqlServer
             using var context = _contextFactory.CreateDbContext();
             var confirmedEnrollmentIds = await context.Enrollments
                 .AsNoTracking()
-                .Where(e => e.StudentId == studentId && e.Semester == semester && e.Status == "Confirmed")
+                .Where(e => e.StudentId == studentId && (e.Semester == semester || (semester == "2026_HK1" && e.Semester == "2025_HK1")) && e.Status == "Confirmed")
                 .Select(e => e.EnrollmentId)
                 .ToListAsync();
 
@@ -138,7 +138,7 @@ namespace CourseRegistration.DataStore.SqlServer
             using var context = _contextFactory.CreateDbContext();
             var confirmedEnrollmentIds = await context.Enrollments
                 .AsNoTracking()
-                .Where(e => e.StudentId == studentId && e.Semester == semester && e.Status == "Confirmed")
+                .Where(e => e.StudentId == studentId && (e.Semester == semester || (semester == "2026_HK1" && e.Semester == "2025_HK1")) && e.Status == "Confirmed")
                 .Select(e => e.EnrollmentId)
                 .ToListAsync();
 
@@ -209,7 +209,7 @@ namespace CourseRegistration.DataStore.SqlServer
             var confirmedEnrollments = await context.Enrollments
                 .Include(e => e.EnrollmentLines)
                     .ThenInclude(el => el.Section)
-                .Where(e => e.StudentId == studentId && e.Semester == semester && e.Status == "Confirmed")
+                .Where(e => e.StudentId == studentId && (e.Semester == semester || (semester == "2026_HK1" && e.Semester == "2025_HK1")) && e.Status == "Confirmed")
                 .ToListAsync();
 
             var alreadyRegistered = confirmedEnrollments

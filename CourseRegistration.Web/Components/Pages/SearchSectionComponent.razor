@@ -14,7 +14,7 @@
         <h2 class="fw-bold mb-1">
             <i class="bi bi-search text-primary me-2"></i>Tra Cứu & Đăng Ký Lớp Học Phần
         </h2>
-        <p class="text-muted mb-0">Học kỳ 1 (2025 - 2026) &bull; Hệ thống đối chiếu thời gian thực điều kiện tiên quyết & sĩ số</p>
+        <p class="text-muted mb-0">Học kỳ 1 (Năm học 2026 - 2027) &bull; Hệ thống đối chiếu thời gian thực điều kiện tiên quyết & sĩ số</p>
     </div>
     <a href="/cart" class="btn btn-primary d-inline-flex align-items-center shadow-sm">
         <i class="bi bi-cart-check me-2"></i>
@@ -263,7 +263,7 @@ else
         isLoading = true;
         allCourses = (await CourseRepository.GetAllCoursesAsync()).ToList();
         allPrerequisites = (await CourseRepository.GetAllPrerequisitesAsync()).ToList();
-        var rawSections = await SearchSectionUseCase.ExecuteAsync(string.Empty, "2025_HK1");
+        var rawSections = await SearchSectionUseCase.ExecuteAsync(string.Empty, "2026_HK1");
         allSections = rawSections.ToList();
 
         await LoadStudentData();

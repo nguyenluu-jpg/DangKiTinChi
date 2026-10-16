@@ -26,6 +26,22 @@ namespace CourseRegistration.DataStore.SqlServer
                 END
             ");
 
+            // Nâng cấp dữ liệu học kỳ sang Năm học 2026 - 2027 (2026_HK1)
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    IF EXISTS (SELECT * FROM sysobjects WHERE name='Sections' and xtype='U')
+                    BEGIN
+                        UPDATE [dbo].[Sections] SET [Semester] = '2026_HK1' WHERE [Semester] = '2025_HK1';
+                    END
+                    IF EXISTS (SELECT * FROM sysobjects WHERE name='Enrollments' and xtype='U')
+                    BEGIN
+                        UPDATE [dbo].[Enrollments] SET [Semester] = '2026_HK1' WHERE [Semester] = '2025_HK1';
+                    END
+                ");
+            }
+            catch { }
+
             // Nạp dữ liệu tài khoản người dùng mẫu nếu chưa có
             if (!context.UserAccounts.Any())
             {
@@ -153,7 +169,7 @@ namespace CourseRegistration.DataStore.SqlServer
                     Instructor = "TS. Nguyễn Văn A",
                     MaxCapacity = 50,
                     CurrentEnrollment = 25,
-                    Semester = "2025_HK1",
+                    Semester = "2026_HK1",
                     Room = "Lab 402"
                 },
                 new Section
@@ -163,7 +179,7 @@ namespace CourseRegistration.DataStore.SqlServer
                     Instructor = "ThS. Trần Thị B",
                     MaxCapacity = 50,
                     CurrentEnrollment = 48,
-                    Semester = "2025_HK1",
+                    Semester = "2026_HK1",
                     Room = "Lab 403"
                 },
                 new Section
@@ -173,7 +189,7 @@ namespace CourseRegistration.DataStore.SqlServer
                     Instructor = "PGS. Lê Hoàng C",
                     MaxCapacity = 60,
                     CurrentEnrollment = 30,
-                    Semester = "2025_HK1",
+                    Semester = "2026_HK1",
                     Room = "Phòng A101"
                 },
                 new Section
@@ -183,7 +199,7 @@ namespace CourseRegistration.DataStore.SqlServer
                     Instructor = "ThS. Đỗ Minh D",
                     MaxCapacity = 60,
                     CurrentEnrollment = 20,
-                    Semester = "2025_HK1",
+                    Semester = "2026_HK1",
                     Room = "Phòng A102"
                 },
                 new Section
@@ -193,7 +209,7 @@ namespace CourseRegistration.DataStore.SqlServer
                     Instructor = "TS. Phạm Thanh E",
                     MaxCapacity = 60,
                     CurrentEnrollment = 45,
-                    Semester = "2025_HK1",
+                    Semester = "2026_HK1",
                     Room = "Phòng B204"
                 },
                 new Section
@@ -203,7 +219,7 @@ namespace CourseRegistration.DataStore.SqlServer
                     Instructor = "TS. Ngô Bảo F",
                     MaxCapacity = 50,
                     CurrentEnrollment = 50, // Lớp đã đầy chỗ (50/50) để kiểm tra quy tắc sĩ số
-                    Semester = "2025_HK1",
+                    Semester = "2026_HK1",
                     Room = "Phòng C301"
                 },
                 new Section
@@ -213,7 +229,7 @@ namespace CourseRegistration.DataStore.SqlServer
                     Instructor = "ThS. Vũ Mạnh G",
                     MaxCapacity = 60,
                     CurrentEnrollment = 35,
-                    Semester = "2025_HK1",
+                    Semester = "2026_HK1",
                     Room = "Phòng A205"
                 }
             };

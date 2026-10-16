@@ -31,7 +31,7 @@ namespace CourseRegistration.DataStore.SqlServer
                 .AsNoTracking()
                 .Include(s => s.Course)
                 .Include(s => s.Schedules)
-                .Where(s => s.Semester == semester)
+                .Where(s => s.Semester == semester || (semester == "2026_HK1" && s.Semester == "2025_HK1"))
                 .OrderBy(s => s.SectionCode)
                 .ToListAsync();
         }
@@ -47,7 +47,7 @@ namespace CourseRegistration.DataStore.SqlServer
 
             if (!string.IsNullOrWhiteSpace(semester))
             {
-                query = query.Where(s => s.Semester == semester);
+                query = query.Where(s => s.Semester == semester || (semester == "2026_HK1" && s.Semester == "2025_HK1"));
             }
 
             if (!string.IsNullOrWhiteSpace(keyword))

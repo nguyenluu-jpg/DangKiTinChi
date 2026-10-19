@@ -30,11 +30,11 @@
                     <div class="text-white-50 small">Cổng Đăng Ký Học Phần Trực Tuyến</div>
                 </div>
 
-                <!-- Body (Sử dụng div thay vì HTML form để triệt để ngăn chặn Microsoft Edge hiện popup "Just a moment...") -->
-                <div class="card-body p-4 p-md-4 bg-white" data-ms-editor="false">
+                <!-- Form đăng nhập: Bắt onsubmit chuẩn HTML5 để 1 lần bấm Enter hoặc click là ăn ngay lập tức -->
+                <form class="card-body p-4 p-md-4 bg-white" @onsubmit="HandleLogin" @onsubmit:preventDefault="true">
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
-                        <div class="alert alert-danger d-flex align-items-center rounded-3 mb-3 py-2 px-3" role="alert">
+                        <div class="alert alert-danger d-flex align-items-center rounded-3 mb-3 py-2 px-3 shadow-sm animate-fade-in" role="alert">
                             <i class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2 fs-5"></i>
                             <div class="small fw-semibold">
                                 @errorMessage
@@ -42,67 +42,58 @@
                         </div>
                     }
 
+                    <!-- Tài khoản / MSSV -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-dark small mb-1">Tài khoản / MSSV <span class="text-danger">*</span></label>
+                        <label class="form-label fw-bold text-dark small mb-1" for="login_username">
+                            Tài khoản / MSSV <span class="text-danger">*</span>
+                        </label>
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0 text-muted">
-                                <i class="bi bi-person"></i>
+                                <i class="bi bi-person-fill"></i>
                             </span>
                             <input type="text"
                                    class="form-control border-start-0 ps-0 bg-light" 
                                    placeholder="vd: admin hoặc sv21001" 
-                                   id="txt_auth_uid"
-                                   name="txt_auth_uid"
-                                   autocomplete="one-time-code"
-                                   autocorrect="off"
-                                   autocapitalize="off"
-                                   spellcheck="false"
-                                   data-lpignore="true"
-                                   data-bwignore="true"
-                                   data-1p-ignore="true"
-                                   data-ms-editor="false"
-                                   data-form-type="other"
+                                   id="login_username"
+                                   autocomplete="username"
                                    @bind="loginModel.Username" 
-                                   @onkeydown="HandleKeyDown" />
+                                   @bind:event="oninput"
+                                   disabled="@isLoading" />
                         </div>
                     </div>
 
+                    <!-- Mật khẩu -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-dark small mb-1">Mã truy cập (Mật khẩu) <span class="text-danger">*</span></label>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold text-dark small mb-0" for="login_password">
+                                Mật khẩu <span class="text-danger">*</span>
+                            </label>
+                        </div>
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0 text-muted">
-                                <i class="bi bi-shield-lock"></i>
+                                <i class="bi bi-shield-lock-fill"></i>
                             </span>
-                            <input type="text" 
+                            <input type="@(showPassword ? "text" : "password")" 
                                    class="form-control border-start-0 border-end-0 ps-0 bg-light" 
-                                   style="@(showPassword ? "" : "-webkit-text-security: disc; text-security: disc;")"
-                                   placeholder="Nhập mã truy cập của bạn" 
-                                   id="txt_auth_sec"
-                                   name="txt_auth_sec"
-                                   autocomplete="one-time-code"
-                                   autocorrect="off"
-                                   autocapitalize="off"
-                                   spellcheck="false"
-                                   data-lpignore="true"
-                                   data-bwignore="true"
-                                   data-1p-ignore="true"
-                                   data-ms-editor="false"
-                                   data-form-type="other"
+                                   placeholder="Nhập mật khẩu..." 
+                                   id="login_password"
+                                   autocomplete="current-password"
                                    @bind="loginModel.Password" 
-                                   @onkeydown="HandleKeyDown" />
+                                   @bind:event="oninput"
+                                   disabled="@isLoading" />
                             <button type="button" 
-                                     class="input-group-text bg-light border-start-0 text-muted cursor-pointer"
-                                     @onclick="() => showPassword = !showPassword"
-                                     title="@(showPassword ? "Ẩn mã truy cập" : "Hiện mã truy cập")">
+                                    class="input-group-text bg-light border-start-0 text-muted cursor-pointer"
+                                    @onclick="() => showPassword = !showPassword"
+                                    title="@(showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu")">
                                 <i class="bi @(showPassword ? "bi-eye-slash-fill" : "bi-eye-fill")"></i>
                             </button>
                         </div>
                     </div>
 
-                    <button type="button" 
+                    <!-- Nút Đăng Nhập -->
+                    <button type="submit" 
                             class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-3"
-                            disabled="@isLoading"
-                            @onclick="HandleLogin">
+                            disabled="@isLoading">
                         @if (isLoading)
                         {
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -115,14 +106,41 @@
                         }
                     </button>
 
-                    <div class="mt-3 pt-3 border-top text-center text-secondary small" style="font-size: 0.78rem;">
-                        <i class="bi bi-shield-check text-success me-1"></i>
-                        Hệ thống xác thực tài khoản sinh viên &amp; cán bộ quản trị.
-                        <div class="mt-1 text-muted" style="font-size: 0.74rem;">
-                            Quên mật khẩu hoặc cần cấp lại tài khoản? Vui lòng liên hệ <span class="fw-semibold text-dark">Phòng Đào Tạo</span>.
+                    <!-- Chọn nhanh tài khoản thử nghiệm 1 chạm tiện lợi -->
+                    <div class="quick-login-box p-2 rounded-3 bg-light border border-light-subtle mb-2">
+                        <div class="text-muted fw-semibold mb-1" style="font-size: 0.73rem;">
+                            <i class="bi bi-lightning-charge-fill text-warning me-1"></i>Chọn nhanh tài khoản thử nghiệm (1 chạm):
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill" 
+                                    style="font-size: 0.73rem;"
+                                    @onclick="@(() => FillAndLogin("sv21001", "123456"))"
+                                    disabled="@isLoading">
+                                <i class="bi bi-person me-1"></i>sv21001 (SV Tuấn)
+                            </button>
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-warning text-dark py-0 px-2 rounded-pill" 
+                                    style="font-size: 0.73rem;"
+                                    @onclick="@(() => FillAndLogin("sv21002", "123456"))"
+                                    disabled="@isLoading">
+                                <i class="bi bi-person me-1"></i>sv21002 (SV Mai)
+                            </button>
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" 
+                                    style="font-size: 0.73rem;"
+                                    @onclick="@(() => FillAndLogin("admin", "admin123"))"
+                                    disabled="@isLoading">
+                                <i class="bi bi-shield-lock me-1"></i>admin (Đào Tạo)
+                            </button>
                         </div>
                     </div>
-                </div>
+
+                    <div class="mt-2 pt-2 border-top text-center text-secondary small" style="font-size: 0.76rem;">
+                        <i class="bi bi-shield-check text-success me-1"></i>
+                        Hệ thống xác thực tài khoản sinh viên &amp; cán bộ đào tạo.
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -146,6 +164,7 @@
             errorMessage = string.Empty;
             loginModel = new LoginViewModel();
             showPassword = false;
+            isLoading = false;
         }
         InvokeAsync(StateHasChanged);
     }
@@ -155,17 +174,20 @@
         LoginModalService.Close();
     }
 
-    private async Task HandleKeyDown(KeyboardEventArgs e)
+    private async Task FillAndLogin(string username, string password)
     {
-        if (e.Key == "Enter")
-        {
-            await HandleLogin();
-        }
+        loginModel.Username = username;
+        loginModel.Password = password;
+        errorMessage = string.Empty;
+        await HandleLogin();
     }
 
     private async Task HandleLogin()
     {
-        if (string.IsNullOrWhiteSpace(loginModel.Username) || string.IsNullOrWhiteSpace(loginModel.Password))
+        var user = loginModel.Username?.Trim() ?? string.Empty;
+        var pass = loginModel.Password?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
         {
             errorMessage = "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";
             return;
@@ -176,22 +198,25 @@
 
         try
         {
-            var account = await LoginUseCase.ExecuteAsync(loginModel.Username.Trim(), loginModel.Password);
+            var account = await LoginUseCase.ExecuteAsync(user, pass);
             if (account != null)
             {
                 await CurrentUserStateStore.SetCurrentUserAsync(account);
                 LoginModalService.Close();
 
-                // Người dùng muốn: "vào ngay luôn trang mà đã bấm đăng nhập á"
-                // Do đó: Giữ nguyên ngay tại trang người dùng đang đứng, không tự ý chuyển hướng đi nơi khác
+                // Kiểm tra điều hướng thông minh
                 var uri = new Uri(NavigationManager.Uri);
                 if (uri.AbsolutePath.Equals("/login", StringComparison.OrdinalIgnoreCase))
                 {
-                    NavigationManager.NavigateTo("/");
+                    NavigationManager.NavigateTo("/", forceLoad: false);
+                }
+                else if (uri.AbsolutePath.Equals("/access-denied", StringComparison.OrdinalIgnoreCase) && account.Role == "Admin")
+                {
+                    NavigationManager.NavigateTo("/admin/courses", forceLoad: false);
                 }
                 else
                 {
-                    // Tải lại nhẹ trang hiện tại để các component trên trang tự cập nhật theo state mới
+                    // Tải lại nhẹ trang để các component cập nhật theo vai trò mới
                     NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: false);
                 }
             }
@@ -207,6 +232,7 @@
         finally
         {
             isLoading = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 

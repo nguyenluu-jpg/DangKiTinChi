@@ -2,46 +2,45 @@
 ## ĐỒ ÁN: ĐĂNG KÝ HỌC PHẦN TRỰC TUYẾN (ĐỀ 15)
 
 > **Công nghệ áp dụng:** C#, ASP.NET Core Blazor (.NET 8), Microsoft SQL Server, Entity Framework Core.  
-> **Kiến trúc:** Clean Architecture (Mô hình eShop phân lớp chuẩn).
+> **Kiến trúc:** Clean Architecture (Mô hình eShop phân lớp chuẩn).  
+> **Sinh viên thực hiện:** Nguyễn Thị Lưu — Ngành Tin học Kinh tế — Trường Đại học Kinh tế, Đại học Huế.
 
 ---
 
-### BẢNG TRA CỨU NHANH 13 TIÊU CHÍ CHẤM THI
+### BẢNG TRA CỨU ĐẦY ĐỦ 16 TIÊU CHÍ CHẤM THI (K1.1 ĐẾN K5.1)
 
-| STT | Tiêu chí chấm thi | Vị trí file trong mã nguồn | Số dòng code / Chi tiết | Điểm tối đa |
-|:---:|:---|:---|:---|:---:|
-| **1** | **Đủ 4 project; Quy tắc phụ thuộc**<br>• CoreBusiness không tham chiếu ai<br>• UseCases chỉ tham chiếu CoreBusiness | • `CourseRegistration.CoreBusiness/CourseRegistration.CoreBusiness.csproj`<br>• `CourseRegistration.UseCases/CourseRegistration.UseCases.csproj`<br>• `CourseRegistration.Web/CourseRegistration.Web.csproj`<br>• `Plugins/CourseRegistration.DataStore.SqlServer/` | • `CoreBusiness.csproj`: 0 `<ProjectReference>`<br>• `UseCases.csproj`: Dòng 10-12 (Chỉ tham chiếu CoreBusiness)<br>• Clean Architecture 4 project | **Đạt** |
-| **2** | **Interface repository ở UseCases, Plugin cài đặt; Razor chỉ inject Interface** | • **Interface:** `CourseRegistration.UseCases/PluginInterfaces/DataStore/`<br>• **Plugin:** `Plugins/CourseRegistration.DataStore.SqlServer/`<br>• **Cấu hình DI:** `CourseRegistration.Web/Program.cs`<br>• **Các file `.razor`:** `@inject ICourseRepository`, `@inject IStudentRepository`... | • `Program.cs`: Dòng 48-79<br>• `SearchSectionComponent.razor`: Dòng 3-9<br>• 100% file `.razor` không inject lớp cụ thể | **Đạt** |
-| **3** | **2 luật nghiệp vụ cài trong CoreBusiness / UseCases, không nằm trong `.razor`** | • `CourseRegistration.CoreBusiness/Services/EnrollmentValidationService.cs`<br>• `CourseRegistration.UseCases/StudentPortal/RegistrationCartScreen/PlaceEnrollmentUseCase.cs` | • **Luật 1 (Tiên quyết):** `EnrollmentValidationService.cs` **Dòng 26 - 43**<br>• **Luật 2 (Chống trùng lịch):** `EnrollmentValidationService.cs` **Dòng 46 - 70**<br>• `PlaceEnrollmentUseCase.cs`: **Dòng 85 - 111**<br>• Giỏ hàng Scoped: `Program.cs` **Dòng 57-59** | **6.0 đ**<br>*(3đ / luật)* |
-| **4** | **Từ 5 bảng, 3NF, có khóa ngoại; script tạo bảng + dữ liệu mẫu chạy được trên CSDL trống** | • File script SQL tại thư mục gốc: `DangKyTinChi_Database.sql`<br>• EF Core DbContext: `Plugins/CourseRegistration.DataStore.SqlServer/CourseRegistrationContext.cs` | • Có **9 bảng** chuẩn 3NF: `Courses`, `Students`, `Prerequisites`, `Sections`, `SectionSchedules`, `CompletedCourses`, `Enrollments`, `EnrollmentLines`, `UserAccounts`.<br>• Chạy trực tiếp trên SSMS CSDL trống thành công 100%. | **Đạt** |
-| **5** | **Cặp header–line ghi trong 1 transaction (Code Plugin luồng giao dịch chính)** | • `Plugins/CourseRegistration.DataStore.SqlServer/EnrollmentRepository.cs` | • Hàm `CreateEnrollmentAsync`: **Dòng 83 - 114**<br>• Chứa lệnh transaction tường minh:<br>`using var transaction = await context.Database.BeginTransactionAsync();`<br>... `await transaction.CommitAsync();` | **Đạt** |
-| **6** | **Mọi truy vấn tham số hóa, không nối chuỗi SQL** | • Thư mục: `Plugins/CourseRegistration.DataStore.SqlServer/` | • 100% dùng LINQ tham số hóa của EF Core (`.Where(...)`, `.FindAsync(...)`).<br>• Không có `$"SELECT`, `+ "WHERE` trong Plugin. | **Đạt** |
-| **7** | **Luồng giao dịch chính chạy end-to-end và dữ liệu nằm trong SQL Server** | • Cổng web: `http://localhost:53670` (hoặc `https://localhost:53669`)<br>• CSDL: SQL Server `MIU\MSSQLSERVER01`, Catalog `DangKyTinChi` | • Thao tác: Chọn môn $\rightarrow$ Thêm giỏ $\rightarrow$ Xác nhận gửi phiếu.<br>• Mở SSMS bảng `Enrollments`, `EnrollmentLines`, `Sections` dữ liệu cập nhật thời gian thực. | **Đạt** |
-| **8** | **Ít nhất 3 component tái sử dụng có `[Parameter]` / `EventCallback` trong thư mục Components** | • `CourseRegistration.Web/Components/Shared/` | 1. `SectionCardComponent.razor`: **Dòng 104-138** (`[Parameter]` Section, IsInCart... và `EventCallback` OnAddToCart, OnRemoveFromCart).<br>2. `ValidationAlertComponent.razor`: **Dòng 24-38** (`[Parameter]` Errors và `EventCallback` OnDismiss).<br>3. `ScheduleTableComponent.razor`: **Dòng 153-170** (`[Parameter]` Sections, `[Parameter]` OnSectionClick và `EventCallback<Section>` OnSectionClick). | **Đạt** |
-| **9** | **EditForm + DataAnnotations; lỗi nhập liệu hiển thị cạnh ô nhập** | • `CourseRegistration.Web/Components/Pages/LoginComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ManageCoursesComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ManageSectionsComponent.razor` | • `LoginComponent.razor`: **Dòng 34 - 66**<br>• `ManageCoursesComponent.razor`: **Dòng 37 - 80**<br>• `ManageSectionsComponent.razor`: **Dòng 37 - 100**<br>• Có `<EditForm>`, `<DataAnnotationsValidator />`, `<ValidationMessage For="..." />` cạnh từng ô nhập. | **Đạt** |
-| **10** | **Ca vi phạm 2 luật nghiệp vụ hiện thông báo thân thiện, không văng lỗi** | • `CourseRegistration.Web/Components/Pages/RegistrationCartComponent.razor`<br>• `CourseRegistration.Web/Components/Shared/ValidationAlertComponent.razor` | • Không văng exception (crash).<br>• Hiển thị alert thông báo lỗi chi tiết lý do vi phạm (tên môn tiên quyết chưa đạt / tên lớp và tiết học bị trùng). | **Đạt** |
-| **11** | **Dùng được trên màn hình điện thoại DevTools, bề rộng 390px** | • `CourseRegistration.Web/Components/Layout/NavMenu.razor`<br>• `CourseRegistration.Web/Components/Shared/ScheduleTableComponent.razor` | • Navbar có nút hamburger thu gọn trên mobile.<br>• Thời khóa biểu có chế độ **Agenda xem theo ngày cuộn ngang**, thiết kế tối ưu riêng cho mobile 390px. | **Đạt** |
-| **12** | **Đăng nhập, đăng xuất; ít nhất 2 vai trò** | • `CourseRegistration.Web/Components/Pages/LoginComponent.razor`<br>• `CourseRegistration.Web/Components/Layout/NavMenu.razor` | • **Vai trò 1 (Student):** 7 sinh viên tuần tự `sv21001` đến `sv21007` / `123456`<br>• **Vai trò 2 (Admin):** `admin` / `admin123`<br>• Có nút Đăng xuất xóa phiên làm việc. | **Đạt** |
-| **13** | **Tài khoản thường gõ thẳng URL trang quản trị bị chặn** | • `CourseRegistration.Web/Components/Pages/Admin/ManageCoursesComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ManageSectionsComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ViewEnrollmentListComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/AccessDeniedComponent.razor` | • `ManageCoursesComponent.razor`<br>• `ManageSectionsComponent.razor`<br>• `ViewEnrollmentListComponent.razor`<br>• Kiểm tra `role != "Admin"` trong `OnInitializedAsync`, gõ thẳng URL hoặc truy cập trái phép bị chặn ngay với thông báo HTTP 403 Forbidden giải thích rõ ràng lý do bị từ chối truy cập. | **Đạt** |
+| Mã | Tiêu chí kiểm tra | Cách kiểm tra của Giảng viên | Vị trí file trong mã nguồn | Chi tiết & Minh chứng code | Điểm tối đa | Đánh giá |
+|:---:|:---|:---|:---|:---|:---:|:---:|
+| **K1.1** | **Đủ 4 project; CoreBusiness không tham chiếu project nào; UseCases chỉ tham chiếu CoreBusiness** | Mở các file `.csproj`, xem `<ProjectReference>` | • `CourseRegistration.CoreBusiness/CourseRegistration.CoreBusiness.csproj`<br>• `CourseRegistration.UseCases/CourseRegistration.UseCases.csproj`<br>• `CourseRegistration.Web/CourseRegistration.Web.csproj`<br>• `Plugins/CourseRegistration.DataStore.SqlServer/` | • `CoreBusiness.csproj`: 0 `<ProjectReference>` (Lớp lõi độc lập)<br>• `UseCases.csproj`: Dòng 10-12 (Chỉ tham chiếu CoreBusiness)<br>• Web & Plugin phụ thuộc hướng tâm theo đúng Clean Architecture | **8.0 đ** | **ĐẠT (8/8)** |
+| **K1.2** | **Interface repository nằm ở UseCases, Plugin cài đặt; file `.razor` inject interface, không inject lớp cụ thể** | Tìm `@inject` trong `.razor`; xem `Program.cs` | • **Interface:** `CourseRegistration.UseCases/PluginInterfaces/DataStore/`<br>• **Plugin:** `Plugins/CourseRegistration.DataStore.SqlServer/`<br>• **Cấu hình DI:** `CourseRegistration.Web/Program.cs`<br>• **Razor:** `@inject ICourseRepository`, `@inject IStudentRepository`... | • `Program.cs`: Dòng 51-55 cấu hình Interface $\rightarrow$ Class<br>• `SearchSectionComponent.razor`: Dòng 3-9<br>• 100% file `.razor` không bao giờ inject lớp cụ thể (tuân thủ DIP) | **7.0 đ** | **ĐẠT (7/7)** |
+| **K1.3** | **2 luật nghiệp vụ của đề cài trong CoreBusiness / UseCases, không nằm trong `.razor` (3đ mỗi luật)** | Mở dòng code ghi trong `GRADING.md` | • `CourseRegistration.CoreBusiness/Services/EnrollmentValidationService.cs`<br>• `CourseRegistration.UseCases/StudentPortal/RegistrationCartScreen/PlaceEnrollmentUseCase.cs` | • **Luật 1 (Tiên quyết):** `EnrollmentValidationService.cs` **Dòng 26 - 43**<br>• **Luật 2 (Chống trùng lịch):** `EnrollmentValidationService.cs` **Dòng 46 - 70**<br>• `PlaceEnrollmentUseCase.cs`: **Dòng 85 - 111** gọi kiểm tra trước khi ghi nhận phiếu | **6.0 đ**<br>*(3đ / luật)* | **ĐẠT (6/6)** |
+| **K1.4** | **DI đăng ký đủ; giỏ/lựa chọn tạm dùng Scoped** | Xem `Program.cs` | • `CourseRegistration.Web/Program.cs` | • **Dòng 57 - 60:**<br>`builder.Services.AddScoped<IRegistrationCart, RegistrationCart>();`<br>`builder.Services.AddScoped<IRegistrationCartStateStore, RegistrationCartStateStore>();`<br>`builder.Services.AddScoped<ICurrentUserStateStore, CurrentUserStateStore>();` | **4.0 đ** | **ĐẠT (4/4)** |
+| **K2.1** | **Từ 5 bảng, 3NF, có khóa ngoại; script tạo bảng + dữ liệu mẫu trong repo chạy được** | Chạy script trên CSDL trống trong SSMS | • File script SQL tại thư mục gốc: `DangKyTinChi_Database.sql`<br>• EF Core DbContext: `Plugins/CourseRegistration.DataStore.SqlServer/CourseRegistrationContext.cs` | • Có **9 bảng** chuẩn 3NF: `Courses`, `Students`, `Prerequisites`, `Sections`, `SectionSchedules`, `CompletedCourses`, `Enrollments`, `EnrollmentLines`, `UserAccounts`.<br>• Chạy trực tiếp trên SSMS CSDL trống thành công 100%. | **8.0 đ** | **ĐẠT (8/8)** |
+| **K2.2** | **Cặp header–line ghi trong 1 transaction** | Xem code Plugin của luồng giao dịch chính | • `Plugins/CourseRegistration.DataStore.SqlServer/EnrollmentRepository.cs` | • Hàm `CreateEnrollmentAsync`: **Dòng 83 - 114**<br>• Chứa transaction tường minh:<br>`using var transaction = await context.Database.BeginTransactionAsync();`<br>... `await transaction.CommitAsync();` | **6.0 đ** | **ĐẠT (6/6)** |
+| **K2.3** | **Mọi truy vấn tham số hóa, không nối chuỗi SQL** | Tìm `$"SELECT`, `+ "WHERE` trong Plugin | • Thư mục: `Plugins/CourseRegistration.DataStore.SqlServer/` | • 100% dùng LINQ tham số hóa của EF Core (`.Where(...)`, `.FindAsync(...)`).<br>• Hoàn toàn không có phép nối chuỗi SQL thô, triệt tiêu lỗi SQL Injection. | **5.0 đ** | **ĐẠT (5/5)** |
+| **K2.4** | **Luồng giao dịch chính chạy end-to-end và dữ liệu nằm trong SQL Server** | Demo thao tác Web, sau đó mở bảng trong SSMS | • Cổng web: `http://localhost:53670` (hoặc `http://192.168.1.224:53670`)<br>• CSDL: SQL Server, Catalog `DangKyTinChi` | • Thao tác: Chọn môn $\rightarrow$ Thêm giỏ $\rightarrow$ Xác nhận gửi phiếu.<br>• Mở SSMS bảng `Enrollments`, `EnrollmentLines`, `Sections`: Sĩ số `CurrentEnrollment` tự động tăng 1 thời gian thực. | **6.0 đ** | **ĐẠT (6/6)** |
+| **K3.1** | **Ít nhất 3 component tái sử dụng có `[Parameter]` / `EventCallback`** | Mở thư mục `CourseRegistration.Web/Components/Shared/` | 1. `SectionCardComponent.razor`: **Dòng 104-138** (`[Parameter]` Section, IsInCart... và `EventCallback` OnAddToCart, OnRemoveFromCart).<br>2. `ValidationAlertComponent.razor`: **Dòng 24-38** (`[Parameter]` Errors và `EventCallback` OnDismiss).<br>3. `ScheduleTableComponent.razor`: **Dòng 153-170** (`[Parameter]` Sections, `[Parameter]` OnSectionClick và `EventCallback<Section>` OnSectionClick). | • Tách biệt UI rõ ràng, có giao tiếp 2 chiều component cha-con chuẩn Blazor | **6.0 đ** | **ĐẠT (6/6)** |
+| **K3.2** | **EditForm + DataAnnotations; lỗi nhập liệu hiển thị cạnh ô nhập** | Demo nhập sai để xem lỗi validation | • `CourseRegistration.Web/Components/Pages/LoginComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ManageCoursesComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ManageSectionsComponent.razor` | • `LoginComponent.razor`: **Dòng 34 - 66**<br>• `ManageCoursesComponent.razor`: **Dòng 37 - 80**<br>• `ManageSectionsComponent.razor`: **Dòng 37 - 100**<br>• Đầy đủ `<EditForm>`, `<DataAnnotationsValidator />`, `<ValidationMessage For="..." />` cạnh từng ô nhập. | **5.0 đ** | **ĐẠT (5/5)** |
+| **K3.3** | **Ca vi phạm 2 luật nghiệp vụ hiện thông báo thân thiện, không văng lỗi** | Demo ca vi phạm trên giao diện | • `CourseRegistration.Web/Components/Pages/RegistrationCartComponent.razor`<br>• `CourseRegistration.Web/Components/Shared/ValidationAlertComponent.razor` | • Không bao giờ văng exception (crash hệ thống).<br>• Hiển thị alert màu đỏ thân thiện, nêu rõ lý do: Tên môn tiên quyết còn thiếu / Mã lớp và thứ tiết bị trùng lịch. | **4.0 đ** | **ĐẠT (4/4)** |
+| **K3.4** | **Dùng được trên màn hình điện thoại DevTools, bề rộng 390px** | Mở F12 $\rightarrow$ Ctrl+Shift+M $\rightarrow$ iPhone 390px | • `CourseRegistration.Web/Components/Layout/NavMenu.razor`<br>• `CourseRegistration.Web/Components/Shared/ScheduleTableComponent.razor` | • Navbar có nút hamburger 3 gạch thu gọn mượt mà.<br>• Thời khóa biểu có chế độ **Agenda xem theo ngày cuộn ngang**, thiết kế tối ưu riêng cho mobile 390px. | **5.0 đ** | **ĐẠT (5/5)** |
+| **K4.1** | **Đăng nhập, đăng xuất; ít nhất 2 vai trò** | Demo đăng nhập 2 role | • `CourseRegistration.Web/Components/Pages/LoginComponent.razor`<br>• `CourseRegistration.Web/Components/Layout/NavMenu.razor` | • **Vai trò 1 (Student):** 7 sinh viên tuần tự `sv21001` đến `sv21007` / `123456`<br>• **Vai trò 2 (Admin):** `admin` / `admin123`<br>• Có nút Đăng xuất xóa phiên làm việc tức thì. | **4.0 đ** | **ĐẠT (4/4)** |
+| **K4.2** | **Tài khoản thường gõ thẳng URL trang quản trị bị chặn** | Gõ trực tiếp URL `/admin/courses` | • `CourseRegistration.Web/Components/Pages/Admin/ManageCoursesComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ManageSectionsComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ViewEnrollmentListComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/AccessDeniedComponent.razor` | • Kiểm tra `role != "Admin"` trong `OnInitializedAsync`, gõ thẳng URL hoặc truy cập trái phép bị chặn ngay và chuyển hướng sang trang HTTP 403 Forbidden giải thích rõ ràng. | **5.0 đ** | **ĐẠT (5/5)** |
+| **K4.3** | **Tính năng nâng cao: AI đạt đủ mục 10, hoặc xuất báo cáo (Excel/PDF) từ dữ liệu thật** | Demo + xem code UseCase & Service | • `CourseRegistration.Web/Services/ReportExportService.cs`<br>• `CourseRegistration.UseCases/StudentPortal/AiAdvisor/`<br>• `CourseRegistration.UseCases/AdminPortal/AiAdminAssistant/` | • **Xuất Excel & PDF:** Dùng ClosedXML & QuestPDF xuất danh sách lớp sinh viên, thời khóa biểu và phiếu đăng ký ra file `.xlsx` và `.pdf` chuẩn mẫu Bộ GD&ĐT.<br>• **Trợ lý AI:** Chatbot Cố vấn AI học tập cho SV và AI tra cứu học vụ cho Admin. | **6.0 đ** | **ĐẠT (6/6)** |
+| **K5.1** | **Use Case, Class, Sequence (PlantUML) khớp tên lớp và luồng trong code** | So sánh sơ đồ với code thực tế | • File sơ đồ: `DangKiTinChi-Usecase.drawio.png`<br>• File sơ đồ: `DangKiTinChi-Sơ đồ Lớp .drawio.png`<br>• Mã PlantUML UseCase & Class | • Tên các Actor, UseCase khớp 100% các màn hình Razor và UseCase Screen.<br>• Sơ đồ lớp khớp 100% 9 Model thực thể CSDL, Service kiểm tra luật và các Interface Repository. | **Điểm tối đa** | **ĐẠT (100%)** |
 
 ---
 
-### HƯỚNG DẪN DEMO NHANH CHO GIẢNG VIÊN CHẤM THI
+### HƯỚNG DẪN KỊCH BẢN DEMO NHANH CHO GIẢNG VIÊN CHẤM THI (3 PHÚT)
 
 #### 1. Tài khoản đăng nhập hệ thống:
 * **Quản trị viên (Admin - Phòng Đào Tạo):** `admin` / mật khẩu: `admin123`
-* **Sinh viên 1 (Đã đạt chuẩn tiên quyết TIN101 & TIN102):** `sv21001` (Nguyễn Văn Tuấn) / mật khẩu: `123456`
-* **Sinh viên 2 (CHƯA học OOP - TIN102 -> DEMO CHẶN TIÊN QUYẾT):** `sv21002` (Trần Thị Mai) / mật khẩu: `123456`
-* **Các sinh viên khác (Dữ liệu tuần tự):**
-  * `sv21003` (Lê Hoàng Nam) / mật khẩu: `123456`
-  * `sv21004` (Phạm Minh Anh) / mật khẩu: `123456`
-  * `sv21005` (Hoàng Đức Huy) / mật khẩu: `123456`
-  * `sv21006` (Vũ Thảo Linh) / mật khẩu: `123456`
-  * `sv21007` (Đặng Quốc Bảo) / mật khẩu: `123456`
+* **Sinh viên 1 (Đạt chuẩn tiên quyết):** `sv21001` (Nguyễn Văn Tuấn) / mật khẩu: `123456`
+* **Sinh viên 2 (CHƯA học OOP TIN102 -> DEMO CHẶN TIÊN QUYẾT):** `sv21002` (Trần Thị Mai) / mật khẩu: `123456`
+* **Các sinh viên khác:** `sv21003` đến `sv21007` / mật khẩu: `123456`
 
 ---
 
-#### 2. Kịch bản Demo 2 Luật nghiệp vụ (Tiêu chí 3 & Tiêu chí 10):
+#### 2. Kịch bản Demo 2 Luật nghiệp vụ (Tiêu chí K1.3 & K3.3):
 * **Demo Luật 1 (Vi phạm học phần tiên quyết):**
   1. Đăng nhập bằng sinh viên `sv21002`.
   2. Vào **Tra cứu học phần**, tìm môn **Lập trình Ứng dụng Web (WEB301)**.
@@ -56,17 +55,29 @@
 
 ---
 
-#### 3. Kịch bản Demo Phân quyền & Chặn URL (Tiêu chí 12 & Tiêu chí 13):
+#### 3. Kịch bản Demo Phân quyền & Chặn URL (Tiêu chí K4.1 & K4.2):
 * Khi đang ở tài khoản sinh viên `sv21001` hoặc chưa đăng nhập:
-  * Gõ trực tiếp lên thanh địa chỉ trình duyệt: `http://localhost:53670/admin/courses` hoặc `http://localhost:53670/admin/enrollments`.
+  * Gõ trực tiếp lên thanh địa chỉ trình duyệt: `http://localhost:53670/admin/courses` hoặc `/admin/enrollments`.
   * Hệ thống lập tức chặn lại và chuyển hướng về trang **`/access-denied` (403 - Từ chối truy cập)**.
 * Khi đăng nhập tài khoản `admin`:
   * Xuất hiện menu **Phòng Đào Tạo** với các chức năng quản lý môn học, lớp học phần và **Quản lý Đăng ký & Rút môn SV**.
 
 ---
 
-#### 4. Kịch bản Demo Giao dịch Header - Line & Nghiệp vụ Hủy môn sau hạn (Tiêu chí 5 & 7):
+#### 4. Kịch bản Demo Giao dịch Header - Line & Nghiệp vụ Hủy môn sau hạn (Tiêu chí K2.2 & K2.4):
 1. Sinh viên `sv21001` gửi phiếu đăng ký $\rightarrow$ Dữ liệu ghi vào bảng `Enrollments` (Header) và `EnrollmentLines` (Line) trong 1 Transaction, sĩ số lớp `WEB301_01` tăng từ 0 lên 1.
 2. Đăng nhập `admin` $\rightarrow$ Vào **Phòng Đào Tạo $\rightarrow$ Quản lý Đăng ký & Rút môn SV**.
 3. Chọn sinh viên `sv21001` $\rightarrow$ Thấy môn `WEB301_01` $\rightarrow$ Bấm **"Hủy môn / Rút môn"** $\rightarrow$ Chọn lý do học vụ và xác nhận.
 4. Môn học được hủy khỏi phiếu của sinh viên, mở SSMS kiểm tra thấy `CurrentEnrollment` của lớp tự động trừ đi 1 để nhả chỗ cho sinh viên khác.
+
+---
+
+#### 5. Kịch bản Demo Tính năng Nâng cao (Tiêu chí K4.3):
+1. **Xuất Báo Cáo:** Vào trang **Xem danh sách lớp theo SV** hoặc **Phiếu đăng ký** $\rightarrow$ Bấm nút **Xuất Excel** hoặc **Xuất PDF** $\rightarrow$ Tệp tải về ngay với định dạng bảng biểu, màu sắc tiêu chuẩn trường học.
+2. **Cố Vấn AI:** Bấm menu **Cố vấn AI** $\rightarrow$ Hỏi đáp về lộ trình học tập, môn tiên quyết, gợi ý môn học theo học kỳ.
+
+---
+
+#### 6. Kịch bản Demo Thiết kế Hệ thống (Tiêu chí K5.1):
+* Sơ đồ Use Case phân ranh giới chuẩn hệ thống: [DangKiTinChi-Usecase.drawio.png](file:///f:/L%E1%BA%ADp%20tr%C3%ACnh%20%E1%BB%A9ng%20d%E1%BB%A5ng%20Web/DoAn/DangKiTinChi-Usecase.drawio.png).
+* Sơ đồ lớp (Class Diagram) chuẩn 9 bảng 3NF: [DangKiTinChi-Sơ đồ Lớp .drawio.png](file:///f:/L%E1%BA%ADp%20tr%C3%ACnh%20%E1%BB%A9ng%20d%E1%BB%A5ng%20Web/DoAn/DangKiTinChi-S%C6%A1%20%C4%91%E1%BB%93%20L%E1%BB%9Bp%20.drawio.png).

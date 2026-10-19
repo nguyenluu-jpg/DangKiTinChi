@@ -3,7 +3,10 @@
 @inject IViewScheduleUseCase ViewScheduleUseCase
 @inject IStudentRepository StudentRepository
 @inject ICurrentUserStateStore CurrentUserStateStore
+@inject ILoginModalService LoginModalService
 @implements IDisposable
+
+@inject IEnrollmentRepository EnrollmentRepository
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
@@ -14,8 +17,17 @@
     </div>
     
     <div class="d-flex align-items-center gap-2 flex-wrap">
+        @if (currentEnrollmentId.HasValue && currentEnrollmentId.Value > 0)
+        {
+            <a href="/api/reports/student-enrollment/excel?enrollmentId=@currentEnrollmentId.Value" class="btn btn-outline-success fw-bold shadow-sm" target="_blank" download>
+                <i class="bi bi-file-earmark-excel me-1"></i> Xuất Excel TKB
+            </a>
+            <a href="/api/reports/student-enrollment/pdf?enrollmentId=@currentEnrollmentId.Value" class="btn btn-outline-danger fw-bold shadow-sm" target="_blank">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Xuất Phiếu ĐK (PDF)
+            </a>
+        }
         <button class="btn btn-outline-secondary" onclick="window.print()">
-            <i class="bi bi-printer me-1"></i> In Thời Khóa Biểu
+            <i class="bi bi-printer me-1"></i> In Nhanh
         </button>
         @if (currentRole == "Admin")
         {
@@ -44,9 +56,11 @@
             Để xem thời khóa biểu chi tiết, vui lòng đăng nhập bằng tài khoản Sinh viên của bạn hoặc tài khoản Quản trị viên.
         </p>
         <div>
-            <a href="/login" class="btn btn-primary px-4 py-2 fw-bold">
+            <button type="button" 
+                    class="btn btn-primary px-4 py-2 fw-bold"
+                    @onclick="() => LoginModalService.Open()">
                 <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Ngay
-            </a>
+            </button>
         </div>
     </div>
 }
@@ -158,6 +172,8 @@ else
     private IEnumerable<Section> registeredSections = new List<Section>();
     private bool isLoading = true;
 
+    private int? currentEnrollmentId;
+
     protected override async Task OnInitializedAsync()
     {
         CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
@@ -188,10 +204,13 @@ else
         if (selectedStudentId > 0)
         {
             registeredSections = await ViewScheduleUseCase.ExecuteAsync(selectedStudentId, "2026_HK1");
+            var enrollments = await EnrollmentRepository.GetEnrollmentsByStudentIdAsync(selectedStudentId);
+            currentEnrollmentId = enrollments.FirstOrDefault(e => e.Semester == "2026_HK1" && e.Status == "Confirmed")?.EnrollmentId;
         }
         else
         {
             registeredSections = new List<Section>();
+            currentEnrollmentId = null;
         }
         isLoading = false;
     }

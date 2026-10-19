@@ -39,7 +39,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         SectionCode = "WEB301_01",
                         CourseId = cWeb?.CourseId ?? 5,
                         Course = cWeb,
-                        Instructor = "TS. Nguyễn Văn A",
+                        Instructor = "TS. Nguyễn Văn Hùng",
                         MaxCapacity = 50,
                         CurrentEnrollment = 25,
                         Semester = "2026_HK1",
@@ -52,7 +52,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         SectionCode = "WEB301_02",
                         CourseId = cWeb?.CourseId ?? 5,
                         Course = cWeb,
-                        Instructor = "ThS. Trần Thị B",
+                        Instructor = "ThS. Trần Thị Thanh Trúc",
                         MaxCapacity = 50,
                         CurrentEnrollment = 48,
                         Semester = "2026_HK1",
@@ -65,7 +65,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         SectionCode = "TIN201_01",
                         CourseId = cAlgo?.CourseId ?? 4,
                         Course = cAlgo,
-                        Instructor = "PGS. Lê Hoàng C",
+                        Instructor = "PGS.TS. Lê Hoàng Sơn",
                         MaxCapacity = 60,
                         CurrentEnrollment = 30,
                         Semester = "2026_HK1",
@@ -78,7 +78,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         SectionCode = "TIN201_02",
                         CourseId = cAlgo?.CourseId ?? 4,
                         Course = cAlgo,
-                        Instructor = "ThS. Đỗ Minh D",
+                        Instructor = "ThS. Đỗ Minh Tuấn",
                         MaxCapacity = 60,
                         CurrentEnrollment = 20,
                         Semester = "2026_HK1",
@@ -91,22 +91,22 @@ namespace CourseRegistration.DataStore.HardCoded
                         SectionCode = "CSDL201_01",
                         CourseId = cDb?.CourseId ?? 3,
                         Course = cDb,
-                        Instructor = "TS. Phạm Thanh E",
+                        Instructor = "TS. Phạm Thanh Tùng",
                         MaxCapacity = 60,
                         CurrentEnrollment = 45,
                         Semester = "2026_HK1",
                         Room = "Phòng B204"
                     },
-                    // Công nghệ Phần mềm -> ĐÃ ĐẦY CHỖ (50/50) ĐỂ DEMO VI PHẠM LUẬT 2!
+                    // Công nghệ Phần mềm -> ĐÃ ĐẦY CHỖ (10/10) ĐỂ DEMO VI PHẠM LUẬT 2!
                     new Section
                     {
                         SectionId = 6,
                         SectionCode = "KTPM302_01",
                         CourseId = cSe?.CourseId ?? 6,
                         Course = cSe,
-                        Instructor = "TS. Ngô Bảo F",
-                        MaxCapacity = 50,
-                        CurrentEnrollment = 50, // Hết chỗ
+                        Instructor = "TS. Ngô Bảo Châu",
+                        MaxCapacity = 10,
+                        CurrentEnrollment = 10, // Hết chỗ
                         Semester = "2026_HK1",
                         Room = "Phòng C301"
                     },
@@ -117,7 +117,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         SectionCode = "TIN102_01",
                         CourseId = cOop?.CourseId ?? 2,
                         Course = cOop,
-                        Instructor = "ThS. Vũ Mạnh G",
+                        Instructor = "ThS. Vũ Mạnh Cường",
                         MaxCapacity = 60,
                         CurrentEnrollment = 35,
                         Semester = "2026_HK1",

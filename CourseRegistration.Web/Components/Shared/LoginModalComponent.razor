@@ -1,0 +1,193 @@
+@namespace CourseRegistration.Web.Components.Shared
+@inject ILoginModalService LoginModalService
+@inject ILoginUseCase LoginUseCase
+@inject ICurrentUserStateStore CurrentUserStateStore
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+@if (LoginModalService.IsVisible)
+{
+    <!-- Modal Backdrop Overlay -->
+    <div class="login-modal-overlay" @onclick="CloseModal">
+        <div class="login-modal-dialog" @onclick:stopPropagation="true">
+            <!-- Modal Card -->
+            <div class="login-modal-content card border-0 shadow-2xl rounded-4 overflow-hidden">
+                <!-- Header Gradient -->
+                <div class="login-modal-header text-white text-center py-4 px-4 position-relative">
+                    <button type="button" 
+                            class="btn-close-modal position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center" 
+                            @onclick="CloseModal"
+                            aria-label="Đóng">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+
+                    <div class="mb-2">
+                        <span class="d-inline-flex align-items-center justify-content-center bg-white bg-opacity-20 rounded-circle p-3 shadow-sm">
+                            <i class="bi bi-mortarboard-fill fs-2 text-white"></i>
+                        </span>
+                    </div>
+                    <h4 class="fw-bold mb-1 text-white">Đăng Nhập Hệ Thống</h4>
+                    <div class="text-white-50 small">Cổng Đăng Ký Học Phần Trực Tuyến</div>
+                </div>
+
+                <!-- Body -->
+                <div class="card-body p-4 p-md-4 bg-white">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center rounded-3 mb-3 py-2 px-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2 fs-5"></i>
+                            <div class="small fw-semibold">
+                                @errorMessage
+                            </div>
+                        </div>
+                    }
+
+                    <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" autocomplete="off">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark small mb-1">Tài khoản / MSSV <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="bi bi-person"></i>
+                                </span>
+                                <InputText class="form-control border-start-0 ps-0 bg-light" 
+                                           placeholder="vd: admin hoặc sv21001" 
+                                           autocomplete="off"
+                                           autocorrect="off"
+                                           spellcheck="false"
+                                           @bind-Value="loginModel.Username" />
+                            </div>
+                            <div class="text-danger small mt-1">
+                                <ValidationMessage For="@(() => loginModel.Username)" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark small mb-1">Mật khẩu <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="bi bi-lock"></i>
+                                </span>
+                                <InputText type="@(showPassword ? "text" : "password")" 
+                                           class="form-control border-start-0 border-end-0 ps-0 bg-light" 
+                                           placeholder="Mật khẩu của bạn" 
+                                           autocomplete="current-password"
+                                           @bind-Value="loginModel.Password" />
+                                <button type="button" 
+                                        class="input-group-text bg-light border-start-0 text-muted cursor-pointer"
+                                        @onclick="() => showPassword = !showPassword"
+                                        title="@(showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu")">
+                                    <i class="bi @(showPassword ? "bi-eye-slash-fill" : "bi-eye-fill")"></i>
+                                </button>
+                            </div>
+                            <div class="text-danger small mt-1">
+                                <ValidationMessage For="@(() => loginModel.Password)" />
+                            </div>
+                        </div>
+
+                        <button type="submit" 
+                                class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-3"
+                                disabled="@isLoading">
+                            @if (isLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span>Đang xác thực...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-box-arrow-in-right fs-5"></i>
+                                <span>Đăng Nhập</span>
+                            }
+                        </button>
+                    </EditForm>
+
+                    <div class="mt-3 pt-3 border-top text-center text-secondary small" style="font-size: 0.78rem;">
+                        <i class="bi bi-shield-check text-success me-1"></i>
+                        Hệ thống xác thực tài khoản sinh viên &amp; cán bộ quản trị.
+                        <div class="mt-1 text-muted" style="font-size: 0.74rem;">
+                            Quên mật khẩu hoặc cần cấp lại tài khoản? Vui lòng liên hệ <span class="fw-semibold text-dark">Phòng Đào Tạo</span>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private LoginViewModel loginModel = new LoginViewModel();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+    private bool showPassword = false;
+
+    protected override void OnInitialized()
+    {
+        LoginModalService.OnChange += HandleModalStateChange;
+    }
+
+    private void HandleModalStateChange()
+    {
+        if (LoginModalService.IsVisible)
+        {
+            errorMessage = string.Empty;
+            loginModel = new LoginViewModel();
+            showPassword = false;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void CloseModal()
+    {
+        LoginModalService.Close();
+    }
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var account = await LoginUseCase.ExecuteAsync(loginModel.Username, loginModel.Password);
+            if (account != null)
+            {
+                await CurrentUserStateStore.SetCurrentUserAsync(account);
+                LoginModalService.Close();
+
+                if (account.Role == "Admin")
+                {
+                    NavigationManager.NavigateTo("/admin/courses");
+                }
+                // Nếu là Student: Modal đóng lại, giữ nguyên trang hiện tại! 
+                // CurrentUserStateStore.BroadcastStateChange() sẽ tự cập nhật navbar, giỏ hàng, thông tin SV trên trang hiện tại.
+            }
+            else
+            {
+                errorMessage = "Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng thử lại!";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Có lỗi xảy ra trong quá trình đăng nhập: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        LoginModalService.OnChange -= HandleModalStateChange;
+    }
+
+    public class LoginViewModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Vui lòng nhập tên đăng nhập")]
+        public string Username { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Vui lòng nhập mật khẩu")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

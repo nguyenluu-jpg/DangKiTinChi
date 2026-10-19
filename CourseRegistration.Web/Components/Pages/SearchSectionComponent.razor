@@ -7,6 +7,7 @@
 @inject ICurrentUserStateStore CurrentUserStateStore
 @inject IStudentRepository StudentRepository
 @inject ICourseRepository CourseRepository
+@inject ILoginModalService LoginModalService
 @implements IDisposable
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -54,9 +55,11 @@
                 <div class="small text-muted">Vui lòng đăng nhập để hệ thống tự động kiểm tra điều kiện tiên quyết và tính toán hạn mức tín chỉ cho bạn.</div>
             </div>
         </div>
-        <a href="/login" class="btn btn-outline-primary fw-semibold px-3 py-1 rounded-pill">
+        <button type="button" 
+                class="btn btn-outline-primary fw-semibold px-3 py-1 rounded-pill"
+                @onclick="() => LoginModalService.Open()">
             <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
-        </a>
+        </button>
     </div>
 }
 else if (currentRole == "Admin")

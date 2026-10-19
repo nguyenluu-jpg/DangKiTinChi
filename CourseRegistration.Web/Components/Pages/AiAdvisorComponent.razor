@@ -1,0 +1,500 @@
+@page "/ai-advisor"
+@namespace CourseRegistration.Web.Components.Pages
+@using CourseRegistration.CoreBusiness.Models
+@using CourseRegistration.UseCases.StudentPortal.AiAdvisor
+@using CourseRegistration.UseCases.StudentPortal.RegistrationCartScreen.Interfaces
+@inject IGetAiAdviceUseCase GetAiAdviceUseCase
+@inject IAddSectionToCartUseCase AddSectionToCartUseCase
+@inject IRegistrationCartStateStore CartStateStore
+@inject ICurrentUserStateStore CurrentUserStateStore
+@inject IStudentRepository StudentRepository
+@inject ILoginModalService LoginModalService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<PageTitle>Cố Vấn Học Tập AI - Đăng Ký Tín Chỉ</PageTitle>
+
+<div class="container py-3">
+    <!-- Header banner -->
+    <div class="card border-0 rounded-4 shadow-sm text-white mb-4 overflow-hidden position-relative" 
+         style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);">
+        <div class="card-body p-4 p-lg-5 position-relative z-1">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white bg-opacity-20 text-white small fw-bold mb-3 backdrop-blur">
+                        <i class="bi bi-stars text-warning"></i> Tính Năng Nâng Cao &bull; Microsoft.Extensions.AI
+                    </div>
+                    <h2 class="display-6 fw-bold mb-2">Cố Vấn Học Tập AI Thông Minh</h2>
+                    <p class="lead mb-0 text-white-50 fs-6">
+                        Trợ lý AI phân tích tự động lịch sử học tập, điều kiện tiên quyết và mục tiêu cá nhân để đề xuất lộ trình đăng ký tối ưu nhất cho học kỳ <strong>2026_HK1</strong>.
+                    </p>
+                </div>
+                <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                    <div class="d-inline-block p-3 rounded-4 bg-white bg-opacity-10 border border-white border-opacity-25 text-start">
+                        <div class="small text-white-50">Hỗ trợ đa nền tảng AI:</div>
+                        <div class="fw-bold fs-6 text-white"><i class="bi bi-hdd-network text-info me-1"></i> Ollama Local (Miễn phí)</div>
+                        <div class="fw-bold fs-6 text-white"><i class="bi bi-cloud-check text-warning me-1"></i> OpenAI / Azure (User Secrets)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!isAuthenticated)
+    {
+        <!-- Chưa đăng nhập -->
+        <div class="card border-0 shadow-sm rounded-4 text-center py-5 bg-white mb-4">
+            <div class="card-body py-4">
+                <div class="mb-3">
+                    <i class="bi bi-person-lock fs-1 text-primary"></i>
+                </div>
+                <h4 class="fw-bold text-dark mb-2">Vui Lòng Đăng Nhập Để Nhận Tư Vấn</h4>
+                <p class="text-muted mx-auto mb-4" style="max-width: 500px;">
+                    Cố vấn AI cần đọc hồ sơ sinh viên, các môn đã hoàn thành và điểm số của bạn để đưa ra lời khuyên chính xác nhất.
+                </p>
+                <button class="btn btn-primary btn-lg px-4 fw-bold shadow-sm" @onclick="() => LoginModalService.Open()">
+                    <i class="bi bi-box-arrow-in-right me-2"></i> Đăng Nhập Tài Khoản Sinh Viên
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Bộ điều khiển cấu hình sinh viên (Dành cho Admin hoặc chính Sinh viên) -->
+        <div class="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-7">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-primary-subtle text-primary p-3 fs-3 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                            <i class="bi bi-mortarboard-fill"></i>
+                        </div>
+                        <div>
+                            <div class="small text-muted fw-bold text-uppercase">Hồ sơ sinh viên đang tư vấn:</div>
+                            <h4 class="fw-bold text-dark mb-0">@currentStudentName</h4>
+                            <div class="small text-muted">
+                                MSSV: <strong>@currentStudentCode</strong> &bull; Ngành: <strong>@currentMajor</strong> (@currentAcademicYear)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (currentRole == "Admin")
+                {
+                    <div class="col-md-5">
+                        <label class="form-label small fw-bold text-danger mb-1">
+                            <i class="bi bi-shield-lock me-1"></i>Admin: Chọn sinh viên để thử nghiệm tư vấn AI:
+                        </label>
+                        <select class="form-select" @onchange="OnAdminStudentSelect">
+                            @foreach (var s in studentList)
+                            {
+                                <option value="@s.StudentId" selected="@(s.StudentId == activeStudentId)">
+                                    @s.StudentCode - @s.FullName (@s.Major)
+                                </option>
+                            }
+                        </select>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Nhập nguyện vọng / câu hỏi cho AI -->
+        <div class="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4">
+            <h5 class="fw-bold text-dark mb-3">
+                <i class="bi bi-chat-quote text-primary me-2"></i>Bạn Muốn AI Tư Vấn Theo Mục Tiêu Nào?
+            </h5>
+
+            <!-- Nút chọn nhanh mục tiêu -->
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill @(userPrompt == "Cân bằng học tập khoảng 10-14 tín chỉ, không trùng lịch" ? "active" : "")"
+                        @onclick='() => SetPrompt("Cân bằng học tập khoảng 10-14 tín chỉ, không trùng lịch")'>
+                    ⚖️ Cân bằng vừa sức (10-14 TC)
+                </button>
+                <button type="button" class="btn btn-outline-success btn-sm rounded-pill @(userPrompt == "Ưu tiên các môn chuyên sâu Lập trình Web và Cơ sở dữ liệu" ? "active" : "")"
+                        @onclick='() => SetPrompt("Ưu tiên các môn chuyên sâu Lập trình Web và Cơ sở dữ liệu")'>
+                    🌐 Chuyên ngành Lập trình Web & CSDL
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm rounded-pill @(userPrompt == "Đăng ký tối đa số tín chỉ có thể để đẩy nhanh tiến độ ra trường" ? "active" : "")"
+                        @onclick='() => SetPrompt("Đăng ký tối đa số tín chỉ có thể để đẩy nhanh tiến độ ra trường")'>
+                    🚀 Đẩy nhanh tiến độ (Học tối đa TC)
+                </button>
+                <button type="button" class="btn btn-outline-warning btn-sm rounded-pill @(userPrompt == "Lịch học thoải mái, tránh các tiết học sớm vào sáng Thứ 2" ? "active" : "")"
+                        @onclick='() => SetPrompt("Lịch học thoải mái, tránh các tiết học sớm vào sáng Thứ 2")'>
+                    ☕ Tránh học sớm sáng Thứ Hai
+                </button>
+            </div>
+
+            <div class="input-group mb-3">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-robot text-primary"></i></span>
+                <input type="text" class="form-control border-start-0 py-2" 
+                       placeholder="Ví dụ: Tôi muốn học 12 tín chỉ, ưu tiên môn OOP và CSDL, thầy cô nhiều kinh nghiệm..."
+                       @bind="userPrompt" @bind:event="oninput" @onkeydown="HandleKeyDown" />
+                <button class="btn btn-primary px-4 fw-bold" type="button" @onclick="AskAiAdvisor" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span>AI Đang Phân Tích...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-magic me-1"></i>
+                        <span>Nhờ AI Tư Vấn Ngay</span>
+                    }
+                </button>
+            </div>
+
+            <div class="small text-muted d-flex align-items-center gap-2">
+                <i class="bi bi-shield-check text-success"></i>
+                <span>Quy tắc bảo vệ: <strong>AI chỉ gợi ý</strong> &bull; Dữ liệu chưa ghi vào CSDL &bull; Bạn phải xác nhận trước khi lưu.</span>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success border-0 shadow-sm rounded-4 p-3 d-flex align-items-center justify-content-between mb-4">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-check-circle-fill fs-5 text-success"></i>
+                    <span>@successMessage</span>
+                </div>
+                <a href="/cart" class="btn btn-success btn-sm fw-bold">
+                    <i class="bi bi-cart3 me-1"></i> Xem Giỏ Đăng Ký
+                </a>
+            </div>
+        }
+
+        <!-- KẾT QUẢ TƯ VẤN CỦA AI -->
+        @if (currentAdvice != null)
+        {
+            <!-- Cảnh báo nếu API lỗi/hết quota (Ứng dụng vẫn chạy êm ái) -->
+            @if (!string.IsNullOrEmpty(currentAdvice.WarningMessage))
+            {
+                <div class="alert alert-warning border-0 shadow-sm rounded-4 p-3 mb-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="bi bi-exclamation-triangle-fill fs-4 text-warning"></i>
+                        <div>
+                            <div class="fw-bold">Thông báo kết nối AI:</div>
+                            <div class="small text-muted">@currentAdvice.WarningMessage</div>
+                            <div class="small mt-1 text-dark">
+                                <i class="bi bi-check2-circle text-success me-1"></i>Hệ thống tự động sử dụng <strong>Thuật toán Quy tắc Học thuật Dự phòng</strong> để bạn vẫn nhận được lời khuyên đầy đủ và chính xác.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Card lời khuyên tổng quan từ AI -->
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4 border-start border-primary border-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge @(currentAdvice.IsAiGenerated ? "bg-primary" : "bg-info") fs-6 px-3 py-2 rounded-pill">
+                            <i class="bi @(currentAdvice.IsAiGenerated ? "bi-stars" : "bi-gear-wide-connected") me-1"></i>
+                            @(currentAdvice.IsAiGenerated ? "Trợ lý AI Đề Xuất" : "Cố vấn Quy Tắc Đề Xuất")
+                        </span>
+                        <span class="badge bg-light text-dark border">
+                            Mô hình: @(string.IsNullOrEmpty(currentAdvice.ModelUsed) ? "AI Default" : currentAdvice.ModelUsed)
+                        </span>
+                    </div>
+                    <span class="text-muted small">Thời gian: @currentAdvice.GeneratedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                </div>
+
+                <div class="p-3 bg-light rounded-3 border mb-0 text-dark" style="line-height: 1.6;">
+                    @((MarkupString)FormatMessage(currentAdvice.AiMessage))
+                </div>
+            </div>
+
+            <!-- Danh sách các lớp học phần được gợi ý -->
+            <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden mb-4">
+                <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="bi bi-list-check text-primary me-2"></i>Danh Sách Lớp Học Phần Đề Xuất Cho Bạn
+                        </h5>
+                        <span class="small text-muted">Bạn có thể chọn hoặc bỏ chọn từng môn trước khi xác nhận</span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="small">
+                            Đã chọn: <strong class="text-primary fs-6">@SelectedCredits</strong> tín chỉ
+                        </span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ToggleSelectAll">
+                            @(currentAdvice.RecommendedSections.All(s => s.IsSelected) ? "Bỏ chọn tất cả" : "Chọn tất cả")
+                        </button>
+                    </div>
+                </div>
+
+                @if (!currentAdvice.RecommendedSections.Any())
+                {
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-emoji-smile fs-1 mb-2 d-block"></i>
+                        <h6>Không có lớp học phần nào phù hợp thêm trong kỳ này.</h6>
+                        <p class="small mb-0">Bạn có thể đã hoàn thành hết các môn tiên quyết hoặc đã đăng ký đủ tải.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 45px;" class="text-center">Chọn</th>
+                                    <th>Mã Lớp</th>
+                                    <th>Tên Học Phần</th>
+                                    <th>Số TC</th>
+                                    <th>Giảng Viên</th>
+                                    <th>Thời Khóa Biểu & Phòng</th>
+                                    <th>Lý Do AI Đề Xuất</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in currentAdvice.RecommendedSections)
+                                {
+                                    <tr class="@(item.IsSelected ? "table-primary-subtle" : "")">
+                                        <td class="text-center">
+                                            <input type="checkbox" class="form-check-input" 
+                                                   style="cursor: pointer; width: 1.25rem; height: 1.25rem;"
+                                                   @bind="item.IsSelected" />
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary fs-6">@item.SectionCode</span>
+                                        </td>
+                                        <td>
+                                            <div class="fw-bold text-dark">@item.CourseName</div>
+                                            <div class="small text-muted">Mã môn: @item.CourseCode</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">@item.Credits TC</span>
+                                        </td>
+                                        <td class="small fw-semibold text-dark">@item.Instructor</td>
+                                        <td class="small text-muted">@item.ScheduleSummary</td>
+                                        <td class="small text-primary">
+                                            <i class="bi bi-info-circle me-1"></i>@item.RecommendationReason
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- THANH XÁC NHẬN CỦA NGƯỜI DÙNG TRƯỚC KHI GHI VÀO CSDL -->
+                    <div class="card-footer bg-light p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-shield-exclamation text-warning fs-4"></i>
+                            <div>
+                                <div class="fw-bold text-dark">Xác nhận của bạn:</div>
+                                <div class="small text-muted">
+                                    Theo quy tắc học vụ, AI chỉ đóng vai trò tư vấn. Việc lưu vào giỏ hoặc đăng ký chính thức cần sự xác nhận rõ ràng của bạn.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-outline-secondary px-3" @onclick="ClearAdvice">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Đặt Lại
+                            </button>
+                            <button type="button" class="btn btn-success px-4 py-2 fw-bold shadow-sm" 
+                                    @onclick="AddSelectedToCart"
+                                    disabled="@(SelectedCredits == 0)">
+                                <i class="bi bi-cart-plus me-1"></i> Thêm Các Môn Đã Chọn Vào Giỏ Đăng Ký
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private bool isLoading = false;
+    private string userPrompt = string.Empty;
+    private string successMessage = string.Empty;
+    private AiCourseAdvice? currentAdvice;
+
+    private int activeStudentId = 0;
+    private string currentStudentCode = string.Empty;
+    private string currentStudentName = string.Empty;
+    private string currentMajor = string.Empty;
+    private string currentAcademicYear = string.Empty;
+
+    private List<Student> studentList = new();
+
+    private bool isAuthenticated = false;
+    private string currentRole = string.Empty;
+    private int SelectedCredits => currentAdvice?.RecommendedSections.Where(s => s.IsSelected).Sum(s => s.Credits) ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
+        await LoadStudentDataAsync();
+    }
+
+    private async void HandleUserStateChange()
+    {
+        await LoadStudentDataAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadStudentDataAsync()
+    {
+        studentList = (await StudentRepository.GetAllStudentsAsync()).ToList();
+        isAuthenticated = await CurrentUserStateStore.IsAuthenticatedAsync();
+        currentRole = await CurrentUserStateStore.GetCurrentRoleAsync();
+
+        if (isAuthenticated)
+        {
+            if (currentRole == "Admin")
+            {
+                if (activeStudentId == 0)
+                {
+                    var firstStudent = studentList.FirstOrDefault();
+                    if (firstStudent != null)
+                    {
+                        SetCurrentStudent(firstStudent);
+                    }
+                }
+            }
+            else
+            {
+                int studentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+                var stu = studentList.FirstOrDefault(s => s.StudentId == studentId);
+                if (stu != null)
+                {
+                    SetCurrentStudent(stu);
+                }
+            }
+        }
+    }
+
+    private void SetCurrentStudent(Student stu)
+    {
+        activeStudentId = stu.StudentId;
+        currentStudentCode = stu.StudentCode;
+        currentStudentName = stu.FullName;
+        currentMajor = stu.Major;
+        currentAcademicYear = stu.AcademicYear;
+    }
+
+    private async Task OnAdminStudentSelect(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int sid))
+        {
+            var stu = await StudentRepository.GetStudentByIdAsync(sid);
+            if (stu != null)
+            {
+                SetCurrentStudent(stu);
+                currentAdvice = null;
+                successMessage = string.Empty;
+            }
+        }
+    }
+
+    private void SetPrompt(string p)
+    {
+        userPrompt = p;
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !isLoading)
+        {
+            await AskAiAdvisor();
+        }
+    }
+
+    private async Task AskAiAdvisor()
+    {
+        if (activeStudentId == 0) return;
+        isLoading = true;
+        successMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            // Gọi qua UseCase riêng theo chuẩn Clean Architecture (K1.1)
+            // IChatClient được inject vào GetAiAdviceUseCase, không gọi trực tiếp từ .razor
+            currentAdvice = await GetAiAdviceUseCase.ExecuteAsync(activeStudentId, "2026_HK1", userPrompt);
+        }
+        catch (Exception ex)
+        {
+            // Xử lý an toàn nếu xảy ra lỗi bất ngờ ngoài dự kiến
+            currentAdvice = new AiCourseAdvice
+            {
+                StudentId = activeStudentId,
+                StudentCode = currentStudentCode,
+                StudentName = currentStudentName,
+                Semester = "2026_HK1",
+                IsAiGenerated = false,
+                WarningMessage = $"Đã xảy ra lỗi: {ex.Message}. Ứng dụng vẫn hoạt động bình thường."
+            };
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (currentAdvice == null || !currentAdvice.RecommendedSections.Any()) return;
+        bool allSelected = currentAdvice.RecommendedSections.All(s => s.IsSelected);
+        foreach (var s in currentAdvice.RecommendedSections)
+        {
+            s.IsSelected = !allSelected;
+        }
+    }
+
+    private void ClearAdvice()
+    {
+        currentAdvice = null;
+        successMessage = string.Empty;
+    }
+
+    // NGƯỜI DÙNG XÁC NHẬN THÊM VÀO GIỎ TRƯỚC KHI GHI VÀO CSDL
+    private async Task AddSelectedToCart()
+    {
+        if (currentAdvice == null) return;
+
+        var selected = currentAdvice.RecommendedSections.Where(s => s.IsSelected).ToList();
+        if (!selected.Any()) return;
+
+        int addedCount = 0;
+        foreach (var item in selected)
+        {
+            // Tạo đối tượng Section tương ứng để đưa vào Cart
+            var sec = new Section
+            {
+                SectionId = item.SectionId,
+                SectionCode = item.SectionCode,
+                CourseId = item.CourseId,
+                Instructor = item.Instructor,
+                Room = item.Room,
+                Semester = "2026_HK1",
+                Course = new Course
+                {
+                    CourseId = item.CourseId,
+                    CourseCode = item.CourseCode,
+                    CourseName = item.CourseName,
+                    Credits = item.Credits
+                }
+            };
+
+            // Thêm vào giỏ đăng ký
+            await AddSectionToCartUseCase.ExecuteAsync(sec);
+            addedCount++;
+        }
+
+        successMessage = $"Bạn đã xác nhận và thêm thành công {addedCount} học phần ({SelectedCredits} tín chỉ) vào Giỏ Đăng Ký!";
+        StateHasChanged();
+    }
+
+    private static string FormatMessage(string msg)
+    {
+        if (string.IsNullOrWhiteSpace(msg)) return string.Empty;
+        return msg.Replace("\n", "<br/>");
+    }
+
+    public void Dispose()
+    {
+        CurrentUserStateStore.RemoveStateChangeListeners(HandleUserStateChange);
+    }
+}

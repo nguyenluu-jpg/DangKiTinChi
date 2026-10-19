@@ -2,6 +2,7 @@
 @inject ICurrentUserStateStore CurrentUserStateStore
 @inject IStudentRepository StudentRepository
 @inject IRegistrationCartStateStore CartStateStore
+@inject ILoginModalService LoginModalService
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
@@ -43,6 +44,11 @@
                         <i class="bi bi-calendar3 me-1"></i> Thời khóa biểu
                     </NavLink>
                 </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="/ai-advisor" @onclick="CloseAllDropdowns">
+                        <i class="bi bi-stars text-info me-1"></i> Cố vấn AI <span class="badge bg-primary text-white rounded-pill ms-1" style="font-size: 0.65rem;">Mới</span>
+                    </NavLink>
+                </li>
                 @if (isAuthenticated && currentRole == "Admin")
                 {
                     <li class="nav-item dropdown position-relative">
@@ -76,10 +82,12 @@
                 <!-- User Switcher & Auth Controls -->
                 @if (!isAuthenticated)
                 {
-                    <a href="/login" class="btn btn-primary d-flex align-items-center gap-2 px-3 py-1 rounded-pill shadow-sm">
+                    <button type="button" 
+                            class="btn btn-primary d-flex align-items-center gap-2 px-3 py-1 rounded-pill shadow-sm"
+                            @onclick="OpenLoginModal">
                         <i class="bi bi-box-arrow-in-right"></i>
                         <span class="fw-semibold">Đăng nhập</span>
-                    </a>
+                    </button>
                 }
                 else
                 {
@@ -248,10 +256,10 @@
         }
         else if (!isAuthenticated)
         {
-            <NavLink class="mobile-nav-item" href="/login">
+            <button type="button" class="mobile-nav-item bg-transparent border-0" @onclick="OpenLoginModal">
                 <i class="bi bi-box-arrow-in-right"></i>
                 <span>Đăng nhập</span>
-            </NavLink>
+            </button>
         }
     </div>
 </div>
@@ -322,6 +330,12 @@
         isAdminDropdownOpen = false;
         isUserDropdownOpen = false;
         isMobileNavExpanded = false;
+    }
+
+    private void OpenLoginModal()
+    {
+        CloseAllDropdowns();
+        LoginModalService.Open();
     }
 
     public void Dispose()

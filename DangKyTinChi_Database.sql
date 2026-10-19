@@ -1,4 +1,4 @@
-﻿-- ==============================================================================
+-- ==============================================================================
 -- DỰ ÁN: ĐĂNG KÝ HỌC PHẦN TRỰC TUYẾN (ĐỀ 15)
 -- CƠ SỞ DỮ LIỆU: DangKyTinChi
 -- TIÊU CHÍ CHẤM THI: Tiêu chí 4 (Từ 5 bảng, 3NF, có khóa ngoại, chạy được trên CSDL trống)
@@ -168,7 +168,20 @@ INSERT INTO dbo.Students (StudentCode, FullName, Major, AcademicYear, MaxCredits
 (N'SV21004', N'Phạm Minh Anh', N'Công nghệ Thông tin', N'K21', 20, N'anh.pm@student.edu.vn', N'0934567890'),
 (N'SV21005', N'Hoàng Đức Huy', N'Khoa học Máy tính', N'K21', 24, N'huy.hd@student.edu.vn', N'0945678901'),
 (N'SV21006', N'Vũ Thảo Linh', N'Hệ thống Thông tin', N'K21', 22, N'linh.vt@student.edu.vn', N'0956789012'),
-(N'SV21007', N'Đặng Quốc Bảo', N'An toàn Thông tin', N'K21', 24, N'bao.dq@student.edu.vn', N'0967890123');
+(N'SV21007', N'Đặng Quốc Bảo', N'An toàn Thông tin', N'K21', 24, N'bao.dq@student.edu.vn', N'0967890123'),
+(N'SV21008', N'Bùi Phương Thảo', N'Kỹ thuật Phần mềm', N'K21', 24, N'thao.bp@student.edu.vn', N'0978901234'),
+(N'SV21009', N'Dương Gia Huy', N'Công nghệ Thông tin', N'K21', 24, N'huy.dg@student.edu.vn', N'0989012345'),
+(N'SV21010', N'Lý Khánh Huyền', N'Khoa học Máy tính', N'K21', 22, N'huyen.lk@student.edu.vn', N'0990123456'),
+(N'SV21011', N'Trương Quốc Bảo', N'Kỹ thuật Phần mềm', N'K21', 24, N'bao.tq@student.edu.vn', N'0901122334'),
+(N'SV21012', N'Đỗ Hoài Nam', N'Công nghệ Thông tin', N'K21', 24, N'nam.dh@student.edu.vn', N'0912233445'),
+(N'SV21013', N'Phan Thu Trang', N'Hệ thống Thông tin', N'K21', 20, N'trang.pt@student.edu.vn', N'0923344556'),
+(N'SV21014', N'Hồ Nhật Quang', N'An toàn Thông tin', N'K21', 24, N'quang.hn@student.edu.vn', N'0934455667'),
+(N'SV21015', N'Lê Thị Hương Giang', N'Khoa học Máy tính', N'K21', 24, N'giang.lt@student.edu.vn', N'0945566778'),
+(N'SV21016', N'Trịnh Thế Vinh', N'Kỹ thuật Phần mềm', N'K21', 22, N'vinh.tt@student.edu.vn', N'0956677889'),
+(N'SV21017', N'Cao Mỹ Duyên', N'Công nghệ Thông tin', N'K21', 24, N'duyen.cm@student.edu.vn', N'0967788990'),
+(N'SV21018', N'Ngô Tấn Phát', N'Hệ thống Thông tin', N'K21', 20, N'phat.nt@student.edu.vn', N'0978899001'),
+(N'SV21019', N'Đoàn Bảo Ngọc', N'Khoa học Máy tính', N'K21', 24, N'ngoc.db@student.edu.vn', N'0989900112'),
+(N'SV21020', N'Vương Đình Khôi', N'An toàn Thông tin', N'K21', 24, N'khoi.vd@student.edu.vn', N'0990011223');
 GO
 
 -- D. Dữ liệu Môn đã hoàn thành (CompletedCourses)
@@ -191,15 +204,15 @@ GO
 
 -- E. Dữ liệu Lớp học phần mở trong kỳ (Sections)
 INSERT INTO dbo.Sections (SectionCode, CourseId, Instructor, MaxCapacity, CurrentEnrollment, Semester, Room) VALUES
-(N'WEB301_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB301'), N'TS. Nguyễn Văn A', 50, 1, N'2026_HK1', N'Lab 402'),
-(N'WEB301_02', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB301'), N'ThS. Trần Thị B', 50, 0, N'2026_HK1', N'Lab 403'),
-(N'TIN201_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN201'), N'PGS. Lê Hoàng C', 60, 0, N'2026_HK1', N'Phòng A101'),
-(N'TIN201_02', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN201'), N'ThS. Đỗ Minh D', 60, 0, N'2026_HK1', N'Phòng A102'),
-(N'CSDL201_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'CSDL201'), N'TS. Phạm Thanh E', 60, 0, N'2026_HK1', N'Phòng B204'),
-(N'KTPM302_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'KTPM302'), N'TS. Ngô Bảo F', 50, 50, N'2026_HK1', N'Phòng C301'), -- Lớp đầy chỗ (50/50) để demo hết slot
-(N'TIN102_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN102'), N'ThS. Vũ Mạnh G', 60, 0, N'2026_HK1', N'Phòng A205'),
-(N'ATTT401_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'ATTT401'), N'PGS. Ngô Văn K', 40, 1, N'2026_HK1', N'Lab 501'),
-(N'TOEIC_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TOEIC'), N'ThS. Lý Thị N', 80, 1, N'2026_HK1', N'Hội trường A');
+(N'WEB301_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB301'), N'TS. Nguyễn Văn Hùng', 50, 0, N'2026_HK1', N'Lab 402'),
+(N'WEB301_02', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB301'), N'ThS. Trần Thị Thanh Trúc', 50, 0, N'2026_HK1', N'Lab 403'),
+(N'TIN201_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN201'), N'PGS.TS. Lê Hoàng Sơn', 60, 0, N'2026_HK1', N'Phòng A101'),
+(N'TIN201_02', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN201'), N'ThS. Đỗ Minh Tuấn', 60, 0, N'2026_HK1', N'Phòng A102'),
+(N'CSDL201_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'CSDL201'), N'TS. Phạm Thanh Tùng', 60, 0, N'2026_HK1', N'Phòng B204'),
+(N'KTPM302_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'KTPM302'), N'TS. Ngô Bảo Châu', 10, 10, N'2026_HK1', N'Phòng C301'), -- Lớp đầy chỗ (10/10) để demo hết slot
+(N'TIN102_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN102'), N'ThS. Vũ Mạnh Cường', 60, 0, N'2026_HK1', N'Phòng A205'),
+(N'ATTT401_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'ATTT401'), N'PGS.TS. Ngô Văn Dũng', 40, 0, N'2026_HK1', N'Lab 501'),
+(N'TOEIC_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TOEIC'), N'ThS. Lý Thị Mỹ Hạnh', 80, 0, N'2026_HK1', N'Hội trường A');
 GO
 
 -- F. Dữ liệu Thời khóa biểu lớp (SectionSchedules)
@@ -227,24 +240,90 @@ INSERT INTO dbo.UserAccounts (Username, Password, FullName, Role, StudentId) VAL
 (N'sv21004', N'123456', N'Phạm Minh Anh', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21004')),
 (N'sv21005', N'123456', N'Hoàng Đức Huy', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21005')),
 (N'sv21006', N'123456', N'Vũ Thảo Linh', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21006')),
-(N'sv21007', N'123456', N'Đặng Quốc Bảo', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21007'));
+(N'sv21007', N'123456', N'Đặng Quốc Bảo', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21007')),
+(N'sv21008', N'123456', N'Bùi Phương Thảo', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21008')),
+(N'sv21009', N'123456', N'Dương Gia Huy', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21009')),
+(N'sv21010', N'123456', N'Lý Khánh Huyền', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21010')),
+(N'sv21011', N'123456', N'Trương Quốc Bảo', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21011')),
+(N'sv21012', N'123456', N'Đỗ Hoài Nam', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21012')),
+(N'sv21013', N'123456', N'Phan Thu Trang', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21013')),
+(N'sv21014', N'123456', N'Hồ Nhật Quang', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21014')),
+(N'sv21015', N'123456', N'Lê Thị Hương Giang', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21015')),
+(N'sv21016', N'123456', N'Trịnh Thế Vinh', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21016')),
+(N'sv21017', N'123456', N'Cao Mỹ Duyên', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21017')),
+(N'sv21018', N'123456', N'Ngô Tấn Phát', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21018')),
+(N'sv21019', N'123456', N'Đoàn Bảo Ngọc', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21019')),
+(N'sv21020', N'123456', N'Vương Đình Khôi', N'Student', (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21020'));
 GO
 
--- H. Dữ liệu Phiếu Đăng Ký Mẫu (Enrollments & EnrollmentLines)
-DECLARE @stu1 INT = (SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21001');
-DECLARE @secWeb INT = (SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'WEB301_01');
-DECLARE @secAttt INT = (SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'ATTT401_01');
-DECLARE @secToeic INT = (SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'TOEIC_01');
+-- H. Dữ liệu Đăng Ký Học Phần Đầy Đủ Cho Tất Cả Các Lớp (Enrollments & EnrollmentLines)
+-- Tạo 20 phiếu đăng ký cho 20 sinh viên
+INSERT INTO dbo.Enrollments (StudentId, DateRegistered, Semester, Status, UniqueId) VALUES
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21001'), DATEADD(day, -10, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0001'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21002'), DATEADD(day, -9, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0002'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21003'), DATEADD(day, -9, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0003'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21004'), DATEADD(day, -8, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0004'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21005'), DATEADD(day, -8, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0005'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21006'), DATEADD(day, -7, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0006'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21007'), DATEADD(day, -7, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0007'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21008'), DATEADD(day, -6, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0008'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21009'), DATEADD(day, -6, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0009'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21010'), DATEADD(day, -5, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0010'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21011'), DATEADD(day, -5, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0011'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21012'), DATEADD(day, -4, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0012'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21013'), DATEADD(day, -4, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0013'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21014'), DATEADD(day, -3, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0014'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21015'), DATEADD(day, -3, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0015'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21016'), DATEADD(day, -2, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0016'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21017'), DATEADD(day, -2, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0017'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21018'), DATEADD(day, -1, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0018'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21019'), DATEADD(day, -1, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0019'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21020'), GETDATE(), N'2026_HK1', N'Confirmed', N'ENR-2026-0020');
+GO
 
-INSERT INTO dbo.Enrollments (StudentId, DateRegistered, Semester, Status, UniqueId)
-VALUES (@stu1, GETDATE(), N'2026_HK1', N'Confirmed', N'SAMPLE-ENROLLMENT-001');
+-- Chi tiết từng môn của từng sinh viên vào các lớp học phần
+INSERT INTO dbo.EnrollmentLines (EnrollmentId, SectionId)
+SELECT e.EnrollmentId, s.SectionId
+FROM (
+    VALUES
+    (N'SV21001', N'WEB301_01'), (N'SV21001', N'CSDL201_01'), (N'SV21001', N'ATTT401_01'), (N'SV21001', N'TOEIC_01'),
+    (N'SV21002', N'CSDL201_01'), (N'SV21002', N'TIN102_01'), (N'SV21002', N'TOEIC_01'),
+    (N'SV21003', N'WEB301_01'), (N'SV21003', N'TIN201_02'), (N'SV21003', N'KTPM302_01'), (N'SV21003', N'TOEIC_01'),
+    (N'SV21004', N'TIN201_01'), (N'SV21004', N'CSDL201_01'), (N'SV21004', N'TIN102_01'), (N'SV21004', N'TOEIC_01'),
+    (N'SV21005', N'WEB301_01'), (N'SV21005', N'TIN201_02'), (N'SV21005', N'KTPM302_01'), (N'SV21005', N'TOEIC_01'),
+    (N'SV21006', N'TIN201_01'), (N'SV21006', N'CSDL201_01'), (N'SV21006', N'TIN102_01'), (N'SV21006', N'TOEIC_01'),
+    (N'SV21007', N'WEB301_01'), (N'SV21007', N'CSDL201_01'), (N'SV21007', N'ATTT401_01'), (N'SV21007', N'KTPM302_01'),
+    (N'SV21008', N'WEB301_01'), (N'SV21008', N'TIN201_01'), (N'SV21008', N'KTPM302_01'), (N'SV21008', N'TOEIC_01'),
+    (N'SV21009', N'WEB301_01'), (N'SV21009', N'TIN201_02'), (N'SV21009', N'KTPM302_01'), (N'SV21009', N'TOEIC_01'),
+    (N'SV21010', N'WEB301_01'), (N'SV21010', N'TIN201_01'), (N'SV21010', N'ATTT401_01'), (N'SV21010', N'KTPM302_01'),
+    (N'SV21011', N'WEB301_02'), (N'SV21011', N'TIN201_02'), (N'SV21011', N'KTPM302_01'),
+    (N'SV21012', N'WEB301_02'), (N'SV21012', N'TIN201_01'), (N'SV21012', N'KTPM302_01'),
+    (N'SV21013', N'WEB301_01'), (N'SV21013', N'TIN201_02'), (N'SV21013', N'KTPM302_01'),
+    (N'SV21014', N'WEB301_02'), (N'SV21014', N'CSDL201_01'), (N'SV21014', N'TOEIC_01'),
+    (N'SV21015', N'WEB301_02'), (N'SV21015', N'TIN201_02'), (N'SV21015', N'CSDL201_01'),
+    (N'SV21016', N'WEB301_02'), (N'SV21016', N'CSDL201_01'), (N'SV21016', N'ATTT401_01'),
+    (N'SV21017', N'WEB301_02'), (N'SV21017', N'TIN102_01'), (N'SV21017', N'TOEIC_01'),
+    (N'SV21018', N'TIN201_01'), (N'SV21018', N'TIN102_01'), (N'SV21018', N'CSDL201_01'),
+    (N'SV21019', N'TIN201_01'), (N'SV21019', N'TIN102_01'), (N'SV21019', N'TOEIC_01'),
+    (N'SV21020', N'CSDL201_01'), (N'SV21020', N'TIN102_01'), (N'SV21020', N'TOEIC_01')
+) AS PlanData(StudentCode, SectionCode)
+INNER JOIN dbo.Students stu ON PlanData.StudentCode = stu.StudentCode
+INNER JOIN dbo.Enrollments e ON stu.StudentId = e.StudentId AND e.Semester = N'2026_HK1' AND e.Status = N'Confirmed'
+INNER JOIN dbo.Sections s ON PlanData.SectionCode = s.SectionCode;
+GO
 
-DECLARE @newEnrollId INT = SCOPE_IDENTITY();
-
-INSERT INTO dbo.EnrollmentLines (EnrollmentId, SectionId) VALUES
-(@newEnrollId, @secWeb),
-(@newEnrollId, @secAttt),
-(@newEnrollId, @secToeic);
+-- Cập nhật sĩ số CurrentEnrollment khớp chính xác với số lượng sinh viên trong EnrollmentLines
+UPDATE s
+SET s.CurrentEnrollment = ISNULL(enrCount.TotalCount, 0)
+FROM dbo.Sections s
+LEFT JOIN (
+    SELECT el.SectionId, COUNT(*) AS TotalCount
+    FROM dbo.EnrollmentLines el
+    INNER JOIN dbo.Enrollments e ON el.EnrollmentId = e.EnrollmentId
+    WHERE e.Semester = N'2026_HK1' AND e.Status = N'Confirmed'
+    GROUP BY el.SectionId
+) enrCount ON s.SectionId = enrCount.SectionId
+WHERE s.Semester = N'2026_HK1';
 GO
 
 -- XÁC NHẬN SỐ LƯỢNG BẢN GHI HOÀN TẤT

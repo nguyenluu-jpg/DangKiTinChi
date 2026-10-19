@@ -5,6 +5,7 @@
 @inject IPlaceEnrollmentUseCase PlaceEnrollmentUseCase
 @inject IStudentRepository StudentRepository
 @inject ICurrentUserStateStore CurrentUserStateStore
+@inject ILoginModalService LoginModalService
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
@@ -30,9 +31,11 @@
                 <div class="small text-muted">Vui lòng đăng nhập bằng tài khoản Sinh viên để kiểm tra điều kiện tiên quyết và gửi phiếu đăng ký chính thức.</div>
             </div>
         </div>
-        <a href="/login" class="btn btn-warning fw-bold px-3 py-2 text-dark">
+        <button type="button" 
+                class="btn btn-warning fw-bold px-3 py-2 text-dark"
+                @onclick="() => LoginModalService.Open()">
             <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Ngay
-        </a>
+        </button>
     </div>
 }
 else if (currentRole == "Admin")
@@ -311,10 +314,12 @@ else
 
                 @if (!isAuthenticated)
                 {
-                    <a href="/login" class="btn btn-warning btn-lg w-100 py-3 shadow-sm d-flex align-items-center justify-content-center gap-2 text-dark fw-bold">
+                    <button type="button" 
+                            class="btn btn-warning btn-lg w-100 py-3 shadow-sm d-flex align-items-center justify-content-center gap-2 text-dark fw-bold"
+                            @onclick="() => LoginModalService.Open()">
                         <i class="bi bi-box-arrow-in-right fs-5"></i>
                         <span>Đăng Nhập Để Xác Nhận Đăng Ký</span>
-                    </a>
+                    </button>
                 }
                 else
                 {

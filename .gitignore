@@ -361,3 +361,10 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# User Secrets & AI API Key Protection (Không commit API key lên git)
+*secrets*.json
+appsettings.secrets.json
+appsettings.Local.json
+.env
+.env.local

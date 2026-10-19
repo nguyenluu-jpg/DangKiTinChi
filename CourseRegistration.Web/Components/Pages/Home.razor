@@ -218,12 +218,12 @@
     <div class="col-6 col-md-3">
         @if (currentRole == "Admin")
         {
-            <a href="/admin/enrollments" class="card border-0 shadow-sm p-3 text-decoration-none h-100 portal-card text-center text-md-start">
-                <div class="portal-icon bg-danger-subtle text-danger mb-2 mx-auto mx-md-0">
-                    <i class="bi bi-person-gear"></i>
+            <a href="/admin/courses" class="card border-0 shadow-sm p-3 text-decoration-none h-100 portal-card text-center text-md-start">
+                <div class="portal-icon bg-primary-subtle text-primary mb-2 mx-auto mx-md-0">
+                    <i class="bi bi-journal-bookmark-fill"></i>
                 </div>
-                <h6 class="fw-bold text-dark mb-1">Học Vụ & Rút Môn</h6>
-                <div class="small text-muted">Phòng Đào Tạo cứu xét</div>
+                <h6 class="fw-bold text-dark mb-1">Quản Lý Học Phần</h6>
+                <div class="small text-muted">Môn học & phân công</div>
             </a>
         }
         else if (!isAuthenticated)
@@ -235,7 +235,7 @@
                     <i class="bi bi-box-arrow-in-right"></i>
                 </div>
                 <h6 class="fw-bold text-dark mb-1">Đăng Nhập</h6>
-                <div class="small text-muted">Tài khoản sinh viên</div>
+                <div class="small text-muted">Tài khoản sinh viên & quản trị</div>
             </button>
         }
         else

@@ -63,7 +63,7 @@ else
         </div>
         <div class="card-body p-4">
             <!-- EditForm + DataAnnotationsValidator theo tiêu chuẩn K3.2 -->
-            <EditForm Model="@newCourse" OnValidSubmit="HandleValidSubmit">
+            <EditForm Model="@newCourse" OnValidSubmit="HandleValidSubmit" autocomplete="off" data-ms-editor="false" data-lpignore="true">
                 <DataAnnotationsValidator />
 
                 <div class="row g-3">

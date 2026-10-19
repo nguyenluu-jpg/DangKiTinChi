@@ -62,7 +62,7 @@ else
             <button type="button" class="btn-close btn-close-white" @onclick="() => showAddModal = false"></button>
         </div>
         <div class="card-body p-4">
-            <EditForm Model="@newSection" OnValidSubmit="HandleValidSubmit">
+            <EditForm Model="@newSection" OnValidSubmit="HandleValidSubmit" autocomplete="off" data-ms-editor="false" data-lpignore="true">
                 <DataAnnotationsValidator />
 
                 <div class="row g-3">

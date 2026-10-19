@@ -82,6 +82,7 @@ namespace CourseRegistration.Web
 
             //Đăng ký AI Advisor UseCase (Tính năng nâng cao theo yêu cầu đồ án)
             builder.Services.AddTransient<CourseRegistration.UseCases.StudentPortal.AiAdvisor.IGetAiAdviceUseCase, CourseRegistration.UseCases.StudentPortal.AiAdvisor.GetAiAdviceUseCase>();
+            builder.Services.AddTransient<CourseRegistration.UseCases.AdminPortal.AiAdminAssistant.Interfaces.IAdminAiAssistantUseCase, CourseRegistration.UseCases.AdminPortal.AiAdminAssistant.AdminAiAssistantUseCase>();
 
             //Đăng ký Dịch vụ xuất báo cáo Excel & PDF (ClosedXML + QuestPDF)
             builder.Services.AddSingleton<IReportExportService, ReportExportService>();

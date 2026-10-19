@@ -1,166 +1,21 @@
 @page "/login"
 @namespace CourseRegistration.Web.Components.Pages
-@inject ILoginUseCase LoginUseCase
-@inject ICurrentUserStateStore CurrentUserStateStore
+@inject ILoginModalService LoginModalService
 @inject NavigationManager NavigationManager
 
-<div class="row justify-content-center py-5">
-    <div class="col-md-6 col-lg-5 col-xl-4">
-        <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
-            <!-- Header Card với Gradient hiện đại -->
-            <div class="card-header bg-gradient text-white text-center py-4 border-0" 
-                 style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
-                <div class="mb-2">
-                    <span class="d-inline-flex align-items-center justify-content-center bg-white bg-opacity-25 rounded-circle p-3 shadow-sm">
-                        <i class="bi bi-mortarboard-fill fs-2 text-white"></i>
-                    </span>
-                </div>
-                <h4 class="fw-bold mb-1">Đăng Nhập Hệ Thống</h4>
-                <div class="text-white-50 small">Cổng Đăng Ký Học Phần Trực Tuyến</div>
-            </div>
-
-            <div class="card-body p-4 p-md-5 bg-white">
-                @if (!string.IsNullOrEmpty(errorMessage))
-                {
-                    <div class="alert alert-danger d-flex align-items-center rounded-3 mb-4 py-2" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2 fs-5"></i>
-                        <div class="small fw-semibold">
-                            @errorMessage
-                        </div>
-                    </div>
-                }
-
-                <!-- EditForm + DataAnnotationsValidator theo tiêu chí K3.2 -->
-                <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" autocomplete="off">
-                    <DataAnnotationsValidator />
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-dark small">Tài khoản / MSSV <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0 text-muted">
-                                <i class="bi bi-person"></i>
-                            </span>
-                            <InputText class="form-control border-start-0 ps-0 bg-light" 
-                                       placeholder="vd: admin hoặc sv21001" 
-                                       autocomplete="off"
-                                       autocorrect="off"
-                                       spellcheck="false"
-                                       data-lpignore="true"
-                                       data-ms-editor="false"
-                                       @bind-Value="loginModel.Username" />
-                        </div>
-                        <div class="text-danger small mt-1">
-                            <ValidationMessage For="@(() => loginModel.Username)" />
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label fw-bold text-dark small">Mật khẩu <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0 text-muted">
-                                <i class="bi bi-lock"></i>
-                            </span>
-                            <InputText type="@(showPassword ? "text" : "password")" 
-                                       class="form-control border-start-0 border-end-0 ps-0 bg-light" 
-                                       placeholder="Mật khẩu của bạn" 
-                                       autocomplete="current-password"
-                                       data-lpignore="true"
-                                       data-ms-editor="false"
-                                       @bind-Value="loginModel.Password" />
-                            <button type="button" 
-                                    class="input-group-text bg-light border-start-0 text-muted cursor-pointer"
-                                    @onclick="() => showPassword = !showPassword"
-                                    title="@(showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu")">
-                                <i class="bi @(showPassword ? "bi-eye-slash-fill" : "bi-eye-fill")"></i>
-                            </button>
-                        </div>
-                        <div class="text-danger small mt-1">
-                            <ValidationMessage For="@(() => loginModel.Password)" />
-                        </div>
-                    </div>
-
-                    <button type="submit" 
-                            class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-3"
-                            disabled="@isLoading">
-                        @if (isLoading)
-                        {
-                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                            <span>Đang xác thực...</span>
-                        }
-                        else
-                        {
-                            <i class="bi bi-box-arrow-in-right fs-5"></i>
-                            <span>Đăng Nhập</span>
-                        }
-                    </button>
-                </EditForm>
-
-                <!-- Hỗ trợ đăng nhập chuẩn cổng trường -->
-                <div class="mt-3 pt-3 border-top text-center text-muted small">
-                    <i class="bi bi-shield-check text-primary me-1"></i>
-                    Hệ thống xác thực tài khoản sinh viên &amp; cán bộ quản trị.
-                    <div class="mt-1 text-secondary" style="font-size: 0.78rem;">
-                        Quên mật khẩu hoặc cần cấp lại tài khoản? Vui lòng liên hệ <span class="fw-semibold text-dark">Phòng Đào Tạo</span>.
-                    </div>
-                    <div class="mt-3">
-                        <a href="/" class="text-decoration-none small text-primary fw-semibold">
-                            <i class="bi bi-arrow-left me-1"></i>Trở về Cổng Đào Tạo Trực Tuyến
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 @code {
-    private LoginViewModel loginModel = new LoginViewModel();
-    private string errorMessage = string.Empty;
-    private bool isLoading = false;
-    private bool showPassword = false;
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
 
-    private async Task HandleLogin()
+    protected override void OnInitialized()
     {
-        isLoading = true;
-        errorMessage = string.Empty;
-
-        try
-        {
-            var account = await LoginUseCase.ExecuteAsync(loginModel.Username, loginModel.Password);
-            if (account != null)
-            {
-                await CurrentUserStateStore.SetCurrentUserAsync(account);
-
-                if (account.Role == "Admin")
-                {
-                    NavigationManager.NavigateTo("/admin/courses");
-                }
-                else
-                {
-                    NavigationManager.NavigateTo("/");
-                }
-            }
-            else
-            {
-                errorMessage = "Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng thử lại!";
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Có lỗi xảy ra trong quá trình đăng nhập: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    public class LoginViewModel
-    {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Vui lòng nhập tên đăng nhập")]
-        public string Username { get; set; } = string.Empty;
-
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Vui lòng nhập mật khẩu")]
-        public string Password { get; set; } = string.Empty;
+        // Khi người dùng hoặc liên kết nào dẫn tới /login:
+        // Lập tức mở popup Đăng nhập tại chỗ và chuyển hướng về trang chủ/trang đích,
+        // triệt để không bao giờ hiển thị trang trắng cô lập.
+        LoginModalService.Open();
+        var target = !string.IsNullOrEmpty(ReturnUrl) && ReturnUrl.StartsWith("/") && !ReturnUrl.Equals("/login", StringComparison.OrdinalIgnoreCase)
+            ? ReturnUrl
+            : "/";
+        NavigationManager.NavigateTo(target, replace: true);
     }
 }

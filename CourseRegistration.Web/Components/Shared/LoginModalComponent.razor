@@ -63,6 +63,7 @@
                                    data-ms-editor="false"
                                    data-form-type="other"
                                    @bind="loginModel.Username" 
+                                   @bind:event="oninput"
                                    @onkeydown="HandleKeyDown" />
                         </div>
                     </div>
@@ -89,6 +90,7 @@
                                    data-ms-editor="false"
                                    data-form-type="other"
                                    @bind="loginModel.Password" 
+                                   @bind:event="oninput"
                                    @onkeydown="HandleKeyDown" />
                             <button type="button" 
                                      class="input-group-text bg-light border-start-0 text-muted cursor-pointer"

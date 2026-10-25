@@ -108,6 +108,10 @@ CREATE TABLE dbo.Enrollments (
     Status NVARCHAR(20) NOT NULL DEFAULT('Confirmed'), -- Confirmed, Cancelled
     DateCancelled DATETIME2 NULL,
     UniqueId NVARCHAR(100) NOT NULL,
+    PaymentStatus NVARCHAR(30) NOT NULL DEFAULT('Unpaid'), -- Unpaid, Paid
+    PaymentDate DATETIME2 NULL,
+    PaymentMethod NVARCHAR(100) NULL,
+    TransactionReference NVARCHAR(100) NULL,
     CONSTRAINT FK_Enrollments_Student FOREIGN KEY (StudentId) REFERENCES dbo.Students(StudentId) ON DELETE CASCADE
 );
 GO
@@ -147,17 +151,30 @@ INSERT INTO dbo.Courses (CourseCode, CourseName, Credits, Description) VALUES
 (N'CSDL201', N'Cơ sở Dữ liệu', 3, N'Mô hình quan hệ, đại số quan hệ, chuẩn hóa 3NF và truy vấn ngôn ngữ SQL'),
 (N'KTPM302', N'Kỹ thuật Phần mềm', 3, N'Quy trình phát triển phần mềm Agile/Scrum, thiết kế hướng đối tượng UML và kiểm thử'),
 (N'ATTT401', N'An toàn Thông tin', 3, N'Mật mã học, bảo mật hệ thống thông tin, xác thực và an toàn mạng ứng dụng'),
-(N'TOEIC', N'Tiếng Anh chuyên ngành CNTT', 2, N'Thuật ngữ tiếng Anh chuyên ngành công nghệ thông tin và giao tiếp công sở');
+(N'TOEIC', N'Tiếng Anh chuyên ngành CNTT', 2, N'Thuật ngữ tiếng Anh chuyên ngành công nghệ thông tin và giao tiếp công sở'),
+-- Môn học mở thêm cho Học kỳ 2 (2026_HK2)
+(N'WEB302', N'Phát triển Web Nâng cao & Microservices', 4, N'Kiến trúc Microservices, Docker, CI/CD, SignalR thời gian thực và Web API bảo mật'),
+(N'AI401', N'Trí tuệ Nhân tạo & Học máy', 3, N'Thuật toán Machine Learning, Deep Learning, Mạng nơ-ron và ứng dụng AI'),
+(N'CSDL202', N'Cơ sở Dữ liệu Phân tán & NoSQL', 3, N'Mô hình CSDL phân tán, MongoDB, Redis caching, tính nhất quán dữ liệu và Big Data'),
+(N'ATTT402', N'An ninh Mạng & Phòng chống Tấn công', 3, N'Kỹ thuật phân tích mã độc, bảo mật hạ tầng mạng, phòng chống tấn công DDoS và thâm nhập');
 GO
 
 -- B. Dữ liệu Điều kiện Tiên quyết (Prerequisites)
 -- WEB301 yêu cầu phải qua TIN102 (OOP)
 -- KTPM302 yêu cầu phải qua TIN102 (OOP)
 -- TIN201 yêu cầu phải qua TIN101 (Nhập môn lập trình)
+-- WEB302 yêu cầu phải qua WEB301
+-- AI401 yêu cầu phải qua TIN201
+-- CSDL202 yêu cầu phải qua CSDL201
+-- ATTT402 yêu cầu phải qua ATTT401
 INSERT INTO dbo.Prerequisites (CourseId, PrerequisiteCourseId) VALUES
 ((SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB301'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN102')),
 ((SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'KTPM302'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN102')),
-((SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN201'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN101'));
+((SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN201'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN101')),
+((SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB302'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB301')),
+((SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'AI401'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN201')),
+((SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'CSDL202'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'CSDL201')),
+((SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'ATTT402'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'ATTT401'));
 GO
 
 -- C. Dữ liệu Sinh viên (Students)
@@ -202,8 +219,9 @@ INSERT INTO dbo.CompletedCourses (StudentId, CourseId, Grade, SemesterCompleted)
 ((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21007'), (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN102'), 8.5, N'2024_HK2');
 GO
 
--- E. Dữ liệu Lớp học phần mở trong kỳ (Sections)
+-- E. Dữ liệu Lớp học phần mở trong kỳ (Sections: gồm cả 2 Học kỳ 2026_HK1 và 2026_HK2)
 INSERT INTO dbo.Sections (SectionCode, CourseId, Instructor, MaxCapacity, CurrentEnrollment, Semester, Room) VALUES
+-- Học kỳ 1 (2026_HK1)
 (N'WEB301_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB301'), N'TS. Nguyễn Văn Hùng', 50, 0, N'2026_HK1', N'Lab 402'),
 (N'WEB301_02', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB301'), N'ThS. Trần Thị Thanh Trúc', 50, 0, N'2026_HK1', N'Lab 403'),
 (N'TIN201_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN201'), N'PGS.TS. Lê Hoàng Sơn', 60, 0, N'2026_HK1', N'Phòng A101'),
@@ -212,7 +230,14 @@ INSERT INTO dbo.Sections (SectionCode, CourseId, Instructor, MaxCapacity, Curren
 (N'KTPM302_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'KTPM302'), N'TS. Ngô Bảo Châu', 10, 10, N'2026_HK1', N'Phòng C301'), -- Lớp đầy chỗ (10/10) để demo hết slot
 (N'TIN102_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN102'), N'ThS. Vũ Mạnh Cường', 60, 0, N'2026_HK1', N'Phòng A205'),
 (N'ATTT401_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'ATTT401'), N'PGS.TS. Ngô Văn Dũng', 40, 0, N'2026_HK1', N'Lab 501'),
-(N'TOEIC_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TOEIC'), N'ThS. Lý Thị Mỹ Hạnh', 80, 0, N'2026_HK1', N'Hội trường A');
+(N'TOEIC_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TOEIC'), N'ThS. Lý Thị Mỹ Hạnh', 80, 0, N'2026_HK1', N'Hội trường A'),
+-- Học kỳ 2 (2026_HK2)
+(N'WEB302_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB302'), N'TS. Nguyễn Văn Hùng', 50, 0, N'2026_HK2', N'Lab 402'),
+(N'AI401_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'AI401'), N'PGS.TS. Lê Hoàng Sơn', 60, 0, N'2026_HK2', N'Lab 502'),
+(N'CSDL202_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'CSDL202'), N'TS. Phạm Thanh Tùng', 60, 0, N'2026_HK2', N'Phòng B301'),
+(N'ATTT402_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'ATTT402'), N'PGS.TS. Ngô Văn Dũng', 40, 0, N'2026_HK2', N'Lab 501'),
+(N'KTPM302_02', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'KTPM302'), N'TS. Ngô Bảo Châu', 60, 0, N'2026_HK2', N'Phòng C302'),
+(N'TOEIC_02', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TOEIC'), N'ThS. Lý Thị Mỹ Hạnh', 80, 0, N'2026_HK2', N'Hội trường B');
 GO
 
 -- F. Dữ liệu Thời khóa biểu lớp (SectionSchedules)
@@ -220,6 +245,7 @@ GO
 -- Lớp TIN201_01: Thứ Hai tiết 1-3 -> TRÙNG LỊCH với WEB301_01 để DEMO ca vi phạm Luật 2 (Chống trùng lịch)!
 -- Lớp TIN201_02: Thứ Sáu tiết 2-4 -> Không trùng
 INSERT INTO dbo.SectionSchedules (SectionId, DayOfWeek, StartPeriod, EndPeriod, Room) VALUES
+-- Lịch học HK1
 ((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'WEB301_01'), 2, 1, 4, N'Lab 402'),
 ((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'WEB301_02'), 4, 7, 10, N'Lab 403'),
 ((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'TIN201_01'), 2, 1, 3, N'Phòng A101'), -- Trùng Thứ 2 tiết 1-3 với WEB301_01
@@ -228,7 +254,14 @@ INSERT INTO dbo.SectionSchedules (SectionId, DayOfWeek, StartPeriod, EndPeriod, 
 ((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'KTPM302_01'), 5, 1, 3, N'Phòng C301'),
 ((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'TIN102_01'), 7, 1, 3, N'Phòng A205'),
 ((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'ATTT401_01'), 6, 7, 9, N'Lab 501'),
-((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'TOEIC_01'), 7, 1, 3, N'Hội trường A');
+((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'TOEIC_01'), 7, 1, 3, N'Hội trường A'),
+-- Lịch học HK2
+((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'WEB302_01'), 3, 1, 4, N'Lab 402'),
+((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'AI401_01'), 4, 1, 3, N'Lab 502'),
+((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'CSDL202_01'), 5, 7, 9, N'Phòng B301'),
+((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'ATTT402_01'), 6, 1, 3, N'Lab 501'),
+((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'KTPM302_02'), 2, 7, 9, N'Phòng C302'),
+((SELECT SectionId FROM dbo.Sections WHERE SectionCode = N'TOEIC_02'), 7, 7, 9, N'Hội trường B');
 GO
 
 -- G. Dữ liệu Tài khoản Người dùng (UserAccounts)
@@ -258,27 +291,27 @@ GO
 
 -- H. Dữ liệu Đăng Ký Học Phần Đầy Đủ Cho Tất Cả Các Lớp (Enrollments & EnrollmentLines)
 -- Tạo 20 phiếu đăng ký cho 20 sinh viên
-INSERT INTO dbo.Enrollments (StudentId, DateRegistered, Semester, Status, UniqueId) VALUES
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21001'), DATEADD(day, -10, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0001'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21002'), DATEADD(day, -9, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0002'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21003'), DATEADD(day, -9, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0003'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21004'), DATEADD(day, -8, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0004'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21005'), DATEADD(day, -8, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0005'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21006'), DATEADD(day, -7, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0006'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21007'), DATEADD(day, -7, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0007'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21008'), DATEADD(day, -6, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0008'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21009'), DATEADD(day, -6, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0009'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21010'), DATEADD(day, -5, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0010'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21011'), DATEADD(day, -5, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0011'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21012'), DATEADD(day, -4, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0012'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21013'), DATEADD(day, -4, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0013'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21014'), DATEADD(day, -3, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0014'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21015'), DATEADD(day, -3, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0015'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21016'), DATEADD(day, -2, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0016'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21017'), DATEADD(day, -2, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0017'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21018'), DATEADD(day, -1, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0018'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21019'), DATEADD(day, -1, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0019'),
-((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21020'), GETDATE(), N'2026_HK1', N'Confirmed', N'ENR-2026-0020');
+INSERT INTO dbo.Enrollments (StudentId, DateRegistered, Semester, Status, UniqueId, PaymentStatus, PaymentDate, PaymentMethod, TransactionReference) VALUES
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21001'), DATEADD(day, -10, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0001', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21002'), DATEADD(day, -9, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0002', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21003'), DATEADD(day, -9, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0003', N'Paid', DATEADD(day, -8, GETDATE()), N'Chuyển khoản trực tuyến 24/7', N'VQR202610141020003'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21004'), DATEADD(day, -8, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0004', N'Paid', DATEADD(day, -7, GETDATE()), N'Chuyển khoản trực tuyến 24/7', N'VQR202610150915004'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21005'), DATEADD(day, -8, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0005', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21006'), DATEADD(day, -7, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0006', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21007'), DATEADD(day, -7, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0007', N'Paid', DATEADD(day, -6, GETDATE()), N'Chuyển khoản trực tuyến 24/7', N'VQR202610161430007'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21008'), DATEADD(day, -6, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0008', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21009'), DATEADD(day, -6, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0009', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21010'), DATEADD(day, -5, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0010', N'Paid', DATEADD(day, -4, GETDATE()), N'Chuyển khoản trực tuyến 24/7', N'VQR202610181120010'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21011'), DATEADD(day, -5, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0011', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21012'), DATEADD(day, -4, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0012', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21013'), DATEADD(day, -4, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0013', N'Paid', DATEADD(day, -3, GETDATE()), N'Chuyển khoản trực tuyến 24/7', N'VQR202610190845013'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21014'), DATEADD(day, -3, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0014', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21015'), DATEADD(day, -3, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0015', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21016'), DATEADD(day, -2, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0016', N'Paid', DATEADD(day, -1, GETDATE()), N'Chuyển khoản trực tuyến 24/7', N'VQR202610211610016'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21017'), DATEADD(day, -2, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0017', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21018'), DATEADD(day, -1, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0018', N'Unpaid', NULL, NULL, NULL),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21019'), DATEADD(day, -1, GETDATE()), N'2026_HK1', N'Confirmed', N'ENR-2026-0019', N'Paid', GETDATE(), N'Chuyển khoản trực tuyến 24/7', N'VQR202610220815019'),
+((SELECT StudentId FROM dbo.Students WHERE StudentCode = N'SV21020'), GETDATE(), N'2026_HK1', N'Confirmed', N'ENR-2026-0020', N'Unpaid', NULL, NULL, NULL);
 GO
 
 -- Chi tiết từng môn của từng sinh viên vào các lớp học phần

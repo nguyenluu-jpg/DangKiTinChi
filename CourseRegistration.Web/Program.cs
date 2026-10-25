@@ -9,6 +9,7 @@ using CourseRegistration.UseCases.AdminPortal.ManageCoursesScreen.Interfaces;
 using CourseRegistration.UseCases.AdminPortal.ManageSectionsScreen;
 using CourseRegistration.UseCases.AdminPortal.ManageSectionsScreen.Interfaces;
 using CourseRegistration.UseCases.AdminPortal.ViewEnrollmentListScreen;
+using CourseRegistration.UseCases.AdminPortal.ManageTuitionScreen;
 using CourseRegistration.UseCases.PluginInterfaces.DataStore;
 using CourseRegistration.UseCases.PluginInterfaces.StateStore;
 using CourseRegistration.UseCases.PluginInterfaces.UI;
@@ -22,6 +23,7 @@ using CourseRegistration.UseCases.StudentPortal.ViewScheduleScreen;
 using CourseRegistration.UseCases.StudentPortal.ViewScheduleScreen.Interfaces;
 using CourseRegistration.UseCases.StudentPortal.ViewSectionScreen;
 using CourseRegistration.UseCases.StudentPortal.ViewSectionScreen.Interfaces;
+using CourseRegistration.UseCases.StudentPortal.Payment;
 using CourseRegistration.Web.Components;
 using CourseRegistration.Web.Services;
 
@@ -39,6 +41,7 @@ namespace CourseRegistration.Web
 
             // Đăng ký CoreBusiness Services 
             builder.Services.AddTransient<IEnrollmentValidationService, EnrollmentValidationService>();
+            builder.Services.AddScoped<IRegistrationPeriodService, RegistrationPeriodService>();
 
             // Đăng ký DataStore Plugins (EF Core - Kiến trúc chuẩn eShop)
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -72,6 +75,7 @@ namespace CourseRegistration.Web
             builder.Services.AddTransient<IPlaceEnrollmentUseCase, PlaceEnrollmentUseCase>();
             builder.Services.AddTransient<IViewEnrollmentUseCase, ViewEnrollmentUseCase>();
             builder.Services.AddTransient<IViewScheduleUseCase, ViewScheduleUseCase>();
+            builder.Services.AddTransient<IProcessTuitionPaymentUseCase, ProcessTuitionPaymentUseCase>();
 
             //Đăng ký Admin Portal UseCases
             builder.Services.AddTransient<IViewCoursesUseCase, ViewCoursesUseCase>();
@@ -79,6 +83,7 @@ namespace CourseRegistration.Web
             builder.Services.AddTransient<IViewSectionsUseCase, ViewSectionsUseCase>();
             builder.Services.AddTransient<IAddSectionUseCase, AddSectionUseCase>();
             builder.Services.AddTransient<IViewEnrollmentListUseCase, ViewEnrollmentListUseCase>();
+            builder.Services.AddTransient<IManageTuitionUseCase, ManageTuitionUseCase>();
 
             //Đăng ký AI Advisor UseCase (Tính năng nâng cao theo yêu cầu đồ án)
             builder.Services.AddTransient<CourseRegistration.UseCases.StudentPortal.AiAdvisor.IGetAiAdviceUseCase, CourseRegistration.UseCases.StudentPortal.AiAdvisor.GetAiAdviceUseCase>();

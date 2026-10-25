@@ -8,14 +8,15 @@
 @inject IStudentRepository StudentRepository
 @inject ICourseRepository CourseRepository
 @inject ILoginModalService LoginModalService
+@inject IRegistrationPeriodService RegistrationPeriodService
 @implements IDisposable
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
         <h2 class="fw-bold mb-1">
             <i class="bi bi-search text-primary me-2"></i>Tra Cứu & Đăng Ký Lớp Học Phần
         </h2>
-        <p class="text-muted mb-0">Học kỳ 1 (Năm học 2026 - 2027) &bull; Hệ thống đối chiếu thời gian thực điều kiện tiên quyết & sĩ số</p>
+        <p class="text-muted mb-0">Hệ thống đối chiếu thời gian thực điều kiện tiên quyết, trùng lịch & hạn mức tín chỉ</p>
     </div>
     <a href="/cart" class="btn btn-primary d-inline-flex align-items-center shadow-sm">
         <i class="bi bi-cart-check me-2"></i>
@@ -26,6 +27,9 @@
         }
     </a>
 </div>
+
+<!-- Banner 2 Học kỳ & 3 Giai đoạn linh hoạt (Bao trùm ngày thi 02/11/2026) -->
+<RegistrationPhaseBannerComponent @bind-SelectedSemesterCode="currentSemesterCode" OnPhaseChanged="HandleSemesterOrPhaseChanged" />
 
 <!-- Thông báo thao tác giỏ hàng (Feedback Toast) -->
 @if (!string.IsNullOrEmpty(feedbackMessage))
@@ -252,6 +256,7 @@ else
     private List<CompletedCourse> studentCompletedCourses = new List<CompletedCourse>();
     private Student? currentStudent;
 
+    private string currentSemesterCode = "2026_HK1";
     private HashSet<int> cartSectionIds = new HashSet<int>();
     private int cartTotalCredits = 0;
     private string searchKeyword = string.Empty;
@@ -265,8 +270,15 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        currentSemesterCode = RegistrationPeriodService.CurrentSemesterCode ?? "2026_HK1";
         CurrentUserStateStore.AddStateChangeListeners(HandleUserOrCartChanged);
         await LoadMasterData();
+    }
+
+    private async Task HandleSemesterOrPhaseChanged()
+    {
+        await LoadMasterData();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async void HandleUserOrCartChanged()
@@ -293,7 +305,7 @@ else
         {
             allCourses = (await CourseRepository.GetAllCoursesAsync()).ToList();
             allPrerequisites = (await CourseRepository.GetAllPrerequisitesAsync()).ToList();
-            var rawSections = await SearchSectionUseCase.ExecuteAsync(string.Empty, "2026_HK1");
+            var rawSections = await SearchSectionUseCase.ExecuteAsync(string.Empty, currentSemesterCode);
             allSections = rawSections.ToList();
 
             await LoadStudentData();

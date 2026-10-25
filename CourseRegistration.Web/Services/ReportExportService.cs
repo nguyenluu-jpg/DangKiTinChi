@@ -380,6 +380,13 @@ namespace CourseRegistration.Web.Services
                         table.Cell().ColumnSpan(3).Background("#eff6ff").Padding(5).AlignRight().Text("TỔNG SỐ TÍN CHỈ ĐÃ ĐĂNG KÝ:").Bold();
                         table.Cell().Background("#eff6ff").Padding(5).AlignCenter().Text(totalCredits.ToString()).Bold().FontColor("#1e3a8a").FontSize(11);
                         table.Cell().ColumnSpan(3).Background("#eff6ff").Padding(5).Text($"({sections.Count} lớp học phần hợp lệ)").Italic();
+
+                        // Dòng thông tin học phí & thanh toán VietQR
+                        decimal fee = totalCredits * 450000m;
+                        string paymentText = enrollment.IsPaid ? $"ĐÃ THANH TOÁN (Mã GD: {enrollment.TransactionReference ?? "VietQR"})" : "CHƯA THANH TOÁN";
+                        string paymentColor = enrollment.IsPaid ? "#166534" : "#b45309";
+                        table.Cell().ColumnSpan(3).Background("#f8fafc").Padding(5).AlignRight().Text("TỔNG HỌC PHÍ PHẢI NỘP (450.000 đ/TC):").Bold();
+                        table.Cell().ColumnSpan(4).Background("#f8fafc").Padding(5).Text($"{fee:N0} VNĐ  |  Trạng thái: {paymentText}").Bold().FontColor(paymentColor);
                     });
 
                     page.Footer().Column(col =>
@@ -506,6 +513,21 @@ namespace CourseRegistration.Web.Services
             ws.Cell(currRow, 5).Value = totalCredits;
             ws.Cell(currRow, 5).Style.Font.Bold = true;
             ws.Cell(currRow, 5).Style.Font.FontColor = XLColor.FromArgb(30, 58, 138);
+
+            // Dòng học phí & thanh toán VietQR
+            currRow++;
+            ws.Cell(currRow, 4).Value = "HỌC PHÍ (450.000 đ/TC):";
+            ws.Cell(currRow, 4).Style.Font.Bold = true;
+            ws.Cell(currRow, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+            ws.Cell(currRow, 5).Value = $"{totalCredits * 450000:N0} VNĐ";
+            ws.Cell(currRow, 5).Style.Font.Bold = true;
+            ws.Cell(currRow, 5).Style.Font.FontColor = XLColor.FromArgb(185, 28, 28);
+
+            ws.Cell(currRow, 6).Value = "Trạng thái:";
+            ws.Cell(currRow, 6).Style.Font.Bold = true;
+            ws.Cell(currRow, 7).Value = enrollment.IsPaid ? $"ĐÃ NỘP ({enrollment.TransactionReference ?? "VietQR"})" : "CHƯA THANH TOÁN";
+            ws.Cell(currRow, 7).Style.Font.Bold = true;
+            ws.Cell(currRow, 7).Style.Font.FontColor = enrollment.IsPaid ? XLColor.FromArgb(22, 101, 52) : XLColor.FromArgb(180, 83, 9);
 
             ws.Columns().AdjustToContents();
 

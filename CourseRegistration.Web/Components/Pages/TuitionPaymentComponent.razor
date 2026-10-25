@@ -1,0 +1,510 @@
+@page "/tuition"
+@namespace CourseRegistration.Web.Components.Pages
+@using CourseRegistration.CoreBusiness.Models
+@using CourseRegistration.UseCases.PluginInterfaces.DataStore
+@using CourseRegistration.UseCases.PluginInterfaces.StateStore
+@using CourseRegistration.UseCases.StudentPortal.Payment
+@using CourseRegistration.Web.Components.Shared
+@inject IEnrollmentRepository EnrollmentRepository
+@inject IStudentRepository StudentRepository
+@inject ICurrentUserStateStore CurrentUserStateStore
+@inject ILoginModalService LoginModalService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<div class="container py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Trang chủ</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Thanh toán học phí</li>
+                </ol>
+            </nav>
+            <h2 class="fw-bold mb-1 text-dark">
+                <i class="bi bi-wallet2 text-primary me-2"></i>Cổng Thông Tin &amp; Thanh Toán Học Phí
+            </h2>
+            <p class="text-muted mb-0">Hướng dẫn nộp học phí, quy định đào tạo và thanh toán trực tuyến qua ngân hàng</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/schedule" class="btn btn-outline-secondary">
+                <i class="bi bi-calendar3 me-1"></i> Xem Thời khóa biểu
+            </a>
+            <a href="/sections" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Đăng ký môn học
+            </a>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Đang tải thông tin học phí...</p>
+        </div>
+    }
+    else if (!isAuthenticated || currentStudent == null)
+    {
+        <!-- ========================================================================= -->
+        <!-- GIAO DIỆN HƯỚNG DẪN & QUY ĐỊNH HỌC PHÍ (DÀNH CHO NGƯỜI DÙNG CHƯA ĐĂNG NHẬP) -->
+        <!-- ========================================================================= -->
+
+        <!-- Khung Kêu gọi Đăng nhập để Tra cứu Cá nhân -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-white" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);">
+            <div class="row align-items-center g-3">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-white bg-opacity-20 rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="bi bi-person-lock fs-2 text-white"></i>
+                        </div>
+                        <div>
+                            <h4 class="fw-bold mb-1 text-white">Tra Cứu Học Phí Cá Nhân Của Bạn</h4>
+                            <p class="mb-0 text-white-50 small">
+                                Để xem chi tiết số tiền học phí phát sinh trong học kỳ, công nợ và tiến hành thanh toán trực tuyến, vui lòng đăng nhập tài khoản sinh viên.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <button class="btn btn-light text-primary px-4 py-2 fw-bold rounded-pill shadow-sm" @onclick="() => LoginModalService.Open()">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập ngay
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bảng Mức Thu Học Phí Quy Định -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                    <h5 class="fw-bold text-dark mb-3">
+                        <i class="bi bi-cash-coin text-success me-2"></i>Quy Định Mức Thu Học Phí Tín Chỉ
+                    </h5>
+                    <p class="text-secondary small mb-3">
+                        Áp dụng cho sinh viên hệ đại học chính quy trong Năm học 2026 - 2027 theo quy chế đào tạo tín chỉ:
+                    </p>
+                    <ul class="list-group list-group-flush small">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div>
+                                <strong class="text-dark">Đơn giá học phần lý thuyết &amp; bài tập:</strong>
+                                <div class="text-muted" style="font-size: 0.75rem;">Các môn cơ sở ngành và chuyên ngành</div>
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary fs-6 fw-bold">450.000 đ / TC</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div>
+                                <strong class="text-dark">Đơn giá học phần thực hành / đồ án:</strong>
+                                <div class="text-muted" style="font-size: 0.75rem;">Phòng máy và hướng dẫn đồ án tốt nghiệp</div>
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary fs-6 fw-bold">450.000 đ / TC</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div>
+                                <strong class="text-dark">Hạn mức đăng ký trong học kỳ chính:</strong>
+                                <div class="text-muted" style="font-size: 0.75rem;">Tối thiểu 12 TC &bull; Tối đa 24 TC</div>
+                            </div>
+                            <span class="badge bg-secondary-subtle text-secondary fs-6">12 - 24 TC</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                    <h5 class="fw-bold text-dark mb-3">
+                        <i class="bi bi-bank text-primary me-2"></i>Tài Khoản Thu Học Phí Của Trường
+                    </h5>
+                    <p class="text-secondary small mb-3">
+                        Sinh viên có thể chuyển khoản đến tài khoản chuyên thu học phí chính thức của Nhà trường:
+                    </p>
+                    <div class="p-3 bg-light rounded-3 border mb-3 small">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Đơn vị thụ hưởng:</span>
+                            <strong class="text-dark">TRƯỜNG ĐẠI HỌC KINH TẾ - ĐẠI HỌC HUẾ</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Ngân hàng:</span>
+                            <span class="fw-semibold text-primary">MB Bank (Ngân hàng TMCP Quân Đội)</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Số tài khoản:</span>
+                            <strong class="font-monospace fs-6 text-danger">08688889999</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Hình thức:</span>
+                            <span class="badge bg-success">Chuyển khoản 24/7 (Quét mã / STK)</span>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning py-2 px-3 small mb-0">
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
+                        <strong>Lưu ý quan trọng:</strong> Sinh viên cần đăng nhập để lấy đúng mã nội dung chuyển khoản (cú pháp: <code>HP [MSSV] [Mã phiếu]</code>) để hệ thống tự động gạch nợ học phí.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quy trình 3 bước nộp học phí -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+            <h5 class="fw-bold text-dark mb-3">
+                <i class="bi bi-list-check text-info me-2"></i>Quy Trình 3 Bước Thanh Toán Học Phí Trực Tuyến
+            </h5>
+            <div class="row g-4 text-center">
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded-3 h-100 border">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 44px; height: 44px;">
+                            <span class="fw-bold fs-5">1</span>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-2">Đăng Nhập &amp; Chọn Phiếu</h6>
+                        <p class="small text-muted mb-0">Đăng nhập tài khoản sinh viên, vào mục <strong>Thanh toán học phí</strong> để kiểm tra danh sách học phần và tổng số tiền phải nộp.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded-3 h-100 border">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 44px; height: 44px;">
+                            <span class="fw-bold fs-5">2</span>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-2">Quét Mã / Chuyển Khoản</h6>
+                        <p class="small text-muted mb-0">Bấm nút <strong>Thanh toán</strong>, mở App ngân hàng quét mã thanh toán tự động điền số tiền và nội dung chuyển khoản chính xác.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded-3 h-100 border">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 44px; height: 44px;">
+                            <span class="fw-bold fs-5">3</span>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-2">Nhận Biên Lai Điện Tử</h6>
+                        <p class="small text-muted mb-0">Hệ thống đối soát tự động gạch nợ tức thì, cấp mã biên lai điện tử và cho phép in phiếu đăng ký có xác nhận học phí.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thông tin liên hệ hỗ trợ -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-light">
+            <div class="row align-items-center g-3">
+                <div class="col-md-8">
+                    <h6 class="fw-bold text-dark mb-1">
+                        <i class="bi bi-headset text-primary me-2"></i>Hỗ Trợ Giải Đáp Học Vụ &amp; Học Phí
+                    </h6>
+                    <p class="small text-muted mb-0">
+                        Nếu có sai sót về số tín chỉ hoặc thắc mắc về đối soát học phí, sinh viên vui lòng liên hệ <strong>Phòng Kế hoạch - Tài chính</strong> trong giờ hành chính.
+                    </p>
+                </div>
+                <div class="col-md-4 text-md-end small text-muted">
+                    <div><i class="bi bi-envelope me-1"></i> taichinh@hueuni.edu.vn</div>
+                    <div><i class="bi bi-telephone me-1"></i> (0234) 382.3456 - Số nội bộ: 104</div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- ========================================================================= -->
+        <!-- GIAO DIỆN HỌC PHÍ CÁ NHÂN KHI SINH VIÊN ĐÃ ĐĂNG NHẬP                       -->
+        <!-- ========================================================================= -->
+
+        <!-- Thẻ Tổng quan Công nợ Sinh viên -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+            <div class="row g-3 align-items-center">
+                <div class="col-lg-4 border-end-lg">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-primary-subtle text-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                            <i class="bi bi-mortarboard-fill fs-3"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem;">Sinh viên thụ hưởng</div>
+                            <h5 class="fw-bold text-dark mb-0">@currentStudent.FullName</h5>
+                            <div class="text-muted small mt-1">
+                                <span class="badge bg-light text-dark border">MSSV: @currentStudent.StudentCode</span>
+                                <span class="mx-1">&bull;</span>
+                                <span>Khóa: @currentStudent.AcademicYear</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3 Cột Số liệu Tài chính -->
+                <div class="col-lg-8">
+                    <div class="row g-3 text-center">
+                        <div class="col-4">
+                            <div class="p-2 rounded-3 bg-light">
+                                <span class="text-muted small d-block">Tổng học phí phát sinh</span>
+                                <strong class="fs-5 text-dark">@($"{totalFee:N0} đ")</strong>
+                                <span class="text-muted d-block" style="font-size: 0.7rem;">(@totalCredits TC &times; 450.000 đ)</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded-3 bg-success-subtle">
+                                <span class="text-success small d-block fw-semibold">Đã hoàn tất thanh toán</span>
+                                <strong class="fs-5 text-success">@($"{paidFee:N0} đ")</strong>
+                                <span class="text-success d-block" style="font-size: 0.7rem;">(Đã đối soát)</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded-3 @(unpaidFee > 0 ? "bg-danger-subtle" : "bg-light")">
+                                <span class="@(unpaidFee > 0 ? "text-danger" : "text-muted") small d-block fw-semibold">Học phí còn phải nộp</span>
+                                <strong class="fs-5 @(unpaidFee > 0 ? "text-danger" : "text-muted")">@($"{unpaidFee:N0} đ")</strong>
+                                <span class="@(unpaidFee > 0 ? "text-danger fw-semibold" : "text-muted") d-block" style="font-size: 0.7rem;">
+                                    @(unpaidFee > 0 ? "Cần nộp trước hạn" : "Không nợ học phí")
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danh Sách Phiếu Đăng Ký & Trạng Thái Học Phí -->
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white mb-4">
+            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-receipt text-primary me-2"></i>Danh Sách Phiếu Đăng Ký Học Phần (@studentEnrollments.Count Phiếu)
+                </h5>
+                <span class="badge bg-primary-subtle text-primary">Học kỳ 1 (2026 - 2027)</span>
+            </div>
+
+            <div class="card-body p-0">
+                @if (!studentEnrollments.Any())
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-receipt-cutoff fs-1 text-muted mb-2 d-block"></i>
+                        <h6 class="text-muted fw-bold">Chưa có phiếu đăng ký học phần nào</h6>
+                        <p class="small text-muted mb-3">Bạn chưa đăng ký môn học nào nên chưa phát sinh học phí.</p>
+                        <a href="/sections" class="btn btn-primary btn-sm">
+                            <i class="bi bi-search me-1"></i>Tra cứu môn học ngay
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 50px;">STT</th>
+                                    <th>Mã Phiếu ĐK</th>
+                                    <th>Học Kỳ</th>
+                                    <th>Thời Gian ĐK</th>
+                                    <th>Số Tín Chỉ</th>
+                                    <th>Số Tiền Học Phí</th>
+                                    <th>Trạng Thái Nộp</th>
+                                    <th class="text-end" style="min-width: 200px;">Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ int idx = 1; }
+                                @foreach (var enr in studentEnrollments)
+                                {
+                                    <tr>
+                                        <td class="text-muted fw-bold">@(idx++)</td>
+                                        <td>
+                                            <a href="/enrollment/@enr.EnrollmentId" class="fw-bold text-decoration-none">
+                                                #@enr.EnrollmentId
+                                            </a>
+                                            <div class="small text-muted font-monospace" style="font-size: 0.72rem;">@enr.UniqueId</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">@enr.Semester</span>
+                                        </td>
+                                        <td class="small text-muted">
+                                            @(enr.DateRegistered?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary fs-6">@enr.TotalCredits TC</span>
+                                        </td>
+                                        <td>
+                                            <strong class="text-danger fs-6">@($"{enr.TuitionFee:N0} đ")</strong>
+                                        </td>
+                                        <td>
+                                            @if (enr.IsPaid)
+                                            {
+                                                <div>
+                                                    <span class="badge bg-success shadow-sm">
+                                                        <i class="bi bi-check-circle-fill me-1"></i> Đã thanh toán
+                                                    </span>
+                                                    <div class="text-muted" style="font-size: 0.7rem;">
+                                                        Mã GD: <span class="font-monospace text-primary">@enr.TransactionReference</span>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div>
+                                                    <span class="badge bg-warning text-dark shadow-sm">
+                                                        <i class="bi bi-clock-history me-1"></i> Chưa thanh toán
+                                                    </span>
+                                                    <div class="text-muted" style="font-size: 0.7rem;">
+                                                        Hạn: @(enr.DateRegistered?.AddDays(15).ToString("dd/MM/yyyy"))
+                                                    </div>
+                                                </div>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            @if (enr.IsPaid)
+                                            {
+                                                <div class="d-flex gap-1 justify-content-end">
+                                                    <button class="btn btn-outline-success btn-sm" @onclick="() => OpenPaymentModal(enr)">
+                                                        <i class="bi bi-receipt me-1"></i> Xem Biên Lai
+                                                    </button>
+                                                    <a href="/enrollment/@enr.EnrollmentId" class="btn btn-outline-secondary btn-sm" title="Xem chi tiết phiếu">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="d-flex gap-1 justify-content-end">
+                                                    <button class="btn btn-primary btn-sm fw-bold shadow-sm d-inline-flex align-items-center gap-1"
+                                                            style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); border: none;"
+                                                            @onclick="() => OpenPaymentModal(enr)">
+                                                        <i class="bi bi-credit-card-2-front"></i>
+                                                        <span>Thanh toán ngay</span>
+                                                    </button>
+                                                    <a href="/enrollment/@enr.EnrollmentId" class="btn btn-outline-secondary btn-sm" title="Xem chi tiết môn học">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                </div>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Hướng dẫn Quy định Nộp Học Phí -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-light">
+            <h6 class="fw-bold text-dark mb-3">
+                <i class="bi bi-info-circle-fill text-primary me-2"></i>Quy Định &amp; Hướng Dẫn Thanh Toán
+            </h6>
+            <div class="row g-3 small text-secondary">
+                <div class="col-md-4">
+                    <div class="p-3 bg-white rounded-3 border h-100">
+                        <div class="fw-bold text-dark mb-1">1. Chuyển Khoản Trực Tuyến 24/7</div>
+                        <p class="mb-0">Mở ứng dụng Mobile Banking của bất kỳ ngân hàng nào, quét mã QR thanh toán hoặc chuyển tiền theo số tài khoản chuyên thu học phí của trường.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-white rounded-3 border h-100">
+                        <div class="fw-bold text-dark mb-1">2. Đối Soát Tức Thì</div>
+                        <p class="mb-0">Hệ thống tự động ghi nhận học phí và cấp mã Biên lai điện tử cho sinh viên ngay sau khi giao dịch chuyển khoản thành công.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-white rounded-3 border h-100">
+                        <div class="fw-bold text-dark mb-1">3. Thời Hạn &amp; Giữ Chỗ Môn Học</div>
+                        <p class="mb-0">Sinh viên có thời hạn tối đa <strong>15 ngày</strong> kể từ khi gửi phiếu đăng ký để hoàn tất học phí, đảm bảo giữ chỗ chính thức trong lớp học phần.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal Thanh Toán Học Phí -->
+<CourseRegistration.Web.Components.Shared.VietQrPaymentModalComponent 
+    Enrollment="selectedEnrollment" 
+    IsOpen="isModalOpen" 
+    OnClose="ClosePaymentModal" 
+    OnPaymentSuccess="HandlePaymentSuccess" />
+
+@code {
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private Student? currentStudent;
+    private List<Enrollment> studentEnrollments = new List<Enrollment>();
+    private Enrollment? selectedEnrollment;
+    private bool isModalOpen = false;
+
+    private decimal totalFee => studentEnrollments.Sum(e => e.TuitionFee);
+    private int totalCredits => studentEnrollments.Sum(e => e.TotalCredits);
+    private decimal paidFee => studentEnrollments.Where(e => e.IsPaid).Sum(e => e.TuitionFee);
+    private decimal unpaidFee => studentEnrollments.Where(e => !e.IsPaid).Sum(e => e.TuitionFee);
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
+        await LoadDataAsync();
+    }
+
+    private async void HandleUserStateChange()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        isAuthenticated = await CurrentUserStateStore.IsAuthenticatedAsync();
+
+        if (isAuthenticated)
+        {
+            var role = await CurrentUserStateStore.GetCurrentRoleAsync();
+            if (role == "Admin")
+            {
+                NavigationManager.NavigateTo("/admin/tuition");
+                return;
+            }
+
+            int studentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+            if (studentId > 0)
+            {
+                currentStudent = await StudentRepository.GetStudentByIdAsync(studentId);
+                if (currentStudent != null)
+                {
+                    var list = await EnrollmentRepository.GetEnrollmentsByStudentIdAsync(currentStudent.StudentId);
+                    studentEnrollments = list.Where(e => e.Status == "Confirmed").ToList();
+                }
+            }
+            else
+            {
+                currentStudent = null;
+                studentEnrollments.Clear();
+            }
+        }
+        else
+        {
+            currentStudent = null;
+            studentEnrollments.Clear();
+        }
+
+        isLoading = false;
+    }
+
+    private void OpenPaymentModal(Enrollment enrollment)
+    {
+        selectedEnrollment = enrollment;
+        isModalOpen = true;
+    }
+
+    private void ClosePaymentModal()
+    {
+        isModalOpen = false;
+        selectedEnrollment = null;
+    }
+
+    private async Task HandlePaymentSuccess(TuitionPaymentResult result)
+    {
+        if (selectedEnrollment != null)
+        {
+            selectedEnrollment.PaymentStatus = "Paid";
+            selectedEnrollment.PaymentDate = result.PaymentDate;
+            selectedEnrollment.PaymentMethod = "VietQR Napas247";
+            selectedEnrollment.TransactionReference = result.TransactionReference;
+        }
+        await LoadDataAsync();
+    }
+
+    public void Dispose()
+    {
+        CurrentUserStateStore.RemoveStateChangeListeners(HandleUserStateChange);
+    }
+}

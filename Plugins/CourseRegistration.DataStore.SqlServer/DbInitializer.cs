@@ -26,6 +26,33 @@ namespace CourseRegistration.DataStore.SqlServer
                 END
             ");
 
+            // Tự động nâng cấp bảng Enrollments thêm các cột quản lý Học phí & Thanh toán VietQR
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    IF EXISTS (SELECT * FROM sysobjects WHERE name='Enrollments' and xtype='U')
+                    BEGIN
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Enrollments') AND name = 'PaymentStatus')
+                        BEGIN
+                            ALTER TABLE [dbo].[Enrollments] ADD [PaymentStatus] NVARCHAR(30) NOT NULL CONSTRAINT DF_Enrollments_PaymentStatus DEFAULT('Unpaid');
+                        END
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Enrollments') AND name = 'PaymentDate')
+                        BEGIN
+                            ALTER TABLE [dbo].[Enrollments] ADD [PaymentDate] DATETIME2 NULL;
+                        END
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Enrollments') AND name = 'PaymentMethod')
+                        BEGIN
+                            ALTER TABLE [dbo].[Enrollments] ADD [PaymentMethod] NVARCHAR(100) NULL;
+                        END
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Enrollments') AND name = 'TransactionReference')
+                        BEGIN
+                            ALTER TABLE [dbo].[Enrollments] ADD [TransactionReference] NVARCHAR(100) NULL;
+                        END
+                    END
+                ");
+            }
+            catch { }
+
             // Nâng cấp dữ liệu học kỳ sang Năm học 2026 - 2027 (2026_HK1)
             try
             {
@@ -37,6 +64,34 @@ namespace CourseRegistration.DataStore.SqlServer
                     IF EXISTS (SELECT * FROM sysobjects WHERE name='Enrollments' and xtype='U')
                     BEGIN
                         UPDATE [dbo].[Enrollments] SET [Semester] = '2026_HK1' WHERE [Semester] = '2025_HK1';
+                    END
+                ");
+            }
+            catch { }
+
+            // Tự động phân bổ trạng thái học phí mẫu cho sinh viên (Có nộp và Chưa nộp)
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    IF EXISTS (SELECT * FROM sysobjects WHERE name='Enrollments' and xtype='U')
+                    BEGIN
+                        -- Sinh viên ĐÃ nộp học phí (Paid: SV21003, SV21004, SV21007, SV21010, SV21013, SV21016, SV21019)
+                        UPDATE dbo.Enrollments 
+                        SET PaymentStatus = 'Paid',
+                            PaymentDate = DATEADD(day, -4, GETDATE()),
+                            PaymentMethod = N'VietQR Napas247',
+                            TransactionReference = 'VQR202610' + RIGHT('000' + CAST(EnrollmentId AS NVARCHAR(10)), 3)
+                        WHERE StudentId IN (SELECT StudentId FROM dbo.Students WHERE StudentCode IN ('SV21003', 'SV21004', 'SV21007', 'SV21010', 'SV21013', 'SV21016', 'SV21019'))
+                          AND Semester = '2026_HK1';
+
+                        -- Sinh viên CHƯA nộp học phí (Unpaid: SV21001, SV21002, SV21005, SV21006, SV21008, SV21009, SV21011...)
+                        UPDATE dbo.Enrollments 
+                        SET PaymentStatus = 'Unpaid',
+                            PaymentDate = NULL,
+                            PaymentMethod = NULL,
+                            TransactionReference = NULL
+                        WHERE StudentId IN (SELECT StudentId FROM dbo.Students WHERE StudentCode IN ('SV21001', 'SV21002', 'SV21005', 'SV21006', 'SV21008', 'SV21009', 'SV21011', 'SV21012', 'SV21014', 'SV21015', 'SV21017', 'SV21018', 'SV21020'))
+                          AND Semester = '2026_HK1';
                     END
                 ");
             }
@@ -182,7 +237,12 @@ namespace CourseRegistration.DataStore.SqlServer
                 new Course { CourseCode = "WEB301", CourseName = "Lập trình Ứng dụng Web", Credits = 4, Description = "Xây dựng Web App hiện đại với Blazor Server, Clean Architecture và EF Core" },
                 new Course { CourseCode = "KTPM302", CourseName = "Kỹ thuật Phần mềm", Credits = 3, Description = "Quy trình phát triển phần mềm Agile/Scrum, thiết kế UML và kiểm thử" },
                 new Course { CourseCode = "ATTT401", CourseName = "An toàn Thông tin", Credits = 3, Description = "Mật mã học, bảo mật hệ thống thông tin, xác thực và an toàn mạng ứng dụng" },
-                new Course { CourseCode = "TOEIC", CourseName = "Tiếng Anh chuyên ngành CNTT", Credits = 2, Description = "Thuật ngữ tiếng Anh chuyên ngành công nghệ thông tin và giao tiếp công sở" }
+                new Course { CourseCode = "TOEIC", CourseName = "Tiếng Anh chuyên ngành CNTT", Credits = 2, Description = "Thuật ngữ tiếng Anh chuyên ngành công nghệ thông tin và giao tiếp công sở" },
+                // Môn học mở thêm cho Học kỳ 2 (2026_HK2)
+                new Course { CourseCode = "WEB302", CourseName = "Phát triển Web Nâng cao & Microservices", Credits = 4, Description = "Kiến trúc Microservices, Docker, CI/CD, SignalR thời gian thực và Web API bảo mật" },
+                new Course { CourseCode = "AI401", CourseName = "Trí tuệ Nhân tạo & Học máy", Credits = 3, Description = "Thuật toán Machine Learning, Deep Learning, Mạng nơ-ron và ứng dụng AI" },
+                new Course { CourseCode = "CSDL202", CourseName = "Cơ sở Dữ liệu Phân tán & NoSQL", Credits = 3, Description = "Mô hình CSDL phân tán, MongoDB, Redis caching, tính nhất quán dữ liệu và Big Data" },
+                new Course { CourseCode = "ATTT402", CourseName = "An ninh Mạng & Phòng chống Tấn công", Credits = 3, Description = "Kỹ thuật phân tích mã độc, bảo mật hạ tầng mạng, phòng chống tấn công DDoS và thâm nhập" }
             };
 
             foreach (var c in initCourses)
@@ -203,19 +263,32 @@ namespace CourseRegistration.DataStore.SqlServer
             var cCsdl201 = dbCourses.First(c => c.CourseCode == "CSDL201");
             var cAttt401 = dbCourses.First(c => c.CourseCode == "ATTT401");
             var cToeic = dbCourses.First(c => c.CourseCode == "TOEIC");
+            var cWeb302 = dbCourses.First(c => c.CourseCode == "WEB302");
+            var cAi401 = dbCourses.First(c => c.CourseCode == "AI401");
+            var cCsdl202 = dbCourses.First(c => c.CourseCode == "CSDL202");
+            var cAttt402 = dbCourses.First(c => c.CourseCode == "ATTT402");
 
-            // Điều kiện tiên quyết
-            if (!context.Prerequisites.Any())
+            // Điều kiện tiên quyết (gồm cả HK1 và HK2)
+            var prereqList = new List<Prerequisite>
             {
-                context.Prerequisites.AddRange(new List<Prerequisite>
+                new Prerequisite { CourseId = cTin102.CourseId, PrerequisiteCourseId = cTin101.CourseId },
+                new Prerequisite { CourseId = cTin201.CourseId, PrerequisiteCourseId = cTin101.CourseId },
+                new Prerequisite { CourseId = cWeb301.CourseId, PrerequisiteCourseId = cTin102.CourseId },
+                new Prerequisite { CourseId = cKtpm302.CourseId, PrerequisiteCourseId = cTin102.CourseId },
+                new Prerequisite { CourseId = cWeb302.CourseId, PrerequisiteCourseId = cWeb301.CourseId },
+                new Prerequisite { CourseId = cAi401.CourseId, PrerequisiteCourseId = cTin201.CourseId },
+                new Prerequisite { CourseId = cCsdl202.CourseId, PrerequisiteCourseId = cCsdl201.CourseId },
+                new Prerequisite { CourseId = cAttt402.CourseId, PrerequisiteCourseId = cAttt401.CourseId }
+            };
+
+            foreach (var p in prereqList)
+            {
+                if (!context.Prerequisites.Any(pr => pr.CourseId == p.CourseId && pr.PrerequisiteCourseId == p.PrerequisiteCourseId))
                 {
-                    new Prerequisite { CourseId = cTin102.CourseId, PrerequisiteCourseId = cTin101.CourseId },
-                    new Prerequisite { CourseId = cTin201.CourseId, PrerequisiteCourseId = cTin101.CourseId },
-                    new Prerequisite { CourseId = cWeb301.CourseId, PrerequisiteCourseId = cTin102.CourseId },
-                    new Prerequisite { CourseId = cKtpm302.CourseId, PrerequisiteCourseId = cTin102.CourseId }
-                });
-                context.SaveChanges();
+                    context.Prerequisites.Add(p);
+                }
             }
+            context.SaveChanges();
 
             // 4. Môn học đã hoàn thành (CompletedCourses) cho việc kiểm thử Luật 1
             var s1 = dbStudents.FirstOrDefault(s => s.StudentCode == "SV21001");
@@ -253,9 +326,10 @@ namespace CourseRegistration.DataStore.SqlServer
             }
             context.SaveChanges();
 
-            // 5. Lớp học phần (Sections)
+            // 5. Lớp học phần (Sections: gồm cả 2 Học kỳ 2026_HK1 và 2026_HK2)
             var targetSections = new List<Section>
             {
+                // Học kỳ 1 (2026_HK1)
                 new Section { SectionCode = "WEB301_01", CourseId = cWeb301.CourseId, Instructor = "TS. Nguyễn Văn Hùng", MaxCapacity = 50, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Lab 402" },
                 new Section { SectionCode = "WEB301_02", CourseId = cWeb301.CourseId, Instructor = "ThS. Trần Thị Thanh Trúc", MaxCapacity = 50, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Lab 403" },
                 new Section { SectionCode = "TIN201_01", CourseId = cTin201.CourseId, Instructor = "PGS.TS. Lê Hoàng Sơn", MaxCapacity = 60, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Phòng A101" },
@@ -264,7 +338,15 @@ namespace CourseRegistration.DataStore.SqlServer
                 new Section { SectionCode = "KTPM302_01", CourseId = cKtpm302.CourseId, Instructor = "TS. Ngô Bảo Châu", MaxCapacity = 10, CurrentEnrollment = 10, Semester = "2026_HK1", Room = "Phòng C301" }, // Đủ sĩ số (10/10) để demo chặn hết chỗ
                 new Section { SectionCode = "TIN102_01", CourseId = cTin102.CourseId, Instructor = "ThS. Vũ Mạnh Cường", MaxCapacity = 60, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Phòng A205" },
                 new Section { SectionCode = "ATTT401_01", CourseId = cAttt401.CourseId, Instructor = "PGS.TS. Ngô Văn Dũng", MaxCapacity = 40, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Lab 501" },
-                new Section { SectionCode = "TOEIC_01", CourseId = cToeic.CourseId, Instructor = "ThS. Lý Thị Mỹ Hạnh", MaxCapacity = 80, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Hội trường A" }
+                new Section { SectionCode = "TOEIC_01", CourseId = cToeic.CourseId, Instructor = "ThS. Lý Thị Mỹ Hạnh", MaxCapacity = 80, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Hội trường A" },
+
+                // Học kỳ 2 (2026_HK2)
+                new Section { SectionCode = "WEB302_01", CourseId = cWeb302.CourseId, Instructor = "TS. Nguyễn Văn Hùng", MaxCapacity = 50, CurrentEnrollment = 0, Semester = "2026_HK2", Room = "Lab 402" },
+                new Section { SectionCode = "AI401_01", CourseId = cAi401.CourseId, Instructor = "PGS.TS. Lê Hoàng Sơn", MaxCapacity = 60, CurrentEnrollment = 0, Semester = "2026_HK2", Room = "Lab 502" },
+                new Section { SectionCode = "CSDL202_01", CourseId = cCsdl202.CourseId, Instructor = "TS. Phạm Thanh Tùng", MaxCapacity = 60, CurrentEnrollment = 0, Semester = "2026_HK2", Room = "Phòng B301" },
+                new Section { SectionCode = "ATTT402_01", CourseId = cAttt402.CourseId, Instructor = "PGS.TS. Ngô Văn Dũng", MaxCapacity = 40, CurrentEnrollment = 0, Semester = "2026_HK2", Room = "Lab 501" },
+                new Section { SectionCode = "KTPM302_02", CourseId = cKtpm302.CourseId, Instructor = "TS. Ngô Bảo Châu", MaxCapacity = 60, CurrentEnrollment = 0, Semester = "2026_HK2", Room = "Phòng C302" },
+                new Section { SectionCode = "TOEIC_02", CourseId = cToeic.CourseId, Instructor = "ThS. Lý Thị Mỹ Hạnh", MaxCapacity = 80, CurrentEnrollment = 0, Semester = "2026_HK2", Room = "Hội trường B" }
             };
 
             foreach (var sec in targetSections)
@@ -279,7 +361,7 @@ namespace CourseRegistration.DataStore.SqlServer
                     existing.Instructor = sec.Instructor;
                     existing.MaxCapacity = sec.MaxCapacity;
                     existing.Room = sec.Room;
-                    existing.Semester = "2026_HK1";
+                    existing.Semester = sec.Semester;
                 }
             }
             context.SaveChanges();
@@ -296,8 +378,16 @@ namespace CourseRegistration.DataStore.SqlServer
             var secAttt01 = dbSections.First(s => s.SectionCode == "ATTT401_01");
             var secToeic01 = dbSections.First(s => s.SectionCode == "TOEIC_01");
 
+            var secWeb302_01 = dbSections.FirstOrDefault(s => s.SectionCode == "WEB302_01");
+            var secAi401_01 = dbSections.FirstOrDefault(s => s.SectionCode == "AI401_01");
+            var secDb202_01 = dbSections.FirstOrDefault(s => s.SectionCode == "CSDL202_01");
+            var secAttt402_01 = dbSections.FirstOrDefault(s => s.SectionCode == "ATTT402_01");
+            var secKtpm302_02 = dbSections.FirstOrDefault(s => s.SectionCode == "KTPM302_02");
+            var secToeic02 = dbSections.FirstOrDefault(s => s.SectionCode == "TOEIC_02");
+
             var targetSchedules = new List<SectionSchedule>
             {
+                // Lịch học HK1
                 new SectionSchedule { SectionId = secWeb01.SectionId, DayOfWeek = 2, StartPeriod = 1, EndPeriod = 4, Room = "Lab 402" },
                 new SectionSchedule { SectionId = secWeb02.SectionId, DayOfWeek = 4, StartPeriod = 7, EndPeriod = 10, Room = "Lab 403" },
                 new SectionSchedule { SectionId = secAlgo01.SectionId, DayOfWeek = 2, StartPeriod = 1, EndPeriod = 3, Room = "Phòng A101" }, // Trùng thứ 2 tiết 1-3 với WEB301_01
@@ -308,6 +398,14 @@ namespace CourseRegistration.DataStore.SqlServer
                 new SectionSchedule { SectionId = secAttt01.SectionId, DayOfWeek = 6, StartPeriod = 7, EndPeriod = 9, Room = "Lab 501" },
                 new SectionSchedule { SectionId = secToeic01.SectionId, DayOfWeek = 7, StartPeriod = 1, EndPeriod = 3, Room = "Hội trường A" }
             };
+
+            // Lịch học HK2
+            if (secWeb302_01 != null) targetSchedules.Add(new SectionSchedule { SectionId = secWeb302_01.SectionId, DayOfWeek = 3, StartPeriod = 1, EndPeriod = 4, Room = "Lab 402" });
+            if (secAi401_01 != null) targetSchedules.Add(new SectionSchedule { SectionId = secAi401_01.SectionId, DayOfWeek = 4, StartPeriod = 1, EndPeriod = 3, Room = "Lab 502" });
+            if (secDb202_01 != null) targetSchedules.Add(new SectionSchedule { SectionId = secDb202_01.SectionId, DayOfWeek = 5, StartPeriod = 7, EndPeriod = 9, Room = "Phòng B301" });
+            if (secAttt402_01 != null) targetSchedules.Add(new SectionSchedule { SectionId = secAttt402_01.SectionId, DayOfWeek = 6, StartPeriod = 1, EndPeriod = 3, Room = "Lab 501" });
+            if (secKtpm302_02 != null) targetSchedules.Add(new SectionSchedule { SectionId = secKtpm302_02.SectionId, DayOfWeek = 2, StartPeriod = 7, EndPeriod = 9, Room = "Phòng C302" });
+            if (secToeic02 != null) targetSchedules.Add(new SectionSchedule { SectionId = secToeic02.SectionId, DayOfWeek = 7, StartPeriod = 7, EndPeriod = 9, Room = "Hội trường B" });
 
             foreach (var sch in targetSchedules)
             {
@@ -348,11 +446,15 @@ namespace CourseRegistration.DataStore.SqlServer
                     ["SV21020"] = new List<string> { "CSDL201_01", "TIN102_01", "TOEIC_01" }
                 };
 
+                var paidStudentCodes = new HashSet<string> { "SV21003", "SV21004", "SV21007", "SV21010", "SV21013", "SV21016", "SV21019" };
+
                 int index = 1;
                 foreach (var entry in studentEnrollmentPlans)
                 {
                     var student = dbStudents.FirstOrDefault(s => s.StudentCode == entry.Key);
                     if (student == null) continue;
+
+                    var isPaid = paidStudentCodes.Contains(entry.Key);
 
                     // Kiểm tra sinh viên đã có phiếu đăng ký Confirmed trong kỳ 2026_HK1 chưa
                     var existingEnrollment = context.Enrollments
@@ -367,7 +469,11 @@ namespace CourseRegistration.DataStore.SqlServer
                             DateRegistered = DateTime.Now.AddDays(-15).AddHours(index),
                             Semester = "2026_HK1",
                             Status = "Confirmed",
-                            UniqueId = $"ENR-2026-{index:D4}"
+                            UniqueId = $"ENR-2026-{index:D4}",
+                            PaymentStatus = isPaid ? "Paid" : "Unpaid",
+                            PaymentDate = isPaid ? DateTime.Now.AddDays(-5).AddHours(index) : null,
+                            PaymentMethod = isPaid ? "VietQR Napas247" : null,
+                            TransactionReference = isPaid ? $"VQR202610{index:D4}" : null
                         };
                         context.Enrollments.Add(newEnrollment);
                         context.SaveChanges();
@@ -387,6 +493,15 @@ namespace CourseRegistration.DataStore.SqlServer
                     }
                     else
                     {
+                        // Cập nhật trạng thái học phí nếu chưa đồng bộ
+                        if (isPaid && existingEnrollment.PaymentStatus != "Paid")
+                        {
+                            existingEnrollment.PaymentStatus = "Paid";
+                            existingEnrollment.PaymentDate = DateTime.Now.AddDays(-5).AddHours(index);
+                            existingEnrollment.PaymentMethod = "VietQR Napas247";
+                            existingEnrollment.TransactionReference = $"VQR202610{index:D4}";
+                        }
+
                         // Nếu đã có phiếu nhưng chưa có lines, bổ sung lines
                         foreach (var secCode in entry.Value)
                         {

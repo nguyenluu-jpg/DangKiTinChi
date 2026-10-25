@@ -268,44 +268,99 @@
     </div>
 
     <div class="accordion accordion-flush" id="portalAccordion">
-        <!-- MỤC 1: LỘ TRÌNH ĐỢT ĐĂNG KÝ -->
+        <!-- MỤC 1: LỘ TRÌNH 2 HỌC KỲ & 3 GIAI ĐOẠN LINH HOẠT -->
         <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
             <h2 class="accordion-header">
                 <button class="accordion-button @(isTimelineOpen ? "" : "collapsed") fw-bold py-3" 
                         type="button" 
                         @onclick="() => isTimelineOpen = !isTimelineOpen">
-                    <i class="bi bi-clock-history text-primary me-2"></i> 1. Kế hoạch & Lịch trình Đăng ký Học kỳ 1 (Năm học 2026 - 2027)
+                    <i class="bi bi-clock-history text-primary me-2"></i> 1. Kế hoạch & Lịch trình Đăng ký 2 Học kỳ (Năm học 2026 - 2027)
                 </button>
             </h2>
             <div class="accordion-collapse collapse @(isTimelineOpen ? "show" : "")">
-                <div class="accordion-body bg-light-subtle pt-2">
-                    <div class="row g-2">
-                        <div class="col-sm-6 col-md-3">
-                            <div class="p-2 border rounded bg-white">
-                                <div class="badge bg-secondary mb-1">Giai đoạn 1</div>
-                                <div class="fw-bold small">Đăng Ký Theo CTĐT Chuẩn</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">01/10 - 07/10/2026 (Đã xong)</div>
+                <div class="accordion-body bg-light-subtle pt-3">
+                    <!-- Học kỳ 1 -->
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="fw-bold mb-0 text-dark">
+                                <i class="bi bi-calendar-check text-primary me-1"></i> Học kỳ 1 (2026 - 2027)
+                            </h6>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small">
+                                <i class="bi bi-play-circle-fill me-1"></i> Đang diễn ra (Bao trùm ngày thi 02/11/2026)
+                            </span>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <div class="p-3 border rounded-3 bg-white h-100">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="badge bg-secondary-subtle text-secondary rounded-pill">Giai đoạn 1</span>
+                                        <span class="badge bg-light text-muted border small">Đã xong</span>
+                                    </div>
+                                    <div class="fw-bold small text-dark">Đăng Ký Chính Thức</div>
+                                    <div class="text-muted small">15/10/2026 &rarr; 26/10/2026</div>
+                                    <p class="text-secondary small mb-0 mt-1" style="font-size: 0.8rem;">
+                                        Đăng ký môn học theo lộ trình chuẩn CTĐT của khóa.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 border border-primary border-2 rounded-3 bg-primary-subtle-light h-100 shadow-sm position-relative">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="badge bg-primary text-white rounded-pill">Giai đoạn 2</span>
+                                        <span class="badge bg-success text-white small">🟢 Đang mở</span>
+                                    </div>
+                                    <div class="fw-bold small text-primary">ĐK Bổ Sung &amp; Học Vượt</div>
+                                    <div class="text-primary fw-semibold small">27/10/2026 &rarr; 05/11/2026</div>
+                                    <p class="text-dark small mb-1 mt-1" style="font-size: 0.8rem;">
+                                        Đăng ký thêm lớp còn slot, đổi nhóm lớp, sinh viên học vượt hoặc học cải thiện.
+                                    </p>
+                                    <div class="badge bg-warning text-dark py-1 px-2 rounded-2 small mt-1">
+                                        <i class="bi bi-stars me-1"></i>Bao trùm ngày thi 02/11/2026
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 border rounded-3 bg-white h-100">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="badge bg-light text-muted border rounded-pill">Giai đoạn 3</span>
+                                        <span class="badge bg-light text-muted border small">Sắp diễn ra</span>
+                                    </div>
+                                    <div class="fw-bold small text-dark">Rút Môn &amp; Nộp Học Phí</div>
+                                    <div class="text-muted small">06/11/2026 &rarr; 20/11/2026</div>
+                                    <p class="text-secondary small mb-0 mt-1" style="font-size: 0.8rem;">
+                                        Rút học phần không tính điểm rớt, thanh toán học phí VietQR và chốt danh sách thi.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-sm-6 col-md-3">
-                            <div class="p-2 border rounded bg-white">
-                                <div class="badge bg-secondary mb-1">Giai đoạn 2</div>
-                                <div class="fw-bold small">Học Lại & Học Cải Thiện</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">08/10 - 15/10/2026 (Đã xong)</div>
-                            </div>
+                    </div>
+
+                    <!-- Học kỳ 2 -->
+                    <div class="pt-2 border-top">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="fw-bold mb-0 text-muted">
+                                <i class="bi bi-calendar3 text-secondary me-1"></i> Học kỳ 2 (2026 - 2027)
+                            </h6>
+                            <span class="badge bg-secondary text-white px-2 py-1 rounded-pill small">Kế hoạch tiếp theo</span>
                         </div>
-                        <div class="col-sm-6 col-md-3">
-                            <div class="p-2 border border-primary rounded bg-white">
-                                <div class="badge bg-primary mb-1">Giai đoạn 3 (Đang Mở)</div>
-                                <div class="fw-bold small text-primary">Hiệu Chỉnh & Tự Hủy Môn</div>
-                                <div class="text-danger fw-bold" style="font-size: 0.75rem;">16/10 - 22/10/2026</div>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <div class="p-2 border rounded-3 bg-white">
+                                    <div class="badge bg-light text-muted border mb-1">GĐ 1: ĐK Chính Thức</div>
+                                    <div class="text-muted small">15/12/2026 &rarr; 28/12/2026</div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-sm-6 col-md-3">
-                            <div class="p-2 border rounded bg-white">
-                                <div class="badge bg-warning text-dark mb-1">Giai đoạn 4</div>
-                                <div class="fw-bold small">Rút Môn Tại Phòng Đào Tạo</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">Từ 23/10/2026 &bull; Học: 02/11</div>
+                            <div class="col-md-4">
+                                <div class="p-2 border rounded-3 bg-white">
+                                    <div class="badge bg-light text-muted border mb-1">GĐ 2: ĐK Bổ Sung &amp; Vượt</div>
+                                    <div class="text-muted small">29/12/2026 &rarr; 08/01/2027</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-2 border rounded-3 bg-white">
+                                    <div class="badge bg-light text-muted border mb-1">GĐ 3: Rút Môn &amp; Học Phí</div>
+                                    <div class="text-muted small">09/01/2027 &rarr; 22/01/2027</div>
+                                </div>
                             </div>
                         </div>
                     </div>

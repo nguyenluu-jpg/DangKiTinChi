@@ -1,0 +1,333 @@
+@namespace CourseRegistration.Web.Components.Shared
+@using CourseRegistration.CoreBusiness.Models
+@using CourseRegistration.UseCases.StudentPortal.Payment
+@inject IProcessTuitionPaymentUseCase ProcessTuitionPaymentUseCase
+@inject IJSRuntime JSRuntime
+
+@if (IsOpen && Enrollment != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.75); z-index: 1055;">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <!-- Modal Header: VietQR & Napas Branding -->
+                <div class="modal-header text-white py-3 px-4" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-credit-card-2-front-fill fs-4 text-warning"></i>
+                        <h5 class="modal-title fw-bold mb-0 text-white">Thanh Toán Học Phí Trực Tuyến</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" @onclick="HandleClose" disabled="@isProcessing"></button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="modal-body p-4 bg-white">
+                    @if (paymentCompleted)
+                    {
+                        <!-- Trạng thái Thanh Toán Thành Công -->
+                        <div class="text-center py-4">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-success-subtle text-success rounded-circle p-4 mb-3" style="width: 80px; height: 80px;">
+                                <i class="bi bi-check2-circle display-4"></i>
+                            </div>
+                            <h4 class="fw-bold text-success mb-1">Giao Dịch Thành Công!</h4>
+                            <p class="text-muted small mb-3">Học phí của sinh viên đã được ghi nhận vào hệ thống quản lý học vụ.</p>
+
+                            <div class="p-3 bg-light rounded-3 text-start border mx-auto mb-4" style="max-width: 480px;">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted small">Mã biên lai điện tử:</span>
+                                    <strong class="text-primary font-monospace">@paymentResult?.TransactionReference</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted small">Thời gian giao dịch:</span>
+                                    <span>@(paymentResult?.PaymentDate.ToString("dd/MM/yyyy HH:mm:ss"))</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted small">Số tiền thanh toán:</span>
+                                    <strong class="text-success fs-5">@($"{paymentResult?.AmountPaid:N0} VNĐ")</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted small">Phương thức:</span>
+                                    <span class="badge bg-primary">Chuyển khoản trực tuyến 24/7</span>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary px-4 py-2 rounded-pill fw-semibold" @onclick="HandleClose">
+                                <i class="bi bi-check-lg me-1"></i> Hoàn tất & Trở lại
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Giao diện Quét Mã Chuyển Khoản -->
+                        <div class="row g-4 align-items-center">
+                            <!-- Cột Trái: Ảnh Mã QR Chuẩn -->
+                            <div class="col-md-5 text-center">
+                                <div class="p-3 border rounded-4 bg-light shadow-sm position-relative">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                                        <span class="badge bg-primary text-white" style="font-size: 0.7rem;">
+                                            <i class="bi bi-qr-code-scan me-1"></i> Quét mã thanh toán
+                                        </span>
+                                        <span class="text-danger small fw-bold">
+                                            <i class="bi bi-clock-history me-1"></i> @countdownDisplay
+                                        </span>
+                                    </div>
+
+                                    <!-- QR Image -->
+                                    <div class="position-relative overflow-hidden rounded-3 border bg-white p-2">
+                                        <img src="@qrImageUrl" 
+                                             alt="Mã QR chuyển khoản" 
+                                             class="img-fluid rounded-2 shadow-sm"
+                                             style="max-height: 250px; width: 100%; object-fit: contain;" />
+                                    </div>
+
+                                    <div class="mt-2 text-center text-muted" style="font-size: 0.72rem;">
+                                        Mở App <strong>Ngân hàng (MB, VCB, BIDV...)</strong><br />hoặc Ví điện tử để quét mã thanh toán nhanh
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cột Phải: Thông tin chi tiết & Chuyển khoản thủ công -->
+                            <div class="col-md-7">
+                                <div class="p-3 bg-light rounded-3 border mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-muted small">Sinh viên:</span>
+                                        <strong class="text-dark">@Enrollment.Student?.FullName (@Enrollment.Student?.StudentCode)</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-muted small">Phiếu đăng ký:</span>
+                                        <span class="text-dark fw-semibold">#@Enrollment.EnrollmentId &bull; @Enrollment.Semester</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-muted small">Tổng số tín chỉ:</span>
+                                        <span class="badge bg-secondary">@Enrollment.TotalCredits Tín chỉ</span>
+                                    </div>
+                                    <hr class="my-2" />
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted fw-bold">Số tiền học phí:</span>
+                                        <span class="text-danger fw-bold fs-4">@($"{Enrollment.TuitionFee:N0} VNĐ")</span>
+                                    </div>
+                                </div>
+
+                                <!-- Bảng Thông tin Chuyển khoản (có nút Copy) -->
+                                <div class="d-flex flex-column gap-2 small">
+                                    <div class="p-2 border rounded bg-white d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="text-muted" style="font-size: 0.7rem;">NGÂN HÀNG THỤ HƯỞNG</div>
+                                            <div class="fw-bold text-dark">MB Bank (Ngân hàng TMCP Quân Đội)</div>
+                                        </div>
+                                        <span class="badge bg-primary-subtle text-primary">MB</span>
+                                    </div>
+
+                                    <div class="p-2 border rounded bg-white d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="text-muted" style="font-size: 0.7rem;">SỐ TÀI KHOẢN TRƯỜNG</div>
+                                            <div class="fw-bold font-monospace text-dark fs-6">08688889999</div>
+                                        </div>
+                                        <button class="btn btn-outline-secondary btn-sm py-1 px-2" @onclick="@(() => CopyText("08688889999", "Đã sao chép Số tài khoản!"))" title="Sao chép STK">
+                                            <i class="bi bi-clipboard"></i> Sao chép
+                                        </button>
+                                    </div>
+
+                                    <div class="p-2 border rounded bg-white d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="text-muted" style="font-size: 0.7rem;">TÊN ĐƠN VỊ THỤ HƯỞNG</div>
+                                            <div class="fw-bold text-dark">TRUONG DAI HOC KINH TE HUE</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="p-2 border rounded bg-white d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="text-muted" style="font-size: 0.7rem;">NỘI DUNG CHUYỂN KHOẢN (BẮT BUỘC)</div>
+                                            <div class="fw-bold font-monospace text-primary">@transferDescription</div>
+                                        </div>
+                                        <button class="btn btn-outline-secondary btn-sm py-1 px-2" @onclick="@(() => CopyText(transferDescription, "Đã sao chép Nội dung CK!"))" title="Sao chép nội dung">
+                                            <i class="bi bi-clipboard"></i> Sao chép
+                                        </button>
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(copyFeedback))
+                                {
+                                    <div class="alert alert-success py-1 px-2 mt-2 mb-0 small text-center" role="alert">
+                                        <i class="bi bi-check-circle-fill me-1"></i> @copyFeedback
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(errorMessage))
+                                {
+                                    <div class="alert alert-danger py-1 px-2 mt-2 mb-0 small text-center" role="alert">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i> @errorMessage
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Modal Footer -->
+                @if (!paymentCompleted)
+                {
+                    <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-between align-items-center">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="HandleClose" disabled="@isProcessing">
+                            Hủy / Đóng
+                        </button>
+                        <button type="button" class="btn btn-success px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow" 
+                                @onclick="HandleSimulatePayment" disabled="@isProcessing">
+                            @if (isProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                                <span>Đang xác thực liên ngân hàng Napas...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-shield-check fs-5"></i>
+                                <span>Tôi Đã Hoàn Tất Chuyển Khoản</span>
+                            }
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Enrollment? Enrollment { get; set; }
+
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<TuitionPaymentResult> OnPaymentSuccess { get; set; }
+
+    private bool isProcessing = false;
+    private bool paymentCompleted = false;
+    private TuitionPaymentResult? paymentResult;
+    private string copyFeedback = string.Empty;
+    private string errorMessage = string.Empty;
+    private string countdownDisplay = "14:59";
+    private System.Threading.Timer? timer;
+    private int secondsRemaining = 899;
+
+    private string transferDescription => $"HP {Enrollment?.Student?.StudentCode ?? "SV"} {Enrollment?.EnrollmentId}";
+
+    private string qrImageUrl
+    {
+        get
+        {
+            if (Enrollment == null) return string.Empty;
+            long amount = (long)Math.Round(Enrollment.TuitionFee);
+            var paymentInfo = new VietQrPaymentInfo
+            {
+                BankCode = "MB",
+                AccountNumber = "08688889999",
+                AccountName = "TRUONG DAI HOC KINH TE HUE",
+                Amount = amount,
+                Description = transferDescription,
+                Template = "compact2"
+            };
+            return paymentInfo.QrImageUrl;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen)
+        {
+            paymentCompleted = Enrollment?.IsPaid ?? false;
+            errorMessage = string.Empty;
+            copyFeedback = string.Empty;
+            secondsRemaining = 899;
+            StartCountdown();
+        }
+        else
+        {
+            timer?.Dispose();
+        }
+    }
+
+    private void StartCountdown()
+    {
+        timer?.Dispose();
+        timer = new System.Threading.Timer(_ =>
+        {
+            if (secondsRemaining > 0)
+            {
+                secondsRemaining--;
+                int minutes = secondsRemaining / 60;
+                int seconds = secondsRemaining % 60;
+                countdownDisplay = $"{minutes:D2}:{seconds:D2}";
+                InvokeAsync(StateHasChanged);
+            }
+            else
+            {
+                timer?.Dispose();
+            }
+        }, null, 1000, 1000);
+    }
+
+    private async Task CopyText(string text, string feedback)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            copyFeedback = feedback;
+            StateHasChanged();
+            await Task.Delay(2500);
+            copyFeedback = string.Empty;
+            StateHasChanged();
+        }
+        catch
+        {
+            copyFeedback = "Không thể sao chép tự động, vui lòng chọn thủ công.";
+        }
+    }
+
+    private async Task HandleSimulatePayment()
+    {
+        if (Enrollment == null || isProcessing) return;
+
+        isProcessing = true;
+        errorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            // Giả lập thời gian đối soát giao dịch Napas 247 thực tế
+            await Task.Delay(1400);
+
+            var result = await ProcessTuitionPaymentUseCase.ExecuteAsync(Enrollment.EnrollmentId, "VietQR Napas247");
+            if (result.IsSuccess)
+            {
+                paymentResult = result;
+                paymentCompleted = true;
+                Enrollment.PaymentStatus = "Paid";
+                Enrollment.PaymentDate = result.PaymentDate;
+                Enrollment.PaymentMethod = "VietQR Napas247";
+                Enrollment.TransactionReference = result.TransactionReference;
+
+                await OnPaymentSuccess.InvokeAsync(result);
+            }
+            else
+            {
+                errorMessage = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Có lỗi xảy ra: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        timer?.Dispose();
+        await OnClose.InvokeAsync();
+    }
+}

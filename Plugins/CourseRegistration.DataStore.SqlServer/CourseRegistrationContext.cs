@@ -113,6 +113,10 @@ namespace CourseRegistration.DataStore.SqlServer
                       .HasForeignKey(e => e.StudentId)
                       .OnDelete(DeleteBehavior.Cascade);
 
+                entity.Property(e => e.PaymentStatus).HasMaxLength(30).HasDefaultValue("Unpaid");
+                entity.Property(e => e.PaymentMethod).HasMaxLength(100);
+                entity.Property(e => e.TransactionReference).HasMaxLength(100);
+
                 entity.HasMany(e => e.EnrollmentLines)
                       .WithOne()
                       .HasForeignKey(el => el.EnrollmentId)

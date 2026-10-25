@@ -43,5 +43,10 @@ namespace CourseRegistration.UseCases.PluginInterfaces.DataStore
         /// Tăng sĩ số lớp học phần tương ứng
         /// </summary>
         Task<(bool IsSuccess, string? ErrorMessage)> AddSectionForStudentAsync(int studentId, int sectionId, string semester);
+
+        /// <summary>
+        /// Cập nhật trạng thái thanh toán học phí trực tuyến (VietQR) hoặc thủ công
+        /// </summary>
+        Task<bool> UpdatePaymentStatusAsync(int enrollmentId, string paymentStatus, string paymentMethod, string transactionReference);
     }
 }

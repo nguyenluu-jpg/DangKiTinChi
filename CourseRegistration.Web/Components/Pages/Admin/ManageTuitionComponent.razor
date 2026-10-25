@@ -1,0 +1,683 @@
+@page "/admin/tuition"
+@namespace CourseRegistration.Web.Components.Pages.Admin
+@using CourseRegistration.CoreBusiness.Models
+@using CourseRegistration.CoreBusiness.Services.Interfaces
+@using CourseRegistration.UseCases.AdminPortal.ManageTuitionScreen
+@using CourseRegistration.UseCases.PluginInterfaces.StateStore
+@inject IManageTuitionUseCase ManageTuitionUseCase
+@inject ICurrentUserStateStore CurrentUserStateStore
+@inject ILoginModalService LoginModalService
+@inject NavigationManager NavigationManager
+@inject IRegistrationPeriodService RegistrationPeriodService
+@implements IDisposable
+
+@if (!isAuthorized)
+{
+    <div class="row justify-content-center py-4">
+        <div class="col-md-8 text-center">
+            <div class="card border-0 shadow-sm p-4 p-md-5 rounded-4 bg-white">
+                <div class="mb-3 text-danger">
+                    <i class="bi bi-shield-slash-fill display-2"></i>
+                </div>
+                <h3 class="fw-bold text-dark mb-2">Hệ Thống Chặn Truy Cập</h3>
+                <div class="badge bg-danger-subtle text-danger px-3 py-1 mb-3 fs-6">HTTP 403 Forbidden &bull; Phân quyền bảo vệ Quản lý Học vụ Học phí</div>
+                
+                <div class="alert alert-warning text-start small mb-4">
+                    <div class="fw-bold mb-1 text-dark"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Lý do:</div>
+                    <ul class="mb-0 ps-3 text-secondary">
+                        <li>Khu vực <strong>Quản lý Học vụ Học phí &amp; Chế tài Dự thi</strong> chỉ dành riêng cho Cán bộ Phòng Đào Tạo (Admin).</li>
+                        <li>Tài khoản hiện tại của bạn là Sinh viên hoặc chưa đăng nhập.</li>
+                    </ul>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                    <button type="button" 
+                            class="btn btn-primary px-4 py-2 fw-semibold"
+                            @onclick="() => LoginModalService.Open()">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Tài Khoản Admin
+                    </button>
+                    <a href="/" class="btn btn-outline-secondary px-4 py-2">
+                        <i class="bi bi-house-door me-1"></i> Trở Về Cổng Sinh Viên
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Trang chủ</a></li>
+                    <li class="breadcrumb-item"><a href="/admin/enrollments" class="text-decoration-none">Phòng Đào Tạo</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Quản lý Học vụ Học phí</li>
+                </ol>
+            </nav>
+            <h2 class="fw-bold mb-1 text-dark">
+                <i class="bi bi-wallet2 text-danger me-2"></i>Quản Lý Học Vụ Học Phí &amp; Chế Tài Dự Thi
+            </h2>
+            <p class="text-muted mb-0">
+                Phòng Đào Tạo &bull; Giám sát khối lượng tín chỉ, xét duyệt điều kiện dự thi và áp dụng chế tài học vụ theo Quy chế Đào tạo tín chỉ
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="input-group input-group-sm shadow-xs" style="min-width: 220px;">
+                <span class="input-group-text bg-white border-end-0 text-muted">
+                    <i class="bi bi-calendar-event text-danger"></i>
+                </span>
+                <select class="form-select form-select-sm border-start-0 fw-semibold text-danger" 
+                        value="@selectedSemesterCode" 
+                        @onchange="HandleSemesterChanged">
+                    @foreach (var sem in allSemesters)
+                    {
+                        <option value="@sem.SemesterCode">@sem.ShortName</option>
+                    }
+                </select>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshDataAsync">
+                <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i> In danh sách
+            </button>
+        </div>
+    </div>
+
+    <!-- Thông báo thao tác -->
+    @if (!string.IsNullOrEmpty(feedbackSuccess))
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm d-flex align-items-center justify-content-between p-3 mb-4 rounded-3" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-check-circle-fill fs-4 text-success me-2"></i>
+                <div>
+                    <strong>Thành công!</strong> @feedbackSuccess
+                </div>
+            </div>
+            <button type="button" class="btn-close" @onclick="() => feedbackSuccess = string.Empty"></button>
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(feedbackError))
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm d-flex align-items-center justify-content-between p-3 mb-4 rounded-3" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill fs-4 text-danger me-2"></i>
+                <div>
+                    <strong>Lỗi:</strong> @feedbackError
+                </div>
+            </div>
+            <button type="button" class="btn-close" @onclick="() => feedbackError = string.Empty"></button>
+        </div>
+    }
+
+    <!-- Banner Giải Thích Rõ Vai Trò Quản Lý Của Phòng Đào Tạo -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 text-white" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+        <div class="d-flex align-items-start gap-3">
+            <div class="bg-primary bg-opacity-25 rounded-circle p-2 d-flex align-items-center justify-content-center text-primary mt-1" style="width: 44px; height: 44px; min-width: 44px;">
+                <i class="bi bi-info-circle-fill fs-4 text-info"></i>
+            </div>
+            <div class="small">
+                <h6 class="fw-bold text-white mb-1">
+                    <i class="bi bi-mortarboard-fill text-warning me-1"></i>Quy chế phối hợp Học vụ &amp; Học phí của Phòng Đào Tạo:
+                </h6>
+                <p class="mb-0 text-white-50">
+                    Phòng Đào Tạo <strong>không trực tiếp thu tiền</strong> (thẩm quyền thuộc Phòng Kế hoạch - Tài chính), mà quản lý học phí dưới góc độ <strong>Học Vụ &amp; Điều Kiện Đào Tạo</strong>:
+                    (1) Kiểm soát khối lượng tín chỉ đăng ký $\times$ Đơn giá (450.000 đ/TC); 
+                    (2) Cập nhật đối soát để lập danh sách <strong>Sinh viên đủ điều kiện dự thi kết thúc học phần</strong>;
+                    (3) Áp dụng chế tài <strong>Cảnh báo học vụ &amp; Cấm thi / Khóa đăng ký kỳ sau</strong> đối với sinh viên nợ học phí quá hạn;
+                    (4) Cứu xét học vụ đối với sinh viên có đơn xin gia hạn hoặc diện chính sách xã hội.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 Thẻ KPI Thống Kê Học Vụ Học Phí Toàn Trường -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 border-start border-primary border-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Sinh viên đăng ký</span>
+                    <div class="bg-primary-subtle text-primary rounded-circle p-2">
+                        <i class="bi bi-people-fill fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold text-dark mb-1">@stats.TotalRegisteredStudents <span class="fs-6 fw-normal text-muted">SV</span></h3>
+                <div class="small text-muted">
+                    Tổng <strong>@stats.TotalCredits TC</strong> đăng ký trong kỳ
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 border-start border-info border-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Tổng học phí phát sinh</span>
+                    <div class="bg-info-subtle text-info rounded-circle p-2">
+                        <i class="bi bi-calculator-fill fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold text-dark mb-1">@($"{stats.TotalTuitionFee:N0} đ")</h3>
+                <div class="small text-muted">
+                    Định mức chuẩn: <strong>450.000 đ/TC</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 border-start border-success border-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-success small fw-bold text-uppercase">Đủ điều kiện dự thi</span>
+                    <div class="bg-success-subtle text-success rounded-circle p-2">
+                        <i class="bi bi-patch-check-fill fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold text-success mb-1">@stats.PaidStudentsCount <span class="fs-6 fw-normal text-muted">SV</span></h3>
+                <div class="small text-success">
+                    <i class="bi bi-check-circle me-1"></i>Đã thu: <strong>@($"{stats.TotalPaidAmount:N0} đ")</strong> (@stats.CompletionRate.ToString("F1")%)
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 border-start border-danger border-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-danger small fw-bold text-uppercase">Chế tài: Cấm thi học phần</span>
+                    <div class="bg-danger-subtle text-danger rounded-circle p-2">
+                        <i class="bi bi-shield-x fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold text-danger mb-1">@stats.UnpaidStudentsCount <span class="fs-6 fw-normal text-muted">SV</span></h3>
+                <div class="small text-danger">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Còn nợ: <strong>@($"{stats.TotalUnpaidAmount:N0} đ")</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bộ Lọc & Tìm Kiếm -->
+    <div class="card border-0 shadow-sm p-3 mb-4 bg-white rounded-3">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control border-start-0 bg-light" 
+                           placeholder="Tìm theo MSSV, Họ tên sinh viên hoặc Mã phiếu..." 
+                           @bind="searchKeyword" 
+                           @bind:event="oninput" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex align-items-center gap-2">
+                    <label class="form-label mb-0 small text-muted text-nowrap fw-bold">Lọc theo:</label>
+                    <select class="form-select form-select-sm" @bind="selectedFilter">
+                        <option value="all">Tất cả sinh viên đăng ký (@allEnrollments.Count)</option>
+                        <option value="paid">Đã hoàn tất &amp; Đủ điều kiện thi (@allEnrollments.Count(e => e.IsPaid))</option>
+                        <option value="unpaid">Còn nợ học phí &amp; Chế tài cấm thi (@allEnrollments.Count(e => !e.IsPaid))</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3 text-md-end">
+                <span class="badge bg-light text-dark border px-3 py-2 small">
+                    <i class="bi bi-calendar3 me-1"></i>Học kỳ 1 (2026 - 2027)
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bảng Danh Sách Học Vụ Học Phí -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white mb-4">
+        <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-card-checklist text-primary me-2"></i>Danh Sách Học Vụ &amp; Xét Duyệt Dự Thi (@filteredEnrollments.Count Phiếu)
+            </h5>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-danger btn-sm" @onclick="FilterOnlyUnpaid">
+                    <i class="bi bi-shield-x me-1"></i> Danh Sách Nợ (Cấm Thi)
+                </button>
+                <button class="btn btn-outline-success btn-sm" @onclick="FilterOnlyPaid">
+                    <i class="bi bi-patch-check me-1"></i> Danh Sách Đủ ĐK Thi
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Đang tải dữ liệu học vụ học phí...</p>
+                </div>
+            }
+            else if (!filteredEnrollments.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox fs-1 text-muted mb-2 d-block"></i>
+                    <h6 class="text-muted fw-bold">Không tìm thấy sinh viên nào phù hợp bộ lọc</h6>
+                    <p class="small text-muted mb-0">Thử thay đổi từ khóa tìm kiếm hoặc chọn bộ lọc trạng thái khác.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50px;">STT</th>
+                                <th>Sinh Viên</th>
+                                <th>Khóa &amp; Ngành</th>
+                                <th>Mã Phiếu ĐK</th>
+                                <th class="text-center">Số TC</th>
+                                <th>Tổng Học Phí</th>
+                                <th>Trạng Thái Nộp</th>
+                                <th>Tình Trạng Học Vụ &amp; Dự Thi</th>
+                                <th class="text-end" style="min-width: 180px;">Thao Tác Học Vụ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ int idx = 1; }
+                            @foreach (var enr in filteredEnrollments)
+                            {
+                                var stu = enr.Student;
+                                <tr>
+                                    <td class="text-muted fw-bold">@(idx++)</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="user-avatar @(stu?.StudentCode == "SV21002" ? "bg-warning text-dark" : "bg-primary text-white") small" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                                <i class="bi bi-person-fill"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold text-dark">@(stu?.FullName ?? "N/A")</div>
+                                                <span class="badge bg-primary-subtle text-primary font-monospace" style="font-size: 0.72rem;">
+                                                    @(stu?.StudentCode ?? "N/A")
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="small text-dark">@(stu?.Major ?? "N/A")</div>
+                                        <div class="text-muted" style="font-size: 0.72rem;">Khóa: @(stu?.AcademicYear ?? "N/A")</div>
+                                    </td>
+                                    <td>
+                                        <a href="/enrollment/@enr.EnrollmentId" class="fw-semibold text-decoration-none">
+                                            #@enr.EnrollmentId
+                                        </a>
+                                        <div class="text-muted small" style="font-size: 0.7rem;">
+                                            @(enr.DateRegistered?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary fs-6">@enr.TotalCredits TC</span>
+                                        <div class="text-muted" style="font-size: 0.7rem;">(@enr.EnrollmentLines.Count lớp)</div>
+                                    </td>
+                                    <td>
+                                        <strong class="text-danger fs-6">@($"{enr.TuitionFee:N0} đ")</strong>
+                                    </td>
+                                    <td>
+                                        @if (enr.IsPaid)
+                                        {
+                                            <span class="badge bg-success shadow-sm">
+                                                <i class="bi bi-check-circle-fill me-1"></i> Đã nộp
+                                            </span>
+                                            <div class="text-muted" style="font-size: 0.7rem;">
+                                                @(enr.PaymentMethod ?? "VietQR")
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(enr.TransactionReference))
+                                            {
+                                                <div class="font-monospace text-primary" style="font-size: 0.68rem;">
+                                                    @enr.TransactionReference
+                                                </div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark shadow-sm">
+                                                <i class="bi bi-clock-history me-1"></i> Chưa nộp
+                                            </span>
+                                            <div class="text-danger fw-semibold" style="font-size: 0.7rem;">
+                                                Quá hạn quy định
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (enr.IsPaid)
+                                        {
+                                            <div class="badge bg-success-subtle text-success border border-success p-2 d-inline-flex align-items-center gap-1 rounded-3">
+                                                <i class="bi bi-shield-check fs-6"></i>
+                                                <span class="fw-bold">Đủ điều kiện dự thi</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="badge bg-danger-subtle text-danger border border-danger p-2 d-inline-flex align-items-center gap-1 rounded-3" 
+                                                 title="Sinh viên nợ học phí quá hạn bị chế tài rút tên khỏi danh sách thi học kỳ">
+                                                <i class="bi bi-shield-x fs-6"></i>
+                                                <span class="fw-bold">Chế tài: Cấm thi HP</span>
+                                            </div>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="d-flex gap-1 justify-content-end">
+                                            @if (!enr.IsPaid)
+                                            {
+                                                <button class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1"
+                                                        title="Ghi nhận đối soát học vụ / Cứu xét miễn giảm"
+                                                        @onclick="() => OpenConfirmModal(enr)">
+                                                    <i class="bi bi-cash-coin"></i>
+                                                    <span class="d-none d-md-inline">Gạch nợ / Cứu xét</span>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                                                        title="Hủy xác nhận nộp học phí (Chuyển lại trạng thái chưa nộp)"
+                                                        @onclick="() => HandleResetTuition(enr.EnrollmentId, stu?.FullName)">
+                                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                                    <span class="d-none d-md-inline">Hủy xác nhận</span>
+                                                </button>
+                                            }
+                                            <a href="/enrollment/@enr.EnrollmentId" class="btn btn-sm btn-outline-primary" title="Xem phiếu đăng ký chi tiết">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- Modal Ghi Nhận Đối Soát Học Vụ / Cứu Xét Học Phí -->
+@if (isModalOpen && selectedEnrollment != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-success text-white py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-cash-coin me-2"></i>Ghi Nhận Đối Soát &amp; Mở Điều Kiện Dự Thi
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseConfirmModal"></button>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                    <p class="mb-3 text-dark">
+                        Thao tác xác nhận hoàn thành nghĩa vụ học phí cho sinh viên với tư cách <strong>Cán bộ Phòng Đào Tạo</strong>:
+                    </p>
+
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <span class="text-muted small">Sinh viên:</span>
+                                <strong class="text-dark d-block">@selectedEnrollment.Student?.FullName</strong>
+                                <span class="badge bg-secondary font-monospace">@selectedEnrollment.Student?.StudentCode</span>
+                            </div>
+                            <div class="col-6 text-end">
+                                <span class="text-muted small">Số tiền phát sinh:</span>
+                                <strong class="text-danger d-block fs-5">@($"{selectedEnrollment.TuitionFee:N0} đ")</strong>
+                                <span class="text-muted small">(@selectedEnrollment.TotalCredits TC &times; 450.000 đ)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">Căn cứ học vụ / Hình thức xác nhận <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="confirmMethod">
+                            <option value="Sinh viên nộp biên lai trực tiếp tại trường">Sinh viên nộp biên lai ngân hàng tại văn phòng trường</option>
+                            <option value="Đối soát ngân hàng Napas247 thủ công">Đối soát ngân hàng Napas247 thủ công</option>
+                            <option value="Quyết định miễn giảm học phí diện chính sách">Quyết định miễn giảm học phí diện chính sách xã hội</option>
+                            <option value="Đơn xin hoãn nộp học phí (Phòng Đào Tạo phê duyệt)">Đơn xin hoãn nộp học phí (Phòng Đào Tạo phê duyệt)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">Mã chứng từ / Ghi chú đối soát</label>
+                        <input type="text" class="form-control" @bind="confirmReference" placeholder="Ví dụ: BIENLAI-2026-001 hoặc QD-MIENGIAM-12" />
+                    </div>
+
+                    <div class="alert alert-success py-2 px-3 small rounded-3 mb-0">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        Sau khi xác nhận, sinh viên sẽ lập tức được chuyển sang trạng thái <strong>Đủ điều kiện dự thi</strong> và xuất hiện trong danh sách thi chính thức.
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseConfirmModal" disabled="@isProcessing">
+                        Hủy bỏ
+                    </button>
+                    <button type="button" class="btn btn-success fw-bold d-flex align-items-center gap-1" @onclick="HandleConfirmTuition" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            <span>Đang lưu...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-check2-circle"></i>
+                            <span>Xác Nhận &amp; Cấp Quyền Dự Thi</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isAuthorized = false;
+    private bool isLoading = true;
+    private bool isProcessing = false;
+    private string feedbackSuccess = string.Empty;
+    private string feedbackError = string.Empty;
+
+    private List<Enrollment> allEnrollments = new List<Enrollment>();
+    private TuitionStatistics stats = new TuitionStatistics();
+
+    private List<SemesterInfo> allSemesters = new();
+    private string selectedSemesterCode = "2026_HK1";
+
+    private string searchKeyword = string.Empty;
+    private string selectedFilter = "all"; // "all", "paid", "unpaid"
+
+    // Modal state
+    private bool isModalOpen = false;
+    private Enrollment? selectedEnrollment;
+    private string confirmMethod = "Sinh viên nộp biên lai trực tiếp tại trường";
+    private string confirmReference = string.Empty;
+
+    private List<Enrollment> filteredEnrollments
+    {
+        get
+        {
+            var query = allEnrollments.AsEnumerable();
+
+            if (selectedFilter == "paid")
+            {
+                query = query.Where(e => e.IsPaid);
+            }
+            else if (selectedFilter == "unpaid")
+            {
+                query = query.Where(e => !e.IsPaid);
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchKeyword))
+            {
+                var kw = searchKeyword.Trim().ToLower();
+                query = query.Where(e =>
+                    (e.Student != null && e.Student.FullName.ToLower().Contains(kw)) ||
+                    (e.Student != null && e.Student.StudentCode.ToLower().Contains(kw)) ||
+                    e.EnrollmentId.ToString().Contains(kw) ||
+                    (e.TransactionReference != null && e.TransactionReference.ToLower().Contains(kw))
+                );
+            }
+
+            return query.ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        allSemesters = RegistrationPeriodService.GetAllSemesters();
+        selectedSemesterCode = RegistrationPeriodService.CurrentSemesterCode ?? "2026_HK1";
+        CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChanged);
+        await CheckAuthorizationAndLoadAsync();
+    }
+
+    private async void HandleUserStateChanged()
+    {
+        await CheckAuthorizationAndLoadAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CheckAuthorizationAndLoadAsync()
+    {
+        var role = await CurrentUserStateStore.GetCurrentRoleAsync();
+        if (role != "Admin")
+        {
+            isAuthorized = false;
+            isLoading = false;
+            return;
+        }
+
+        isAuthorized = true;
+        await LoadDataAsync();
+    }
+
+    private async Task HandleSemesterChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(val) && val != selectedSemesterCode)
+        {
+            selectedSemesterCode = val;
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        try
+        {
+            allEnrollments = (await ManageTuitionUseCase.GetEnrollmentsBySemesterAsync(selectedSemesterCode))
+                .Where(e => e.Status == "Confirmed")
+                .ToList();
+
+            stats = await ManageTuitionUseCase.GetTuitionStatisticsAsync(selectedSemesterCode);
+        }
+        catch (Exception ex)
+        {
+            feedbackError = $"Lỗi khi tải dữ liệu học phí: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        feedbackSuccess = string.Empty;
+        feedbackError = string.Empty;
+        await LoadDataAsync();
+    }
+
+    private void FilterOnlyUnpaid()
+    {
+        selectedFilter = "unpaid";
+    }
+
+    private void FilterOnlyPaid()
+    {
+        selectedFilter = "paid";
+    }
+
+    private void OpenConfirmModal(Enrollment enrollment)
+    {
+        selectedEnrollment = enrollment;
+        confirmReference = $"PĐT-{DateTime.Now:yyyyMMdd}-{enrollment.EnrollmentId}";
+        isModalOpen = true;
+    }
+
+    private void CloseConfirmModal()
+    {
+        isModalOpen = false;
+        selectedEnrollment = null;
+    }
+
+    private async Task HandleConfirmTuition()
+    {
+        if (selectedEnrollment == null) return;
+
+        isProcessing = true;
+        feedbackSuccess = string.Empty;
+        feedbackError = string.Empty;
+
+        try
+        {
+            bool success = await ManageTuitionUseCase.ConfirmTuitionPaymentAsync(
+                selectedEnrollment.EnrollmentId,
+                confirmMethod,
+                confirmReference
+            );
+
+            if (success)
+            {
+                feedbackSuccess = $"Đã xác nhận hoàn thành học phí và cấp quyền dự thi cho sinh viên {selectedEnrollment.Student?.FullName} (Mã phiếu #{selectedEnrollment.EnrollmentId}) thành công!";
+                isModalOpen = false;
+                await LoadDataAsync();
+            }
+            else
+            {
+                feedbackError = "Không thể cập nhật trạng thái học phí trong cơ sở dữ liệu.";
+            }
+        }
+        catch (Exception ex)
+        {
+            feedbackError = $"Lỗi khi xác nhận học phí: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task HandleResetTuition(int enrollmentId, string? studentName)
+    {
+        isProcessing = true;
+        feedbackSuccess = string.Empty;
+        feedbackError = string.Empty;
+
+        try
+        {
+            bool success = await ManageTuitionUseCase.ResetTuitionPaymentAsync(enrollmentId);
+            if (success)
+            {
+                feedbackSuccess = $"Đã hủy xác nhận học phí của sinh viên {studentName} (Phiếu #{enrollmentId}) và áp dụng lại chế tài cấm thi do nợ học phí.";
+                await LoadDataAsync();
+            }
+            else
+            {
+                feedbackError = "Không thể cập nhật trạng thái.";
+            }
+        }
+        catch (Exception ex)
+        {
+            feedbackError = $"Lỗi: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        CurrentUserStateStore.RemoveStateChangeListeners(HandleUserStateChanged);
+    }
+}

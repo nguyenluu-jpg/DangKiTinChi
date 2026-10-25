@@ -1,10 +1,12 @@
 @page "/admin/enrollments"
 @page "/admin/enrollments/{SectionId:int}"
-@namespace CourseRegistration.Web.Components.Pages.Admin
+@using CourseRegistration.UseCases.StudentPortal.Payment
 @inject IViewEnrollmentListUseCase ViewEnrollmentListUseCase
 @inject ISectionRepository SectionRepository
 @inject ICourseRepository CourseRepository
 @inject IStudentRepository StudentRepository
+@inject IEnrollmentRepository EnrollmentRepository
+@inject IProcessTuitionPaymentUseCase ProcessTuitionPaymentUseCase
 @inject ICurrentUserStateStore CurrentUserStateStore
 @inject ILoginModalService LoginModalService
 @inject NavigationManager NavigationManager
@@ -103,6 +105,11 @@ else
             <i class="bi bi-collection fs-5"></i>
             <span>2. Danh Sách & Sĩ Số Theo Lớp Học Phần</span>
         </button>
+        <a class="nav-link py-2 fw-bold d-flex align-items-center justify-content-center gap-2 text-dark text-decoration-none" 
+           href="/admin/tuition">
+            <i class="bi bi-wallet2 text-warning fs-5"></i>
+            <span>3. Quản Lý Học Vụ Học Phí & Chế Tài Thi</span>
+        </a>
     </div>
 </div>
 
@@ -173,7 +180,7 @@ else
                 </div>
 
                 <div class="col-md-5">
-                    <div class="p-3 bg-light rounded-3 border">
+                    <div class="p-3 bg-light rounded-3 border mb-2">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="small text-muted fw-bold">Tổng tín chỉ đã đăng ký kỳ này:</span>
                             <span class="fw-bold text-primary fs-6">@studentRegisteredCredits / @maxCredits TC</span>
@@ -186,6 +193,41 @@ else
                         <div class="d-flex justify-content-between small text-muted">
                             <span>Số lớp đang học: <strong>@studentRegisteredLines.Count lớp</strong></span>
                             <span>Trạng thái: <strong class="text-success">Đang hiệu lực</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Khối thông tin Học vụ Học phí & Chế tài Dự thi của SV -->
+                    <div class="p-2 px-3 rounded-3 border @(selectedStudentEnrollment?.IsPaid == true ? "bg-success-subtle border-success" : "bg-danger-subtle border-danger") d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="small text-muted" style="font-size: 0.72rem;">Học phí &amp; Điều kiện dự thi:</div>
+                            <strong class="@(selectedStudentEnrollment?.IsPaid == true ? "text-success" : "text-danger") fs-6">
+                                @($"{studentRegisteredCredits * 450000m:N0} đ")
+                            </strong>
+                            @if (selectedStudentEnrollment?.IsPaid == true)
+                            {
+                                <span class="badge bg-success ms-1 small">
+                                    <i class="bi bi-shield-check me-1"></i>Đủ ĐK thi
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger ms-1 small" title="Sinh viên chưa hoàn tất nghĩa vụ học phí">
+                                    <i class="bi bi-shield-x me-1"></i>Cấm thi HP
+                                </span>
+                            }
+                        </div>
+                        <div>
+                            @if (selectedStudentEnrollment != null && !selectedStudentEnrollment.IsPaid)
+                            {
+                                <button class="btn btn-sm btn-success fw-bold py-1 px-2" 
+                                        title="Gạch nợ học phí cho sinh viên"
+                                        @onclick="() => AdminConfirmPayment(selectedStudentEnrollment.EnrollmentId, selectedStudent?.FullName)">
+                                    <i class="bi bi-cash-coin me-1"></i>Gạch nợ
+                                </button>
+                            }
+                            <a href="/admin/tuition" class="btn btn-sm btn-outline-secondary py-1 px-2 ms-1" title="Xem cổng quản lý học vụ học phí">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -448,8 +490,9 @@ else
                                 <th>Chuyên Ngành</th>
                                 <th>Email</th>
                                 <th>Ngày Đăng Ký</th>
+                                <th>Học Phí</th>
                                 <th>Biên Nhận</th>
-                                <th class="text-end" style="min-width: 150px;">Thao Tác</th>
+                                <th class="text-end" style="min-width: 170px;">Thao Tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -478,17 +521,42 @@ else
                                         @(item.DateRegistered?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")
                                     </td>
                                     <td>
-                                        <a href="/enrollment/@(item.EnrollmentId)" class="small text-decoration-none">
+                                        @if (item.IsPaid)
+                                        {
+                                            <span class="badge bg-success shadow-sm" title="@item.PaymentMethod - @item.TransactionReference">
+                                                <i class="bi bi-check-circle-fill me-1"></i> Đã nộp
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark shadow-sm">
+                                                <i class="bi bi-clock-history me-1"></i> Chưa nộp
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <a href="/enrollment/@(item.EnrollmentId)" class="small text-decoration-none fw-semibold">
                                             #@item.EnrollmentId
                                         </a>
                                     </td>
                                     <td class="text-end">
-                                        <button class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
-                                                title="Hủy đăng ký lớp này cho sinh viên"
-                                                @onclick="() => OpenDropModal(item.StudentId, selectedSection.SectionId, student?.FullName, selectedSection.SectionCode, selectedSection.Course?.CourseName)">
-                                            <i class="bi bi-x-circle-fill"></i>
-                                            <span>Rút tên SV</span>
-                                        </button>
+                                        <div class="d-flex gap-1 justify-content-end">
+                                            @if (!item.IsPaid)
+                                            {
+                                                <button class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1"
+                                                        title="Gạch nợ học phí cho sinh viên (Nộp tại quầy/Đối soát thủ công)"
+                                                        @onclick="() => AdminConfirmPayment(item.EnrollmentId, student?.FullName)">
+                                                    <i class="bi bi-cash-coin"></i>
+                                                    <span class="d-none d-md-inline">Gạch nợ</span>
+                                                </button>
+                                            }
+                                            <button class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
+                                                    title="Hủy đăng ký lớp này cho sinh viên"
+                                                    @onclick="() => OpenDropModal(item.StudentId, selectedSection.SectionId, student?.FullName, selectedSection.SectionCode, selectedSection.Course?.CourseName)">
+                                                <i class="bi bi-x-circle-fill"></i>
+                                                <span>Rút tên SV</span>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -648,6 +716,7 @@ else
     private Student? selectedStudent;
     private int selectedStudentId = 0;
     private List<EnrollmentLine> studentRegisteredLines = new List<EnrollmentLine>();
+    private Enrollment? selectedStudentEnrollment;
 
     private List<Section> allSections = new List<Section>();
     private Section? selectedSection;
@@ -732,10 +801,14 @@ else
         {
             var lines = await ViewEnrollmentListUseCase.GetStudentRegisteredLinesAsync(selectedStudentId, "2026_HK1");
             studentRegisteredLines = lines.ToList();
+
+            var enrList = await EnrollmentRepository.GetEnrollmentsByStudentIdAsync(selectedStudentId);
+            selectedStudentEnrollment = enrList.FirstOrDefault(e => e.Status == "Confirmed");
         }
         else
         {
             studentRegisteredLines.Clear();
+            selectedStudentEnrollment = null;
         }
     }
 
@@ -877,6 +950,37 @@ else
         catch (Exception ex)
         {
             feedbackError = $"Lỗi khi đăng ký bổ sung lớp học phần: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task AdminConfirmPayment(int enrollmentId, string? studentName)
+    {
+        isProcessing = true;
+        feedbackSuccess = string.Empty;
+        feedbackError = string.Empty;
+
+        try
+        {
+            string txRef = $"CASH{DateTime.Now:yyyyMMddHHmmss}{enrollmentId:D3}";
+            var result = await ProcessTuitionPaymentUseCase.ExecuteAsync(enrollmentId, "Thu tiền mặt tại P.KHTC / Đối soát thủ công", txRef);
+            if (result.IsSuccess)
+            {
+                feedbackSuccess = $"Đã gạch nợ học phí cho sinh viên {studentName} (Phiếu #{enrollmentId}) thành công! Mã biên lai: {result.TransactionReference}.";
+                await LoadSectionData();
+                await LoadStudentEnrollments();
+            }
+            else
+            {
+                feedbackError = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            feedbackError = $"Lỗi khi gạch nợ học phí: {ex.Message}";
         }
         finally
         {

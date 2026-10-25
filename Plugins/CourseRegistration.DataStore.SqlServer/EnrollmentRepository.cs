@@ -267,5 +267,27 @@ namespace CourseRegistration.DataStore.SqlServer
 
             return (true, null);
         }
+
+        public async Task<bool> UpdatePaymentStatusAsync(int enrollmentId, string paymentStatus, string paymentMethod, string transactionReference)
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var enrollment = await context.Enrollments.FindAsync(enrollmentId);
+            if (enrollment == null) return false;
+
+            enrollment.PaymentStatus = paymentStatus;
+            enrollment.PaymentMethod = paymentMethod;
+            enrollment.TransactionReference = transactionReference;
+            if (string.Equals(paymentStatus, "Paid", StringComparison.OrdinalIgnoreCase))
+            {
+                enrollment.PaymentDate = DateTime.Now;
+            }
+            else
+            {
+                enrollment.PaymentDate = null;
+            }
+
+            await context.SaveChangesAsync();
+            return true;
+        }
     }
 }

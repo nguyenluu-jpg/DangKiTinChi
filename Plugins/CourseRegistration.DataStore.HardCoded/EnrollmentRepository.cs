@@ -195,5 +195,24 @@ namespace CourseRegistration.DataStore.HardCoded
                 return Task.FromResult((true, (string?)null));
             }
         }
+
+        public Task<bool> UpdatePaymentStatusAsync(int enrollmentId, string paymentStatus, string paymentMethod, string transactionReference)
+        {
+            lock (_lock)
+            {
+                var enrollment = _enrollments.FirstOrDefault(e => e.EnrollmentId == enrollmentId);
+                if (enrollment == null) return Task.FromResult(false);
+
+                enrollment.PaymentStatus = paymentStatus;
+                enrollment.PaymentMethod = paymentMethod;
+                enrollment.TransactionReference = transactionReference;
+                if (string.Equals(paymentStatus, "Paid", StringComparison.OrdinalIgnoreCase))
+                {
+                    enrollment.PaymentDate = DateTime.Now;
+                }
+
+                return Task.FromResult(true);
+            }
+        }
     }
 }

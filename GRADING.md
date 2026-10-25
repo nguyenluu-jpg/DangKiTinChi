@@ -25,7 +25,7 @@
 | **K3.4** | **Dùng được trên màn hình điện thoại DevTools, bề rộng 390px** | Mở F12 $\rightarrow$ Ctrl+Shift+M $\rightarrow$ iPhone 390px | • `CourseRegistration.Web/Components/Layout/NavMenu.razor`<br>• `CourseRegistration.Web/Components/Shared/ScheduleTableComponent.razor` | • Navbar có nút hamburger 3 gạch thu gọn mượt mà.<br>• Thời khóa biểu có chế độ **Agenda xem theo ngày cuộn ngang**, thiết kế tối ưu riêng cho mobile 390px. | **5.0 đ** | **ĐẠT (5/5)** |
 | **K4.1** | **Đăng nhập, đăng xuất; ít nhất 2 vai trò** | Demo đăng nhập 2 role | • `CourseRegistration.Web/Components/Pages/LoginComponent.razor`<br>• `CourseRegistration.Web/Components/Layout/NavMenu.razor` | • **Vai trò 1 (Student):** 7 sinh viên tuần tự `sv21001` đến `sv21007` / `123456`<br>• **Vai trò 2 (Admin):** `admin` / `admin123`<br>• Có nút Đăng xuất xóa phiên làm việc tức thì. | **4.0 đ** | **ĐẠT (4/4)** |
 | **K4.2** | **Tài khoản thường gõ thẳng URL trang quản trị bị chặn** | Gõ trực tiếp URL `/admin/courses` | • `CourseRegistration.Web/Components/Pages/Admin/ManageCoursesComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ManageSectionsComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/Admin/ViewEnrollmentListComponent.razor`<br>• `CourseRegistration.Web/Components/Pages/AccessDeniedComponent.razor` | • Kiểm tra `role != "Admin"` trong `OnInitializedAsync`, gõ thẳng URL hoặc truy cập trái phép bị chặn ngay và chuyển hướng sang trang HTTP 403 Forbidden giải thích rõ ràng. | **5.0 đ** | **ĐẠT (5/5)** |
-| **K4.3** | **Tính năng nâng cao: AI đạt đủ mục 10, hoặc xuất báo cáo (Excel/PDF) từ dữ liệu thật** | Demo + xem code UseCase & Service | • `CourseRegistration.Web/Services/ReportExportService.cs`<br>• `CourseRegistration.UseCases/StudentPortal/AiAdvisor/`<br>• `CourseRegistration.UseCases/AdminPortal/AiAdminAssistant/` | • **Xuất Excel & PDF:** Dùng ClosedXML & QuestPDF xuất danh sách lớp sinh viên, thời khóa biểu và phiếu đăng ký ra file `.xlsx` và `.pdf` chuẩn mẫu Bộ GD&ĐT.<br>• **Trợ lý AI:** Chatbot Cố vấn AI học tập cho SV và AI tra cứu học vụ cho Admin. | **6.0 đ** | **ĐẠT (6/6)** |
+| **K4.3** | **Tính năng nâng cao: Thanh toán học phí VietQR, Quản lý học vụ học phí Đào Tạo, Trợ lý AI và Xuất báo cáo (Excel/PDF) từ dữ liệu thật** | Demo + xem code UseCase & Service | • `CourseRegistration.Web/Services/ReportExportService.cs`<br>• `CourseRegistration.UseCases/StudentPortal/Payment/`<br>• `CourseRegistration.UseCases/AdminPortal/ManageTuitionScreen/`<br>• `CourseRegistration.UseCases/StudentPortal/AiAdvisor/`<br>• `CourseRegistration.UseCases/AdminPortal/AiAdminAssistant/` | • **Thanh Toán & Quản Lý Học Vụ Học Phí:** Cổng VietQR Napas 24/7 cho SV nộp tiền; Cổng Quản lý Học vụ Học phí & Chế tài Dự thi (`/admin/tuition`) cho Phòng Đào Tạo giám sát công nợ toàn trường, xét duyệt điều kiện dự thi và gạch nợ cứu xét.<br>• **Xuất Excel & PDF:** ClosedXML & QuestPDF xuất danh sách lớp sinh viên, thời khóa biểu và phiếu đăng ký có thông tin học phí chuẩn mẫu.<br>• **Trợ lý AI:** Chatbot Cố vấn AI học tập cho SV và AI tra cứu học vụ cho Admin. | **6.0 đ** | **ĐẠT (6/6)** |
 | **K5.1** | **Use Case, Class, Sequence (PlantUML) khớp tên lớp và luồng trong code** | So sánh sơ đồ với code thực tế | • File sơ đồ: `DangKiTinChi-Usecase.drawio.png`<br>• File sơ đồ: `DangKiTinChi-Sơ đồ Lớp .drawio.png`<br>• Mã PlantUML UseCase & Class | • Tên các Actor, UseCase khớp 100% các màn hình Razor và UseCase Screen.<br>• Sơ đồ lớp khớp 100% 9 Model thực thể CSDL, Service kiểm tra luật và các Interface Repository. | **Điểm tối đa** | **ĐẠT (100%)** |
 
 ---
@@ -73,11 +73,40 @@
 ---
 
 #### 5. Kịch bản Demo Tính năng Nâng cao (Tiêu chí K4.3):
-1. **Xuất Báo Cáo:** Vào trang **Xem danh sách lớp theo SV** hoặc **Phiếu đăng ký** $\rightarrow$ Bấm nút **Xuất Excel** hoặc **Xuất PDF** $\rightarrow$ Tệp tải về ngay với định dạng bảng biểu, màu sắc tiêu chuẩn trường học.
+1. **Xuất Báo Cáo:** Vào trang **Xem danh sách lớp theo SV** hoặc **Phiếu đăng ký** $\rightarrow$ Bấm nút **Xuất Excel** hoặc **Xuất PDF** $\rightarrow$ Tệp tải về ngay với định dạng bảng biểu, màu sắc tiêu chuẩn trường học (kèm thông tin học phí và trạng thái thanh toán).
 2. **Cố Vấn AI:** Bấm menu **Cố vấn AI** $\rightarrow$ Hỏi đáp về lộ trình học tập, môn tiên quyết, gợi ý môn học theo học kỳ.
+3. **Thanh Toán Học Phí Trực Tuyến VietQR (Napas 247):** Bấm menu **Học phí** hoặc vào **Phiếu đăng ký** $\rightarrow$ Bấm nút **"Nộp Học Phí VietQR"** $\rightarrow$ Hiển thị mã QR động chuẩn Napas247 (quét bằng App ngân hàng thật) $\rightarrow$ Bấm *"Tôi Đã Hoàn Tất Chuyển Khoản"* $\rightarrow$ Hệ thống đối soát thời gian thực, cấp mã biên lai điện tử (E-Receipt) và cập nhật trạng thái phiếu thành *"Đã hoàn tất học phí"*.
+4. **Quản Lý Học Vụ Học Phí & Chế Tài Dự Thi (Phòng Đào Tạo):** Đăng nhập `admin` $\rightarrow$ Vào **Phòng Đào Tạo $\rightarrow$ Quản lý Học Phí & Chế Tài Thi** (`/admin/tuition`) $\rightarrow$ Xem 4 thẻ KPI toàn trường, danh sách sinh viên đủ điều kiện thi / bị cấm thi do nợ học phí, gạch nợ cứu xét hoặc hủy xác nhận thời gian thực. Thao tác tương tự ngay trong Tab 1 của **Quản lý Đăng ký & Rút môn SV**.
 
 ---
 
 #### 6. Kịch bản Demo Thiết kế Hệ thống (Tiêu chí K5.1):
 * Sơ đồ Use Case phân ranh giới chuẩn hệ thống: [DangKiTinChi-Usecase.drawio.png](file:///f:/L%E1%BA%ADp%20tr%C3%ACnh%20%E1%BB%A9ng%20d%E1%BB%A5ng%20Web/DoAn/DangKiTinChi-Usecase.drawio.png).
 * Sơ đồ lớp (Class Diagram) chuẩn 9 bảng 3NF: [DangKiTinChi-Sơ đồ Lớp .drawio.png](file:///f:/L%E1%BA%ADp%20tr%C3%ACnh%20%E1%BB%A9ng%20d%E1%BB%A5ng%20Web/DoAn/DangKiTinChi-S%C6%A1%20%C4%91%E1%BB%93%20L%E1%BB%9Bp%20.drawio.png).
+
+---
+
+#### 7. Kịch bản Demo 2 Học kỳ & 3 Giai đoạn Linh hoạt (Bao trùm ngày thi 02/11/2026):
+1. **Lộ trình 2 Học kỳ chuẩn:**
+   * **Học kỳ 1 (2026_HK1):** 15/10/2026 &rarr; 28/02/2027.
+   * **Học kỳ 2 (2026_HK2):** 15/12/2026 &rarr; 30/06/2027.
+2. **3 Giai đoạn linh hoạt mỗi học kỳ:**
+   * **Giai đoạn 1 (15/10 &rarr; 26/10/2026):** Đăng ký chính thức theo lộ trình chuẩn CTĐT.
+   * **Giai đoạn 2 (27/10 &rarr; 05/11/2026):** Đăng ký bổ sung, đổi lớp, học vượt & cải thiện điểm.
+     * **Bảo vệ đồ án ngày 02/11/2026:** Nằm trọn vẹn trong Giai đoạn 2, hệ thống tự động nhận diện và hiển thị badge màu xanh **`🟢 CỔNG ĐĂNG KÝ ĐANG MỞ`**. Sinh viên và Giảng viên hoàn toàn có thể tra cứu và đăng ký trực tiếp không bị chặn quá hạn!
+   * **Giai đoạn 3 (06/11 &rarr; 20/11/2026):** Rút học phần, cứu xét học vụ & chốt danh sách thi học kỳ.
+3. **Mô phỏng linh hoạt (Test controls cho Giảng viên):**
+   * Ngay trên thanh Banner tại trang **Tra Cứu Học Phần** (`/sections`), có dropdown chọn học kỳ (HK1 / HK2) và dropdown **"Chế độ biểu diễn cho Giảng viên"** cho phép chuyển đổi tức thì giữa các Giai đoạn 1, 2, 3 để chứng minh tính linh hoạt của hệ thống.
+
+---
+
+#### 8. Phân bổ Dữ liệu Học phí Mẫu (Paid / Unpaid) trong CSDL SQL Server:
+* **Sinh viên ĐÃ nộp học phí (`Paid`):** `SV21003`, `SV21004`, `SV21007`, `SV21010`, `SV21013`, `SV21016`, `SV21019`.
+  * Có ngày nộp `PaymentDate`, phương thức `VietQR Napas247`, và mã giao dịch `TransactionReference`.
+  * Hiển thị trạng thái: **`Đủ điều kiện dự thi`** (Màu xanh).
+* **Sinh viên CHƯA nộp học phí (`Unpaid`):** `SV21001` (Nguyễn Văn Tuấn), `SV21002` (Trần Thị Mai), `SV21005`, `SV21006`, `SV21008`...
+  * Hiển thị trạng thái: **`Tạm hoãn dự thi / Cấm thi`** (Màu đỏ).
+  * Cho phép demo:
+    1. Sinh viên `sv21001` tự quét mã QR Napas247 tại `/tuition` để nộp tiền và được gạch nợ tự động.
+    2. Cán bộ Phòng Đào Tạo tại `/admin/tuition` thực hiện cứu xét gạch nợ học phí cho sinh viên khó khăn bằng nút **"Cứu xét gạch nợ"**.
+

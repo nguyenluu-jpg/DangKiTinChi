@@ -36,21 +36,10 @@
                             <span class="badge rounded-pill bg-danger ms-1">@cartCount</span>
                         }
                     </a>
-                    <a href="/schedule" class="btn btn-outline-light px-3 py-2 d-inline-flex align-items-center">
-                        <i class="bi bi-calendar3 me-1"></i> Thời Khóa Biểu
-                    </a>
                 }
-                else
-                {
-                    <button type="button" 
-                            class="btn btn-warning px-3 py-2 fw-bold text-dark shadow-sm d-inline-flex align-items-center"
-                            @onclick="() => LoginModalService.Open()">
-                        <i class="bi bi-box-arrow-in-right me-2"></i> Đăng Nhập
-                    </button>
-                    <a href="/schedule" class="btn btn-outline-light px-3 py-2 d-inline-flex align-items-center">
-                        <i class="bi bi-calendar3 me-1"></i> Thời Khóa Biểu
-                    </a>
-                }
+                <a href="/schedule" class="btn btn-outline-light px-3 py-2 d-inline-flex align-items-center">
+                    <i class="bi bi-calendar3 me-1"></i> Thời Khóa Biểu
+                </a>
             </div>
         </div>
 
@@ -74,15 +63,11 @@
                     </div>
 
                     <button type="button" 
-                            class="btn btn-warning w-100 py-2 fw-bold text-dark rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-2"
+                            class="btn btn-warning w-100 py-2 fw-bold text-dark rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2"
                             @onclick="() => LoginModalService.Open()">
                         <i class="bi bi-box-arrow-in-right fs-5"></i>
                         <span>Đăng Nhập Ngay</span>
                     </button>
-
-                    <div class="text-center text-white-50 small" style="font-size: 0.75rem;">
-                        Admin: <code>admin</code> (admin123) &bull; SV: <code>sv21001</code> đến <code>sv21007</code> (123456)
-                    </div>
                 </div>
             }
             else if (currentRole == "Admin")
@@ -468,7 +453,7 @@
             <div class="accordion-collapse collapse @(isGuideOpen ? "show" : "")">
                 <div class="accordion-body bg-light-subtle pt-2 small">
                     <div class="d-flex flex-column gap-2">
-                        <div class="p-2 border rounded bg-white"><strong>Bước 1:</strong> Đăng nhập bằng mã sinh viên (Ví dụ: <code>sv21001</code> / <code>123456</code>).</div>
+                        <div class="p-2 border rounded bg-white"><strong>Bước 1:</strong> Đăng nhập bằng tài khoản và mật khẩu sinh viên được nhà trường cấp.</div>
                         <div class="p-2 border rounded bg-white"><strong>Bước 2:</strong> Vào mục <em>Tra cứu học phần</em>, lọc môn học, kiểm tra điều kiện tiên quyết và bấm <em>"Thêm vào giỏ"</em>.</div>
                         <div class="p-2 border rounded bg-white"><strong>Bước 3:</strong> Vào <em>Giỏ đăng ký</em>, kiểm tra không bị trùng lịch học và không vượt quá hạn mức tín chỉ.</div>
                         <div class="p-2 border rounded bg-white"><strong>Bước 4:</strong> Bấm <em>"Gửi phiếu đăng ký"</em> để ghi nhận chính thức vào cơ sở dữ liệu.</div>

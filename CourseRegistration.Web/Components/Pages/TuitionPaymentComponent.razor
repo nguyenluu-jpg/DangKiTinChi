@@ -121,15 +121,15 @@
                     <div class="p-3 bg-light rounded-3 border mb-3 small">
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Đơn vị thụ hưởng:</span>
-                            <strong class="text-dark">TRƯỜNG ĐẠI HỌC KINH TẾ - ĐẠI HỌC HUẾ</strong>
+                            <strong class="text-dark">@paymentConfig.AccountName</strong>
                         </div>
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Ngân hàng:</span>
-                            <span class="fw-semibold text-primary">MB Bank (Ngân hàng TMCP Quân Đội)</span>
+                            <span class="fw-semibold text-primary">@paymentConfig.BankName</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Số tài khoản:</span>
-                            <strong class="font-monospace fs-6 text-danger">08688889999</strong>
+                            <strong class="font-monospace fs-6 text-danger">@paymentConfig.AccountNumber</strong>
                         </div>
                         <div class="d-flex justify-content-between">
                             <span class="text-muted">Hình thức:</span>
@@ -138,7 +138,7 @@
                     </div>
                     <div class="alert alert-warning py-2 px-3 small mb-0">
                         <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
-                        <strong>Lưu ý quan trọng:</strong> Sinh viên cần đăng nhập để lấy đúng mã nội dung chuyển khoản (cú pháp: <code>HP [MSSV] [Mã phiếu]</code>) để hệ thống tự động gạch nợ học phí.
+                        <strong>Lưu ý quan trọng:</strong> Sinh viên cần chuyển khoản đúng cú pháp: <code>HP [MSSV] [Họ tên] [Học kỳ]</code> để hệ thống tự động gạch nợ học phí.
                     </div>
                 </div>
             </div>
@@ -413,6 +413,7 @@
     OnPaymentSuccess="HandlePaymentSuccess" />
 
 @code {
+    private VietQrPaymentInfo paymentConfig = new VietQrPaymentInfo();
     private bool isLoading = true;
     private bool isAuthenticated = false;
     private Student? currentStudent;
@@ -481,6 +482,10 @@
 
     private void OpenPaymentModal(Enrollment enrollment)
     {
+        if (enrollment.Student == null && currentStudent != null)
+        {
+            enrollment.Student = currentStudent;
+        }
         selectedEnrollment = enrollment;
         isModalOpen = true;
     }

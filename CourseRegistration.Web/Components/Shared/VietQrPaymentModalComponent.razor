@@ -111,17 +111,17 @@
                                     <div class="p-2 border rounded bg-white d-flex justify-content-between align-items-center">
                                         <div>
                                             <div class="text-muted" style="font-size: 0.7rem;">NGÂN HÀNG THỤ HƯỞNG</div>
-                                            <div class="fw-bold text-dark">MB Bank (Ngân hàng TMCP Quân Đội)</div>
+                                            <div class="fw-bold text-dark">@paymentConfig.BankName</div>
                                         </div>
-                                        <span class="badge bg-primary-subtle text-primary">MB</span>
+                                        <span class="badge bg-primary-subtle text-primary">@paymentConfig.BankCode</span>
                                     </div>
 
                                     <div class="p-2 border rounded bg-white d-flex justify-content-between align-items-center">
                                         <div>
                                             <div class="text-muted" style="font-size: 0.7rem;">SỐ TÀI KHOẢN TRƯỜNG</div>
-                                            <div class="fw-bold font-monospace text-dark fs-6">08688889999</div>
+                                            <div class="fw-bold font-monospace text-dark fs-6">@paymentConfig.AccountNumber</div>
                                         </div>
-                                        <button class="btn btn-outline-secondary btn-sm py-1 px-2" @onclick="@(() => CopyText("08688889999", "Đã sao chép Số tài khoản!"))" title="Sao chép STK">
+                                        <button class="btn btn-outline-secondary btn-sm py-1 px-2" @onclick="@(() => CopyText(paymentConfig.AccountNumber, "Đã sao chép Số tài khoản!"))" title="Sao chép STK">
                                             <i class="bi bi-clipboard"></i> Sao chép
                                         </button>
                                     </div>
@@ -129,7 +129,7 @@
                                     <div class="p-2 border rounded bg-white d-flex justify-content-between align-items-center">
                                         <div>
                                             <div class="text-muted" style="font-size: 0.7rem;">TÊN ĐƠN VỊ THỤ HƯỞNG</div>
-                                            <div class="fw-bold text-dark">TRUONG DAI HOC KINH TE HUE</div>
+                                            <div class="fw-bold text-dark">@paymentConfig.AccountName</div>
                                         </div>
                                     </div>
 
@@ -210,7 +210,9 @@
     private System.Threading.Timer? timer;
     private int secondsRemaining = 899;
 
-    private string transferDescription => $"HP {Enrollment?.Student?.StudentCode ?? "SV"} {Enrollment?.EnrollmentId}";
+    private VietQrPaymentInfo paymentConfig = new VietQrPaymentInfo();
+
+    private string transferDescription => VietQrPaymentInfo.BuildDescription(Enrollment);
 
     private string qrImageUrl
     {
@@ -220,12 +222,12 @@
             long amount = (long)Math.Round(Enrollment.TuitionFee);
             var paymentInfo = new VietQrPaymentInfo
             {
-                BankCode = "MB",
-                AccountNumber = "08688889999",
-                AccountName = "TRUONG DAI HOC KINH TE HUE",
+                BankCode = paymentConfig.BankCode,
+                AccountNumber = paymentConfig.AccountNumber,
+                AccountName = paymentConfig.AccountName,
                 Amount = amount,
                 Description = transferDescription,
-                Template = "compact2"
+                Template = paymentConfig.Template
             };
             return paymentInfo.QrImageUrl;
         }

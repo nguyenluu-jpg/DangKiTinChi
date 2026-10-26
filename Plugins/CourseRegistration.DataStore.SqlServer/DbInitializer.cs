@@ -103,7 +103,7 @@ namespace CourseRegistration.DataStore.SqlServer
                 context.Database.ExecuteSqlRaw(@"
                     IF EXISTS (SELECT * FROM sysobjects WHERE name='Sections' and xtype='U')
                     BEGIN
-                        UPDATE [dbo].[Sections] SET [Instructor] = N'TS. Nguyễn Văn Hùng' WHERE [SectionCode] = 'WEB301_01' OR [Instructor] LIKE N'%Nguyễn Văn A%';
+                        UPDATE [dbo].[Sections] SET [Instructor] = N'TS. Hà Ngọc Long' WHERE [SectionCode] IN ('WEB301_01', 'WEB302_01') OR [Instructor] LIKE N'%Nguyễn Văn Hùng%' OR [Instructor] LIKE N'%Nguyễn Văn A%';
                         UPDATE [dbo].[Sections] SET [Instructor] = N'ThS. Trần Thị Thanh Trúc' WHERE [SectionCode] = 'WEB301_02' OR [Instructor] LIKE N'%Trần Thị B%';
                         UPDATE [dbo].[Sections] SET [Instructor] = N'PGS.TS. Lê Hoàng Sơn' WHERE [SectionCode] = 'TIN201_01' OR [Instructor] LIKE N'%Lê Hoàng C%';
                         UPDATE [dbo].[Sections] SET [Instructor] = N'ThS. Đỗ Minh Tuấn' WHERE [SectionCode] = 'TIN201_02' OR [Instructor] LIKE N'%Đỗ Minh D%';
@@ -330,7 +330,7 @@ namespace CourseRegistration.DataStore.SqlServer
             var targetSections = new List<Section>
             {
                 // Học kỳ 1 (2026_HK1)
-                new Section { SectionCode = "WEB301_01", CourseId = cWeb301.CourseId, Instructor = "TS. Nguyễn Văn Hùng", MaxCapacity = 50, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Lab 402" },
+                new Section { SectionCode = "WEB301_01", CourseId = cWeb301.CourseId, Instructor = "TS. Hà Ngọc Long", MaxCapacity = 50, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Lab 402" },
                 new Section { SectionCode = "WEB301_02", CourseId = cWeb301.CourseId, Instructor = "ThS. Trần Thị Thanh Trúc", MaxCapacity = 50, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Lab 403" },
                 new Section { SectionCode = "TIN201_01", CourseId = cTin201.CourseId, Instructor = "PGS.TS. Lê Hoàng Sơn", MaxCapacity = 60, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Phòng A101" },
                 new Section { SectionCode = "TIN201_02", CourseId = cTin201.CourseId, Instructor = "ThS. Đỗ Minh Tuấn", MaxCapacity = 60, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Phòng A102" },
@@ -341,7 +341,7 @@ namespace CourseRegistration.DataStore.SqlServer
                 new Section { SectionCode = "TOEIC_01", CourseId = cToeic.CourseId, Instructor = "ThS. Lý Thị Mỹ Hạnh", MaxCapacity = 80, CurrentEnrollment = 0, Semester = "2026_HK1", Room = "Hội trường A" },
 
                 // Học kỳ 2 (2026_HK2)
-                new Section { SectionCode = "WEB302_01", CourseId = cWeb302.CourseId, Instructor = "TS. Nguyễn Văn Hùng", MaxCapacity = 50, CurrentEnrollment = 0, Semester = "2026_HK2", Room = "Lab 402" },
+                new Section { SectionCode = "WEB302_01", CourseId = cWeb302.CourseId, Instructor = "TS. Hà Ngọc Long", MaxCapacity = 50, CurrentEnrollment = 0, Semester = "2026_HK2", Room = "Lab 402" },
                 new Section { SectionCode = "AI401_01", CourseId = cAi401.CourseId, Instructor = "PGS.TS. Lê Hoàng Sơn", MaxCapacity = 60, CurrentEnrollment = 0, Semester = "2026_HK2", Room = "Lab 502" },
                 new Section { SectionCode = "CSDL202_01", CourseId = cCsdl202.CourseId, Instructor = "TS. Phạm Thanh Tùng", MaxCapacity = 60, CurrentEnrollment = 0, Semester = "2026_HK2", Room = "Phòng B301" },
                 new Section { SectionCode = "ATTT402_01", CourseId = cAttt402.CourseId, Instructor = "PGS.TS. Ngô Văn Dũng", MaxCapacity = 40, CurrentEnrollment = 0, Semester = "2026_HK2", Room = "Lab 501" },

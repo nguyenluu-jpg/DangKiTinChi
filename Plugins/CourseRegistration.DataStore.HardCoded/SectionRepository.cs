@@ -39,7 +39,7 @@ namespace CourseRegistration.DataStore.HardCoded
                         SectionCode = "WEB301_01",
                         CourseId = cWeb?.CourseId ?? 5,
                         Course = cWeb,
-                        Instructor = "TS. Nguyễn Văn Hùng",
+                        Instructor = "TS. Hà Ngọc Long",
                         MaxCapacity = 50,
                         CurrentEnrollment = 25,
                         Semester = "2026_HK1",

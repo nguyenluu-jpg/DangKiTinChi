@@ -617,7 +617,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                     "Bạn có thể gõ câu hỏi bất kỳ ở thanh tìm kiếm bên trên!";
 
                 result.ActionableSuggestions.Add("Thử hỏi: 'Lập trình ứng dụng Web có bao nhiêu sinh viên?'");
-                result.ActionableSuggestions.Add("Thử hỏi: 'Lớp nào do TS. Nguyễn Văn Hùng dạy?'");
+                result.ActionableSuggestions.Add("Thử hỏi: 'Lớp nào do TS. Hà Ngọc Long dạy?'");
                 result.ActionableSuggestions.Add("Thử hỏi: 'Những lớp nào đang quá tải sĩ số?'");
             }
             // -------------------------------------------------------------------------

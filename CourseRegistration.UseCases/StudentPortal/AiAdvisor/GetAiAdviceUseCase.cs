@@ -279,7 +279,7 @@ LƯU Ý QUAN TRỌNG:
                     $"- **Hạn mức tối đa của bạn:** **{student.MaxCreditsPerSemester} tín chỉ** (áp dụng theo kết quả tích lũy và quy chế đào tạo).\n" +
                     $"- **Số tín chỉ bạn được đăng ký thêm trong đợt này:** **{remainingCreditsAllowed} tín chỉ**.";
             }
-            else if (goalLower.Contains("dũng") || goalLower.Contains("tuấn") || goalLower.Contains("nam") || goalLower.Contains("hương") || goalLower.Contains("hùng") || goalLower.Contains("thầy") || goalLower.Contains("cô") || goalLower.Contains("giảng viên"))
+            else if (goalLower.Contains("long") || goalLower.Contains("dũng") || goalLower.Contains("tuấn") || goalLower.Contains("nam") || goalLower.Contains("hương") || goalLower.Contains("hùng") || goalLower.Contains("thầy") || goalLower.Contains("cô") || goalLower.Contains("giảng viên"))
             {
                 var matched = allSections.Where(s => !string.IsNullOrEmpty(s.Instructor) && (
                     goalLower.Contains(s.Instructor.ToLowerInvariant()) ||

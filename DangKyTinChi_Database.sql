@@ -222,7 +222,7 @@ GO
 -- E. Dữ liệu Lớp học phần mở trong kỳ (Sections: gồm cả 2 Học kỳ 2026_HK1 và 2026_HK2)
 INSERT INTO dbo.Sections (SectionCode, CourseId, Instructor, MaxCapacity, CurrentEnrollment, Semester, Room) VALUES
 -- Học kỳ 1 (2026_HK1)
-(N'WEB301_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB301'), N'TS. Nguyễn Văn Hùng', 50, 0, N'2026_HK1', N'Lab 402'),
+(N'WEB301_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB301'), N'TS. Hà Ngọc Long', 50, 0, N'2026_HK1', N'Lab 402'),
 (N'WEB301_02', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB301'), N'ThS. Trần Thị Thanh Trúc', 50, 0, N'2026_HK1', N'Lab 403'),
 (N'TIN201_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN201'), N'PGS.TS. Lê Hoàng Sơn', 60, 0, N'2026_HK1', N'Phòng A101'),
 (N'TIN201_02', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TIN201'), N'ThS. Đỗ Minh Tuấn', 60, 0, N'2026_HK1', N'Phòng A102'),
@@ -232,7 +232,7 @@ INSERT INTO dbo.Sections (SectionCode, CourseId, Instructor, MaxCapacity, Curren
 (N'ATTT401_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'ATTT401'), N'PGS.TS. Ngô Văn Dũng', 40, 0, N'2026_HK1', N'Lab 501'),
 (N'TOEIC_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'TOEIC'), N'ThS. Lý Thị Mỹ Hạnh', 80, 0, N'2026_HK1', N'Hội trường A'),
 -- Học kỳ 2 (2026_HK2)
-(N'WEB302_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB302'), N'TS. Nguyễn Văn Hùng', 50, 0, N'2026_HK2', N'Lab 402'),
+(N'WEB302_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'WEB302'), N'TS. Hà Ngọc Long', 50, 0, N'2026_HK2', N'Lab 402'),
 (N'AI401_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'AI401'), N'PGS.TS. Lê Hoàng Sơn', 60, 0, N'2026_HK2', N'Lab 502'),
 (N'CSDL202_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'CSDL202'), N'TS. Phạm Thanh Tùng', 60, 0, N'2026_HK2', N'Phòng B301'),
 (N'ATTT402_01', (SELECT CourseId FROM dbo.Courses WHERE CourseCode = N'ATTT402'), N'PGS.TS. Ngô Văn Dũng', 40, 0, N'2026_HK2', N'Lab 501'),

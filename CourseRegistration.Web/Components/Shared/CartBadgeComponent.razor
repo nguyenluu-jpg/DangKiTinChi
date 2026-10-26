@@ -1,12 +1,18 @@
 @inject IRegistrationCartStateStore CartStateStore
 @implements IDisposable
 
-<a href="/cart" class="btn btn-outline-light d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill position-relative text-nowrap shadow-sm text-decoration-none" style="height: 38px;">
+<a href="/cart" class="btn btn-outline-light d-inline-flex align-items-center justify-content-center gap-1 gap-sm-2 px-2 px-sm-3 py-1 rounded-pill position-relative text-nowrap shadow-sm text-decoration-none cart-badge-btn" style="height: 38px;">
     <i class="bi bi-cart3 fs-6"></i>
-    <span class="fw-semibold small">Giỏ đăng ký</span>
+    <span class="fw-semibold small d-none d-sm-inline">Giỏ đăng ký</span>
     @if (itemCount > 0)
     {
-        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm">
+        <!-- Mobile: Huy hiệu nhỏ gọn nằm cạnh icon -->
+        <span class="badge rounded-pill bg-danger shadow-sm ms-1 cart-count-pill d-sm-none">
+            @itemCount
+            <span class="visually-hidden">môn đã chọn</span>
+        </span>
+        <!-- Desktop: Huy hiệu tròn đỏ góc trên như ban đầu -->
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm d-none d-sm-inline-block">
             @itemCount
             <span class="visually-hidden">môn đã chọn</span>
         </span>

@@ -10,7 +10,7 @@ namespace CourseRegistration.CoreBusiness.Models
         public string BankCode { get; set; } = "MB";
         public string BankName { get; set; } = "Ngân hàng TMCP Quân Đội (MB Bank)";
         public string AccountNumber { get; set; } = "101705201967";
-        public string AccountName { get; set; } = "TRUONG DAI HOC KINH TE";
+        public string AccountName { get; set; } = "TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ";
         public decimal Amount { get; set; }
         public string Description { get; set; } = string.Empty;
         public string Template { get; set; } = "compact2";
@@ -66,7 +66,7 @@ namespace CourseRegistration.CoreBusiness.Models
             {
                 long integerAmount = (long)Math.Round(Amount);
                 string encodedDesc = Uri.EscapeDataString(Description);
-                string encodedName = Uri.EscapeDataString(AccountName);
+                string encodedName = Uri.EscapeDataString(RemoveDiacritics(AccountName).ToUpper());
                 return $"https://img.vietqr.io/image/{BankCode}-{AccountNumber}-{Template}.png?amount={integerAmount}&addInfo={encodedDesc}&accountName={encodedName}";
             }
         }

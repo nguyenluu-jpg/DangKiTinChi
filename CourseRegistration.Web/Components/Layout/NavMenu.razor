@@ -15,24 +15,32 @@
 <!-- Top Desktop & Tablet Navbar -->
 <nav class="navbar navbar-expand-lg navbar-dark custom-navbar sticky-top py-2 shadow-sm">
     <div class="container position-relative">
-        <a class="navbar-brand fw-bold d-flex align-items-center text-white" href="/">
-            <div class="brand-logo-icon me-2">
-                <i class="bi bi-mortarboard-fill"></i>
-            </div>
-            <div class="d-flex flex-column">
-                <span class="lh-1 fw-bold">Đăng Ký Học Phần</span>
-                <span class="brand-subtext">Cổng Đào Tạo Trực Tuyến</span>
-            </div>
-        </a>
-
-        <!-- Mobile Quick Indicators (Cart + Toggle) -->
-        <div class="d-flex align-items-center d-lg-none gap-2">
-            <CartBadgeComponent />
-            <button class="navbar-toggler border-0 p-1" type="button" @onclick="() => isMobileNavExpanded = !isMobileNavExpanded">
+        <!-- Khối bên trái: Nút 3 thanh (mobile) + Logo Đăng Ký Học Phần -->
+        <div class="d-flex align-items-center gap-2">
+            <button class="navbar-toggler border-0 p-1 d-lg-none flex-shrink-0" 
+                    type="button" 
+                    @onclick="() => isMobileNavExpanded = !isMobileNavExpanded"
+                    aria-label="Menu điều hướng">
                 <span class="navbar-toggler-icon"></span>
             </button>
+
+            <a class="navbar-brand fw-bold d-flex align-items-center text-white m-0" href="/">
+                <div class="brand-logo-icon me-2 flex-shrink-0">
+                    <i class="bi bi-mortarboard-fill"></i>
+                </div>
+                <div class="d-flex flex-column">
+                    <span class="lh-1 fw-bold brand-header-title">Đăng Ký Học Phần</span>
+                    <span class="brand-subtext d-none d-sm-block">Cổng Đào Tạo Trực Tuyến</span>
+                </div>
+            </a>
         </div>
 
+        <!-- Khối bên phải trên di động: Nút Giỏ Đăng Ký vừa vặn trên cùng hàng -->
+        <div class="d-flex align-items-center d-lg-none ms-auto">
+            <CartBadgeComponent />
+        </div>
+
+        <!-- Menu Desktop ở trên cùng hàng ngang với Logo & Accordion trên di động -->
         <div class="collapse navbar-collapse @(isMobileNavExpanded ? "show" : "")" id="navbarNav">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center">
                 <li class="nav-item">
@@ -338,6 +346,13 @@
                 <i class="bi bi-box-arrow-in-right"></i>
                 <span>Đăng nhập</span>
             </button>
+        }
+        else
+        {
+            <NavLink class="mobile-nav-item" href="/tuition">
+                <i class="bi bi-wallet2"></i>
+                <span>Học phí</span>
+            </NavLink>
         }
     </div>
 </div>

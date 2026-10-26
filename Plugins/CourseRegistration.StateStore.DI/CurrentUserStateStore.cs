@@ -5,17 +5,10 @@ namespace CourseRegistration.StateStore.DI
 {
     public class CurrentUserStateStore : StateStore, ICurrentUserStateStore
     {
-        // Mặc định tài khoản ban đầu khi mở web / F5: Đăng nhập sẵn Sinh viên 1 (SV21001 - Nguyễn Văn Tuấn)
-        private UserAccount? _currentUser = new UserAccount
-        {
-            AccountId = 2,
-            Username = "sv21001",
-            FullName = "Nguyễn Văn Tuấn",
-            Role = "Student",
-            StudentId = 1
-        };
-        private int _currentStudentId = 1;
-        private string _currentRole = "Student";
+        // Mặc định tài khoản ban đầu khi mở web / F5: Đăng xuất (Chưa đăng nhập)
+        private UserAccount? _currentUser = null;
+        private int _currentStudentId = 0;
+        private string _currentRole = string.Empty;
 
         public Task<int> GetCurrentStudentIdAsync()
         {

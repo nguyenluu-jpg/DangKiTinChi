@@ -63,11 +63,6 @@
                         <i class="bi bi-wallet2 text-warning me-1"></i> Thanh toán học phí
                     </NavLink>
                 </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="/ai-advisor" @onclick="CloseAllDropdowns">
-                        <i class="bi bi-stars text-info me-1"></i> Cố vấn AI
-                    </NavLink>
-                </li>
                 @if (isAuthenticated && currentRole == "Admin")
                 {
                     <li class="nav-item dropdown position-relative">

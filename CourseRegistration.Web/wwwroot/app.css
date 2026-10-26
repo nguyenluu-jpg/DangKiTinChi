@@ -813,4 +813,301 @@ html, body {
     }
 }
 
+/* ========================================================
+   ROBOT CỐ VẤN AI NỔI GÓC PHẢI (FLOATING AI ROBOT WIDGET)
+   Phong cách trợ lý ảo thông minh tương tự các web thương mại điện tử
+   ======================================================== */
+.ai-robot-floating-container {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 1045;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+/* Nút tròn Robot */
+.ai-robot-circle-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #06b6d4 100%);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 10px 25px -4px rgba(37, 99, 235, 0.5), 0 4px 10px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    outline: none;
+}
+
+.ai-robot-circle-btn:hover {
+    transform: scale(1.1) translateY(-3px);
+    box-shadow: 0 16px 32px -4px rgba(37, 99, 235, 0.65), 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.ai-robot-circle-btn:active {
+    transform: scale(0.95);
+}
+
+/* Vòng sóng xung mạch (Pulse ring) */
+.ai-robot-pulse-ring {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid rgba(59, 130, 246, 0.6);
+    animation: robotPulse 2.4s infinite cubic-bezier(0.45, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+@keyframes robotPulse {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+    70% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
+}
+
+/* Chấm xanh trạng thái Online */
+.ai-robot-badge-status {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 13px;
+    height: 13px;
+    background-color: #10b981;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+}
+
+/* Hiệu ứng lắc lư nhẹ robot */
+.ai-robot-icon-wrapper {
+    animation: robotBob 3s ease-in-out infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes robotBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+/* Bóng thoại mời chào (Speech Bubble Callout) */
+.ai-speech-bubble {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 8px 14px;
+    position: relative;
+    max-width: 230px;
+    box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.06);
+    animation: bubbleFloat 0.3s ease-out;
+}
+
+.ai-speech-bubble .bubble-arrow {
+    position: absolute;
+    right: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 7px solid #ffffff;
+}
+
+/* Cửa sổ Chatbot Nổi (Floating Chat Window) */
+.ai-robot-chat-window {
+    width: 380px;
+    height: 520px;
+    max-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px !important;
+    overflow: hidden;
+    margin-bottom: 14px;
+    box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.28), 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+    animation: chatSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    background: #ffffff;
+}
+
+@keyframes chatSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.ai-chat-header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+}
+
+.ai-avatar-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    position: relative;
+}
+
+.ai-avatar-status-dot {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: #10b981;
+    border: 1.5px solid #ffffff;
+}
+
+.ai-online-text {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Thân chat scrollable */
+.ai-chat-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    background-color: #f8fafc;
+    scroll-behavior: smooth;
+}
+
+.ai-msg-bubble {
+    max-width: 82%;
+    padding: 9px 13px;
+    border-radius: 16px;
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.user-bubble {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #ffffff;
+    border-bottom-right-radius: 4px;
+}
+
+.bot-bubble {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+    border-bottom-left-radius: 4px;
+}
+
+.ai-bot-avatar-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #e0f2fe;
+    color: #0284c7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.ai-msg-time {
+    font-size: 0.65rem;
+    opacity: 0.7;
+    margin-top: 3px;
+}
+
+/* 3 Chấm Đang Gõ AI (Typing indicator) */
+.ai-typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+}
+
+.ai-typing-indicator span {
+    width: 6px;
+    height: 6px;
+    background-color: #94a3b8;
+    border-radius: 50%;
+    animation: typingBlink 1.4s infinite ease-in-out both;
+}
+
+.ai-typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+.ai-typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typingBlink {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+}
+
+.chip-btn {
+    font-size: 0.73rem !important;
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #334155 !important;
+    transition: all 0.2s;
+}
+
+.chip-btn:hover {
+    background-color: #eff6ff !important;
+    border-color: #93c5fd !important;
+    color: #1d4ed8 !important;
+}
+
+.ai-send-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+}
+
+.ai-full-link {
+    font-size: 0.72rem;
+    color: #64748b;
+    transition: color 0.2s;
+}
+
+.ai-full-link:hover {
+    color: #2563eb;
+}
+
+/* Responsive trên điện thoại */
+@media (max-width: 767.98px) {
+    .ai-robot-floating-container {
+        bottom: 74px !important;
+        right: 14px !important;
+    }
+
+    .ai-robot-circle-btn {
+        width: 52px !important;
+        height: 52px !important;
+    }
+
+    .ai-robot-circle-btn i {
+        font-size: 1.5rem !important;
+    }
+
+    .ai-robot-chat-window {
+        width: calc(100vw - 28px) !important;
+        height: min(520px, 72vh) !important;
+        right: 0 !important;
+    }
+}
+
 

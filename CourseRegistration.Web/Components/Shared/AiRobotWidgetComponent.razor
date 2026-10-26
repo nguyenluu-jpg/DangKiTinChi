@@ -1,0 +1,370 @@
+@namespace CourseRegistration.Web.Components.Shared
+@using CourseRegistration.CoreBusiness.Models
+@using CourseRegistration.UseCases.StudentPortal.AiAdvisor
+@using CourseRegistration.UseCases.AdminPortal.AiAdminAssistant.Interfaces
+@inject IGetAiAdviceUseCase GetAiAdviceUseCase
+@inject IAdminAiAssistantUseCase AdminAiAssistantUseCase
+@inject ICurrentUserStateStore CurrentUserStateStore
+@inject IStudentRepository StudentRepository
+@inject ILoginModalService LoginModalService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+@if (!isOnAiAdvisorPage)
+{
+    <div class="ai-robot-floating-container">
+        <!-- Cửa sổ Chatbot Cố Vấn AI thu nhỏ nổi ở góc phải -->
+        @if (isChatOpen)
+        {
+            <div class="card border-0 shadow-lg ai-robot-chat-window">
+                <!-- Header Cửa sổ Chat -->
+                <div class="ai-chat-header d-flex justify-content-between align-items-center p-3 text-white">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="ai-avatar-circle">
+                            <i class="bi bi-robot"></i>
+                            <span class="ai-avatar-status-dot"></span>
+                        </div>
+                        <div>
+                            <div class="fw-bold lh-1 small">Cố Vấn Học Thuật AI</div>
+                            <span class="ai-online-text">
+                                <i class="bi bi-circle-fill text-success" style="font-size: 6px;"></i> Trực tuyến &bull; Trợ lý 24/7
+                            </span>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <a href="/ai-advisor" class="btn btn-sm btn-icon text-white" title="Mở trang cố vấn chi tiết toàn màn hình">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-icon text-white" @onclick="ToggleChat" title="Thu nhỏ robot">
+                            <i class="bi bi-dash-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Thân Cuộc Trò Chuyện (Scrollable) -->
+                <div class="ai-chat-body p-3">
+                    @foreach (var msg in chatMessages)
+                    {
+                        @if (msg.IsUser)
+                        {
+                            <div class="d-flex justify-content-end mb-3">
+                                <div class="ai-msg-bubble user-bubble shadow-sm">
+                                    @msg.Content
+                                    <div class="ai-msg-time text-end">@msg.Timestamp.ToString("HH:mm")</div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-start gap-2 mb-3">
+                                <div class="ai-bot-avatar-sm flex-shrink-0">
+                                    <i class="bi bi-robot"></i>
+                                </div>
+                                <div class="ai-msg-bubble bot-bubble shadow-sm flex-grow-1">
+                                    <div class="ai-msg-text">@((MarkupString)FormatMarkdown(msg.Content))</div>
+
+                                    @if (msg.RecommendedSections?.Any() == true)
+                                    {
+                                        <div class="mt-2 pt-2 border-top border-secondary border-opacity-10">
+                                            <div class="fw-bold small text-primary mb-1">
+                                                <i class="bi bi-stars"></i> Gợi ý @msg.RecommendedSections.Count môn học kỳ này:
+                                            </div>
+                                            <div class="d-flex flex-column gap-1">
+                                                @foreach (var sec in msg.RecommendedSections.Take(3))
+                                                {
+                                                    <div class="p-1 px-2 rounded bg-white border small d-flex justify-content-between align-items-center">
+                                                        <span class="fw-semibold text-truncate me-1">@sec.CourseName</span>
+                                                        <span class="badge bg-primary-subtle text-primary flex-shrink-0">@sec.Credits TC</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <div class="ai-msg-time">@msg.Timestamp.ToString("HH:mm")</div>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (isThinking)
+                    {
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <div class="ai-bot-avatar-sm flex-shrink-0">
+                                <i class="bi bi-robot"></i>
+                            </div>
+                            <div class="ai-msg-bubble bot-bubble shadow-sm">
+                                <div class="ai-typing-indicator">
+                                    <span></span><span></span><span></span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Khối Gợi Ý Câu Hỏi Nhanh (Chips) -->
+                @if (chatMessages.Count <= 2 && !isThinking)
+                {
+                    <div class="px-3 py-2 bg-light border-top border-bottom">
+                        <div class="small fw-semibold text-muted mb-1" style="font-size: 0.72rem;">
+                            <i class="bi bi-lightbulb text-warning me-1"></i>Gợi ý câu hỏi nhanh:
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                            @if (currentRole == "Admin")
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Thống kê danh sách lớp quá tải sĩ số")'>
+                                    📊 Lớp quá tải sĩ số
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Có lớp nào sĩ số dưới 15 cần cảnh báo không?")'>
+                                    ⚠️ Lớp ít sinh viên
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Kỳ 2026_HK1 tôi nên đăng ký môn nào?")'>
+                                    🎓 Gợi ý môn kỳ này
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Kiểm tra điều kiện tiên quyết môn học của tôi")'>
+                                    ⚠️ Kiểm tra môn tiên quyết
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Quy định mức học phí tín chỉ năm nay thế nào?")'>
+                                    💰 Mức học phí tín chỉ
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Chân Cửa Sổ: Nhập câu hỏi & Gửi -->
+                <div class="ai-chat-footer p-2 bg-white">
+                    <form @onsubmit="SendMessage" class="d-flex gap-1 align-items-center">
+                        <input type="text" 
+                               class="form-control form-control-sm rounded-pill border shadow-none px-3" 
+                               placeholder="Hỏi Cố vấn AI về môn học, quy chế..." 
+                               @bind="inputQuestion" 
+                               disabled="@isThinking" />
+                        <button type="submit" 
+                                class="btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ai-send-btn" 
+                                disabled="@(isThinking || string.IsNullOrWhiteSpace(inputQuestion))">
+                            <i class="bi bi-send-fill"></i>
+                        </button>
+                    </form>
+                    <div class="text-center mt-1">
+                        <a href="/ai-advisor" class="ai-full-link small text-decoration-none">
+                            Xem mô phỏng lộ trình chuyên sâu &bull; Toàn màn hình <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Nút Tròn Robot Nổi (Floating Launcher Button) -->
+        <div class="d-flex align-items-center gap-2">
+            <!-- Bóng thoại chào mời bên cạnh robot (Bubble Callout) -->
+            @if (!isChatOpen && !isBubbleDismissed)
+            {
+                <div class="ai-speech-bubble shadow-sm animate__animated animate__fadeIn">
+                    <div class="d-flex align-items-center justify-content-between gap-2">
+                        <div class="d-flex flex-column" @onclick="ToggleChat" style="cursor: pointer;">
+                            <span class="fw-bold small text-dark lh-1">Cố Vấn AI</span>
+                            <span class="text-muted" style="font-size: 0.7rem;">Cần tư vấn môn học? Bấm đây!</span>
+                        </div>
+                        <button type="button" class="btn-close ms-1 p-1" style="font-size: 0.6rem;" @onclick="() => isBubbleDismissed = true"></button>
+                    </div>
+                    <div class="bubble-arrow"></div>
+                </div>
+            }
+
+            <!-- Nút tròn Robot -->
+            <button type="button" 
+                    class="ai-robot-circle-btn shadow-lg" 
+                    @onclick="ToggleChat" 
+                    aria-label="Cố Vấn Học Thuật AI">
+                <span class="ai-robot-pulse-ring"></span>
+                <div class="ai-robot-icon-wrapper">
+                    <i class="bi bi-robot fs-3 text-white"></i>
+                </div>
+                <span class="ai-robot-badge-status" title="AI đang sẵn sàng hỗ trợ"></span>
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isChatOpen = false;
+    private bool isBubbleDismissed = false;
+    private bool isThinking = false;
+    private string inputQuestion = string.Empty;
+
+    private bool isAuthenticated = false;
+    private string currentRole = string.Empty;
+    private Student? currentStudent;
+    private List<Student> allStudents = new List<Student>();
+
+    private List<ChatMessageModel> chatMessages = new List<ChatMessageModel>();
+
+    private bool isOnAiAdvisorPage => NavigationManager.Uri.Contains("/ai-advisor", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
+        NavigationManager.LocationChanged += HandleLocationChanged;
+
+        allStudents = (await StudentRepository.GetAllStudentsAsync()).ToList();
+        await RefreshUserState();
+        InitDefaultMessage();
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        StateHasChanged();
+    }
+
+    private async void HandleUserStateChange()
+    {
+        await RefreshUserState();
+        InitDefaultMessage();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshUserState()
+    {
+        isAuthenticated = await CurrentUserStateStore.IsAuthenticatedAsync();
+        currentRole = await CurrentUserStateStore.GetCurrentRoleAsync();
+        int studentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+        currentStudent = allStudents.FirstOrDefault(s => s.StudentId == studentId);
+    }
+
+    private void InitDefaultMessage()
+    {
+        chatMessages.Clear();
+
+        if (currentRole == "Admin")
+        {
+            chatMessages.Add(new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "Xin chào **Cán bộ Phòng Đào Tạo**! Tôi là **Trợ lý AI Quản Trị Đào Tạo**. Bạn có thể yêu cầu tôi rà soát sĩ số lớp, cảnh báo quá tải hoặc thống kê học vụ bất kỳ lúc nào.",
+                Timestamp = DateTime.Now
+            });
+        }
+        else if (isAuthenticated && currentStudent != null)
+        {
+            chatMessages.Add(new ChatMessageModel
+            {
+                IsUser = false,
+                Content = $"Xin chào **{currentStudent.FullName}** (MSSV: {currentStudent.StudentCode})! Tôi là **Cố vấn học thuật AI**. Tôi có thể gợi ý môn nên học kỳ 2026_HK1, rà soát điều kiện tiên quyết hoặc hỗ trợ lịch học cho bạn.",
+                Timestamp = DateTime.Now
+            });
+        }
+        else
+        {
+            chatMessages.Add(new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "Xin chào bạn! Tôi là **Cố vấn học thuật AI**. Bạn có thể hỏi tôi về quy chế đăng ký tín chỉ, mức học phí, hoặc bấm **Đăng nhập** để nhận lộ trình gợi ý chuẩn xác cho bạn.",
+                Timestamp = DateTime.Now
+            });
+        }
+    }
+
+    private void ToggleChat()
+    {
+        isChatOpen = !isChatOpen;
+        if (isChatOpen)
+        {
+            isBubbleDismissed = true;
+        }
+    }
+
+    private async Task SendQuickPrompt(string prompt)
+    {
+        inputQuestion = prompt;
+        await SendMessage();
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(inputQuestion) || isThinking) return;
+
+        string question = inputQuestion.Trim();
+        inputQuestion = string.Empty;
+
+        chatMessages.Add(new ChatMessageModel
+        {
+            IsUser = true,
+            Content = question,
+            Timestamp = DateTime.Now
+        });
+
+        isThinking = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            if (currentRole == "Admin")
+            {
+                var result = await AdminAiAssistantUseCase.ExecuteAsync(question, "2026_HK1");
+                chatMessages.Add(new ChatMessageModel
+                {
+                    IsUser = false,
+                    Content = result.SummaryExplanation,
+                    Timestamp = DateTime.Now
+                });
+            }
+            else
+            {
+                int studentId = currentStudent?.StudentId ?? 1; // Mặc định sinh viên 1 nếu chưa đăng nhập
+                var advice = await GetAiAdviceUseCase.ExecuteAsync(studentId, "2026_HK1", question);
+
+                chatMessages.Add(new ChatMessageModel
+                {
+                    IsUser = false,
+                    Content = advice.AiMessage,
+                    RecommendedSections = advice.RecommendedSections,
+                    Timestamp = DateTime.Now
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            chatMessages.Add(new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "Cố vấn AI đang bận xử lý, vui lòng thử lại hoặc mở trang chi tiết để kiểm tra: " + ex.Message,
+                Timestamp = DateTime.Now
+            });
+        }
+        finally
+        {
+            isThinking = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string FormatMarkdown(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+
+        // Định dạng in đậm đơn giản cho hiển thị chat
+        var formatted = System.Web.HttpUtility.HtmlEncode(text)
+            .Replace("\n", "<br />");
+
+        formatted = System.Text.RegularExpressions.Regex.Replace(formatted, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        return formatted;
+    }
+
+    public void Dispose()
+    {
+        CurrentUserStateStore.RemoveStateChangeListeners(HandleUserStateChange);
+        NavigationManager.LocationChanged -= HandleLocationChanged;
+    }
+
+    private class ChatMessageModel
+    {
+        public bool IsUser { get; set; }
+        public string Content { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
+        public List<AiRecommendedSection>? RecommendedSections { get; set; }
+    }
+}

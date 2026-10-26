@@ -63,6 +63,17 @@
                                 <div class="ai-msg-bubble bot-bubble shadow-sm flex-grow-1">
                                     <div class="ai-msg-text">@((MarkupString)FormatMarkdown(msg.Content))</div>
 
+                                    @if (msg.ShowLoginButton)
+                                    {
+                                        <div class="mt-2">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1"
+                                                    @onclick="() => LoginModalService.Open()">
+                                                <i class="bi bi-box-arrow-in-right"></i> Đăng nhập ngay
+                                            </button>
+                                        </div>
+                                    }
+
                                     @if (msg.RecommendedSections?.Any() == true)
                                     {
                                         <div class="mt-2 pt-2 border-top border-secondary border-opacity-10">
@@ -118,8 +129,11 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Có lớp nào sĩ số dưới 15 cần cảnh báo không?")'>
                                     ⚠️ Lớp ít sinh viên
                                 </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Lớp Lập trình Web do ai dạy?")'>
+                                    👨‍🏫 Môn Lập trình Web
+                                </button>
                             }
-                            else
+                            else if (isAuthenticated && currentStudent != null)
                             {
                                 <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Kỳ 2026_HK1 tôi nên đăng ký môn nào?")'>
                                     🎓 Gợi ý môn kỳ này
@@ -127,8 +141,26 @@
                                 <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Kiểm tra điều kiện tiên quyết môn học của tôi")'>
                                     ⚠️ Kiểm tra môn tiên quyết
                                 </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Lớp Lập trình Web của thầy Hà Ngọc Long")'>
+                                    👨‍🏫 Môn thầy Hà Ngọc Long
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Quy định mức học phí tín chỉ năm nay thế nào?")'>
                                     💰 Mức học phí tín chỉ
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Môn Lập trình Web ai dạy?")'>
+                                    👨‍🏫 Môn Lập trình Web
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Quy định mức học phí tín chỉ năm nay thế nào?")'>
+                                    💰 Mức học phí tín chỉ
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Thời gian mở cổng đăng ký học phần khi nào?")'>
+                                    📅 Thời gian mở cổng
+                                </button>
+                                <button type="button" class="btn btn-sm btn-primary py-0 px-2 rounded-pill chip-btn fw-bold" @onclick="() => LoginModalService.Open()">
+                                    🔑 Đăng nhập sinh viên
                                 </button>
                             }
                         </div>
@@ -262,7 +294,7 @@
             chatMessages.Add(new ChatMessageModel
             {
                 IsUser = false,
-                Content = "Xin chào bạn! Tôi là **Cố vấn học thuật AI**. Bạn có thể hỏi tôi về quy chế đăng ký tín chỉ, mức học phí, hoặc bấm **Đăng nhập** để nhận lộ trình gợi ý chuẩn xác cho bạn.",
+                Content = "Xin chào bạn! Tôi là **Cố vấn học thuật AI** của Trường Đại học Kinh tế Huế. Bạn có thể hỏi tôi về **giảng viên, môn học, quy chế tín chỉ, mức học phí**, hoặc **Đăng nhập** tài khoản để tôi phân tích lộ trình học tập tối ưu riêng cho bạn nhé!",
                 Timestamp = DateTime.Now
             });
         }
@@ -312,10 +344,9 @@
                     Timestamp = DateTime.Now
                 });
             }
-            else
+            else if (isAuthenticated && currentStudent != null)
             {
-                int studentId = currentStudent?.StudentId ?? 1; // Mặc định sinh viên 1 nếu chưa đăng nhập
-                var advice = await GetAiAdviceUseCase.ExecuteAsync(studentId, "2026_HK1", question);
+                var advice = await GetAiAdviceUseCase.ExecuteAsync(currentStudent.StudentId, "2026_HK1", question);
 
                 chatMessages.Add(new ChatMessageModel
                 {
@@ -324,6 +355,42 @@
                     RecommendedSections = advice.RecommendedSections,
                     Timestamp = DateTime.Now
                 });
+            }
+            else
+            {
+                // Người dùng CHƯA ĐĂNG NHẬP: Xử lý chuẩn xác, không tự tiện gán thông tin sinh viên khác
+                string qNorm = RemoveDiacritics(question.ToLowerInvariant());
+
+                bool isPersonalQuery = qNorm.Contains("cua toi") ||
+                                       qNorm.Contains("cho toi") ||
+                                       qNorm.Contains("toi nen") ||
+                                       qNorm.Contains("goi y mon") ||
+                                       qNorm.Contains("mon ky nay") ||
+                                       qNorm.Contains("hoc ba") ||
+                                       qNorm.Contains("diem cua toi") ||
+                                       qNorm.Contains("tien quyet cua toi");
+
+                if (isPersonalQuery)
+                {
+                    chatMessages.Add(new ChatMessageModel
+                    {
+                        IsUser = false,
+                        Content = "Bạn hiện **chưa đăng nhập tài khoản sinh viên** nên AI chưa thể tra cứu học bạ cá nhân và điều kiện tiên quyết của riêng bạn. Vui lòng **Đăng nhập** để AI có thể phân tích lộ trình học tập tối ưu nhất cho bạn nhé!",
+                        ShowLoginButton = true,
+                        Timestamp = DateTime.Now
+                    });
+                }
+                else
+                {
+                    string answer = HandleGuestGeneralQuery(qNorm);
+                    chatMessages.Add(new ChatMessageModel
+                    {
+                        IsUser = false,
+                        Content = answer,
+                        ShowLoginButton = answer.Contains("Đăng nhập"),
+                        Timestamp = DateTime.Now
+                    });
+                }
             }
         }
         catch (Exception ex)
@@ -342,15 +409,81 @@
         }
     }
 
+    private string HandleGuestGeneralQuery(string qNorm)
+    {
+        if (qNorm.Contains("web") || qNorm.Contains("lap trinh web") || qNorm.Contains("thay long") || qNorm.Contains("ha ngoc long"))
+        {
+            return "👨‍🏫 **Thông tin môn Lập trình Ứng dụng Web (WEB301):**\n\n" +
+                   "- **Giảng viên phụ trách:** **TS. Hà Ngọc Long**.\n" +
+                   "- **Số tín chỉ:** 4 Tín chỉ (Lý thuyết & Thực hành Web hiện đại).\n" +
+                   "- **Lịch học (Nhóm 1):** Thứ Hai, Tiết 1 - 4 tại **Lab 402**.\n" +
+                   "- **Điều kiện tiên quyết:** Bắt buộc hoàn thành môn *Lập trình Hướng đối tượng (TIN102)*.";
+        }
+        else if (qNorm.Contains("hoc phi") || qNorm.Contains("bao nhieu tien") || qNorm.Contains("dong tien") || qNorm.Contains("ngan hang") || qNorm.Contains("stk"))
+        {
+            return "💰 **Quy định mức thu học phí năm học 2026 - 2027:**\n\n" +
+                   "- **Đơn giá:** **450.000 đ / tín chỉ**.\n" +
+                   "- **Tài khoản thu học phí:** **101705201967** (Ngân hàng TMCP Quân Đội - MB Bank).\n" +
+                   "- **Đơn vị thụ hưởng:** **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**.\n" +
+                   "- Hỗ trợ quét mã VietQR tự động điền nội dung và gạch nợ học phí tức thì 24/7.";
+        }
+        else if (qNorm.Contains("thoi gian") || qNorm.Contains("khi nao") || qNorm.Contains("lich") || qNorm.Contains("mo cong") || qNorm.Contains("han nop"))
+        {
+            return "📅 **Kế hoạch đăng ký học phần & nộp học phí học kỳ 2026_HK1:**\n\n" +
+                   "- **Đợt đăng ký chính thức:** Từ ngày **15/01/2026 đến hết 28/01/2026**.\n" +
+                   "- **Đợt đăng ký bổ sung / rút môn:** Từ **05/02/2026 đến 12/02/2026**.\n" +
+                   "- **Thời hạn nộp học phí:** Trong vòng 15 ngày kể từ ngày gửi phiếu đăng ký.";
+        }
+        else if (qNorm.Contains("tien quyet") || qNorm.Contains("dieu kien"))
+        {
+            return "⚠️ **Quy chế điều kiện môn học tiên quyết:**\n\n" +
+                   "- Sinh viên bắt buộc phải qua môn tiên quyết (điểm tích lũy >= 4.0 / thang 10) mới được phép đăng ký môn tiếp theo.\n" +
+                   "- *Ví dụ:* Môn **Lập trình Ứng dụng Web (WEB301)** do **TS. Hà Ngọc Long** dạy yêu cầu sinh viên phải qua môn **Lập trình Hướng đối tượng (TIN102)**.\n" +
+                   "- Bạn hãy **Đăng nhập** để AI kiểm tra danh sách môn bạn đã đạt nhé!";
+        }
+        else if (qNorm.Contains("tin chi") || qNorm.Contains("han muc") || qNorm.Contains("toi da") || qNorm.Contains("toi thieu"))
+        {
+            return "⚖️ **Hạn mức số tín chỉ trong một học kỳ:**\n\n" +
+                   "- **Tối thiểu:** 12 tín chỉ trong học kỳ chính.\n" +
+                   "- **Tối đa:** 24 tín chỉ (đối với sinh viên có học lực bình thường trở lên).\n" +
+                   "- Sinh viên bị cảnh báo học vụ chỉ được đăng ký tối đa 14 tín chỉ.";
+        }
+        else
+        {
+            return "Cảm ơn câu hỏi của bạn! Tôi có thể giải đáp về **môn Lập trình Web (TS. Hà Ngọc Long)**, **học phí tín chỉ**, **thời gian đăng ký** và **quy chế tiên quyết**. Hoặc bạn có thể **Đăng nhập tài khoản sinh viên** để tôi tư vấn cụ thể lộ trình riêng cho bạn nhé!";
+        }
+    }
+
+    private string RemoveDiacritics(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+        var normalizedString = text.Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder();
+
+        foreach (var c in normalizedString)
+        {
+            var category = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (category != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(c);
+            }
+        }
+
+        return sb.ToString()
+            .Normalize(System.Text.NormalizationForm.FormC)
+            .Replace('đ', 'd')
+            .Replace('Đ', 'D');
+    }
+
     private string FormatMarkdown(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
-        // Định dạng in đậm đơn giản cho hiển thị chat
         var formatted = System.Web.HttpUtility.HtmlEncode(text)
             .Replace("\n", "<br />");
 
         formatted = System.Text.RegularExpressions.Regex.Replace(formatted, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        formatted = System.Text.RegularExpressions.Regex.Replace(formatted, @"\*(.+?)\*", "<em>$1</em>");
         return formatted;
     }
 
@@ -366,5 +499,6 @@
         public string Content { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; } = DateTime.Now;
         public List<AiRecommendedSection>? RecommendedSections { get; set; }
+        public bool ShowLoginButton { get; set; } = false;
     }
 }

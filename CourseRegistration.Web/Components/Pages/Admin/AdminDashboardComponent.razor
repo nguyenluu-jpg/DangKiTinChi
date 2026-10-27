@@ -453,7 +453,7 @@ else
                                         <div class="fw-semibold">@(sec.Course?.CourseName ?? $"HP #{sec.CourseId}")</div>
                                         <div class="text-muted" style="font-size: 0.72rem;">@(sec.Course?.CourseCode ?? "") &bull; @(sec.Course?.Credits ?? 3) TC</div>
                                     </td>
-                                    <td>@(sec.InstructorName ?? "Chưa phân công")</td>
+                                    <td>@(sec.Instructor ?? "Chưa phân công")</td>
                                     <td class="text-center fw-bold">@currentEnroll / @maxCap</td>
                                     <td class="text-center" style="min-width: 140px;">
                                         <div class="d-flex align-items-center gap-2">
@@ -506,8 +506,8 @@ else
 
     private async Task RefreshDataAsync()
     {
-        isAuthorized = await CurrentUserStateStore.IsInRoleAsync("Admin");
         currentRole = await CurrentUserStateStore.GetCurrentRoleAsync();
+        isAuthorized = (currentRole == "Admin");
         currentUser = await CurrentUserStateStore.GetCurrentUserAsync();
 
         if (isAuthorized)

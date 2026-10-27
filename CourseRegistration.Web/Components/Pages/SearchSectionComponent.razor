@@ -294,10 +294,10 @@ else
                                     <div class="fw-bold text-dark">@(sec.Course?.CourseName ?? "Học phần")</div>
                                     <div class="small text-muted d-flex align-items-center gap-2 mt-0.5">
                                         <span>Mã môn: <strong class="text-secondary font-monospace">@sec.Course?.CourseCode</strong></span>
-                                        @if (!string.IsNullOrEmpty(sec.Course?.Department))
+                                        @if (!string.IsNullOrEmpty(sec.Semester))
                                         {
                                             <span>&bull;</span>
-                                            <span>@sec.Course?.Department</span>
+                                            <span class="text-muted">@sec.Semester</span>
                                         }
                                     </div>
                                 </td>

@@ -88,18 +88,26 @@
                         </div>
                     </div>
 
-                    <div class="d-flex gap-2 mb-2 flex-wrap">
-                        <a href="/admin" class="btn btn-sm btn-danger fw-bold flex-fill shadow-xs text-nowrap">
-                            <i class="bi bi-speedometer2 me-1"></i>Trang PĐT
-                        </a>
-                        <a href="/admin/courses" class="btn btn-sm btn-outline-light flex-fill text-nowrap">
+                    <!-- Hàng 1: Các nút chính trên 1 dòng duy nhất (flex-nowrap, không rớt dòng) -->
+                    <div class="d-flex gap-1.5 mb-2 flex-nowrap">
+                        <a href="/admin/courses" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center">
                             <i class="bi bi-book me-1"></i>Môn học
                         </a>
-                        <a href="/admin/sections" class="btn btn-sm btn-outline-light flex-fill text-nowrap">
+                        <a href="/admin/sections" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center">
                             <i class="bi bi-collection me-1"></i>Lớp HP
                         </a>
-                        <a href="/admin/enrollments" class="btn btn-sm btn-outline-light flex-fill text-nowrap">
+                        <a href="/admin/enrollments" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center">
                             <i class="bi bi-person-gear me-1"></i>Rút môn
+                        </a>
+                    </div>
+
+                    <!-- Hàng 2: Nút Trang Phòng Đào Tạo & Quản lý Học phí -->
+                    <div class="d-flex gap-1.5 mb-2 flex-nowrap">
+                        <a href="/admin" class="btn btn-sm btn-danger fw-bold flex-fill shadow-xs text-nowrap px-2 py-1 small text-center">
+                            <i class="bi bi-speedometer2 me-1"></i>Trang Phòng Đào Tạo
+                        </a>
+                        <a href="/admin/tuition" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-2 py-1 small text-center">
+                            <i class="bi bi-wallet2 text-warning me-1"></i>Học phí
                         </a>
                     </div>
 

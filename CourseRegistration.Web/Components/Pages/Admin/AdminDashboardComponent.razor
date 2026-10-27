@@ -68,36 +68,36 @@ else
         </div>
     </div>
 
-    <!-- HÀNG PHÂN HỆ NGHIỆP VỤ ĐÀO TẠO (SUBNAV PILLS) -->
-    <div class="d-flex align-items-center gap-2 mb-4 overflow-x-auto pb-1 flex-nowrap">
-        <a href="/admin" class="btn btn-danger btn-sm rounded-pill px-3 fw-semibold text-nowrap shadow-xs">
+    <!-- HÀNG PHÂN HỆ NGHIỆP VỤ ĐÀO TẠO (CÁC BUTTON TRÊN 1 DÒNG DUY NHẤT, KHÔNG RỚT DÒNG) -->
+    <div class="d-flex align-items-center gap-1.5 gap-md-2 mb-4 pb-1 flex-nowrap overflow-x-auto" style="scrollbar-width: thin;">
+        <a href="/admin" class="btn btn-danger btn-sm rounded-pill px-3 py-1.5 fw-semibold text-nowrap shadow-xs">
             <i class="bi bi-speedometer2 me-1"></i> Tổng Quan
         </a>
-        <a href="/admin/courses" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold text-nowrap">
-            <i class="bi bi-book me-1"></i> Danh Mục Môn Học
+        <a href="/admin/courses" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 px-md-3 py-1.5 fw-semibold text-nowrap">
+            <i class="bi bi-book me-1 text-primary"></i> Môn Học
         </a>
-        <a href="/admin/sections" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold text-nowrap">
-            <i class="bi bi-collection me-1"></i> Mở &amp; Quản Lý Lớp HP
+        <a href="/admin/sections" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 px-md-3 py-1.5 fw-semibold text-nowrap">
+            <i class="bi bi-collection me-1 text-info"></i> Lớp Học Phần
         </a>
-        <a href="/admin/enrollments" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold text-nowrap">
-            <i class="bi bi-person-gear me-1"></i> Đăng Ký &amp; Rút Môn SV
+        <a href="/admin/enrollments" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 px-md-3 py-1.5 fw-semibold text-nowrap">
+            <i class="bi bi-person-gear me-1 text-success"></i> Rút Môn SV
         </a>
-        <a href="/admin/tuition" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold text-nowrap">
-            <i class="bi bi-wallet2 me-1"></i> Học Phí &amp; Chế Tài Thi
+        <a href="/admin/tuition" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 px-md-3 py-1.5 fw-semibold text-nowrap">
+            <i class="bi bi-wallet2 me-1 text-warning"></i> Học Phí
         </a>
-        <a href="/ai-advisor" class="btn btn-outline-warning text-dark btn-sm rounded-pill px-3 fw-semibold text-nowrap">
+        <a href="/ai-advisor" class="btn btn-outline-warning text-dark btn-sm rounded-pill px-2.5 px-md-3 py-1.5 fw-semibold text-nowrap">
             <i class="bi bi-stars me-1 text-warning"></i> Trợ Lý AI
         </a>
     </div>
 
     <!-- GIAO DIỆN TỔNG QUAN CHUYÊN BIỆT CHO MÁY TÍNH (DESKTOP LAYOUT) -->
     <div class="row g-4">
-        <!-- CỘT BÊN TRÁI: THẺ CÁN BỘ QUẢN TRỊ (ĐỂ NGUYÊN THÔNG TIN TRANG TRÍ) + LỐI TẮT PHÂN HỆ -->
+        <!-- CỘT BÊN TRÁI: THẺ CÁN BỘ QUẢN TRỊ (ĐÃ TÍCH HỢP TOÀN BỘ CÁC NÚT TỪ MỤC PHÒNG ĐÀO TẠO GỌN ĐẸP) -->
         <div class="col-lg-4 col-xl-4">
-            <!-- Thẻ Cán Bộ Quản Trị Đào Tạo (Giữ nguyên trang trí và chức năng mô phỏng sinh viên) -->
-            <div class="student-badge-card text-white p-3 rounded-4 shadow-sm mb-4">
+            <!-- Thẻ Cán Bộ Quản Trị Đào Tạo -->
+            <div class="student-badge-card text-white p-3 rounded-4 shadow-sm mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
-                    <span class="badge bg-danger text-white px-2 py-1 fw-bold small">
+                    <span class="badge bg-danger text-white px-2.5 py-1 fw-bold small shadow-xs">
                         <i class="bi bi-shield-lock-fill me-1"></i>Phòng Đào Tạo
                     </span>
                     <span class="badge bg-white bg-opacity-25 text-white px-2 py-1 small">Quản trị viên</span>
@@ -110,18 +110,30 @@ else
                     </div>
                 </div>
 
-                <div class="d-flex gap-2 mb-3">
-                    <a href="/admin/courses" class="btn btn-sm btn-outline-light flex-fill">
+                <!-- HÀNG 1: CÁC BUTTON CHÍNH TRÊN 1 DÒNG DUY NHẤT (FLEX-NOWRAP, KHÔNG BỊ XUỐNG DÒNG) -->
+                <div class="d-flex gap-1.5 mb-2 flex-nowrap">
+                    <a href="/admin/courses" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1.5 small text-center">
                         <i class="bi bi-book me-1"></i>Môn học
                     </a>
-                    <a href="/admin/sections" class="btn btn-sm btn-outline-light flex-fill">
+                    <a href="/admin/sections" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1.5 small text-center">
                         <i class="bi bi-collection me-1"></i>Lớp HP
                     </a>
-                    <a href="/admin/enrollments" class="btn btn-sm btn-outline-light flex-fill">
+                    <a href="/admin/enrollments" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1.5 small text-center">
                         <i class="bi bi-person-gear me-1"></i>Rút môn
                     </a>
                 </div>
 
+                <!-- HÀNG 2: CÁC BUTTON BỔ SUNG TỪ MỤC PHÒNG ĐÀO TẠO (TRÊN 1 DÒNG DUY NHẤT) -->
+                <div class="d-flex gap-1.5 mb-3 flex-nowrap">
+                    <a href="/admin/tuition" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-2 py-1.5 small text-center">
+                        <i class="bi bi-wallet2 text-warning me-1"></i>Học phí &amp; Dự thi
+                    </a>
+                    <a href="/ai-advisor" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-2 py-1.5 small text-center">
+                        <i class="bi bi-stars text-warning me-1"></i>Trợ lý AI
+                    </a>
+                </div>
+
+                <!-- THANH CHỌN MÔ PHỎNG SINH VIÊN (GIỮ NGUYÊN) -->
                 <div class="pt-2 border-top border-white border-opacity-25">
                     <div class="d-flex align-items-center justify-content-between">
                         <label class="small text-white-50 mb-0 text-nowrap me-2">Kiểm tra SV:</label>
@@ -137,76 +149,19 @@ else
                 </div>
             </div>
 
-            <!-- Thẻ Lối Tắt Nghiệp Vụ Quản Trị Đào Tạo -->
+            <!-- Khối Tóm Tắt Trạng Thái Vận Hành Học Vụ Nhanh (Gọn Gàng) -->
             <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
-                <h6 class="fw-bold text-dark mb-3 d-flex align-items-center">
-                    <i class="bi bi-grid-fill text-danger me-2"></i> Nghiệp Vụ Phòng Đào Tạo
-                </h6>
-                <div class="d-flex flex-column gap-2">
-                    <a href="/admin/courses" class="p-2.5 rounded-3 border d-flex align-items-center justify-content-between text-decoration-none text-dark bg-light-subtle hover-shadow transition-all">
-                        <div class="d-flex align-items-center gap-2.5">
-                            <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-2">
-                                <i class="bi bi-book fs-5"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold small">Danh mục Môn học</div>
-                                <div class="text-muted" style="font-size: 0.72rem;">@courses.Count học phần trong CTĐT</div>
-                            </div>
-                        </div>
-                        <i class="bi bi-chevron-right text-muted small"></i>
-                    </a>
-
-                    <a href="/admin/sections" class="p-2.5 rounded-3 border d-flex align-items-center justify-content-between text-decoration-none text-dark bg-light-subtle hover-shadow transition-all">
-                        <div class="d-flex align-items-center gap-2.5">
-                            <div class="bg-info bg-opacity-10 text-info p-2 rounded-2">
-                                <i class="bi bi-collection fs-5"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold small">Mở &amp; Quản lý Lớp HP</div>
-                                <div class="text-muted" style="font-size: 0.72rem;">@sections.Count lớp mở &bull; phân công GV</div>
-                            </div>
-                        </div>
-                        <i class="bi bi-chevron-right text-muted small"></i>
-                    </a>
-
-                    <a href="/admin/enrollments" class="p-2.5 rounded-3 border d-flex align-items-center justify-content-between text-decoration-none text-dark bg-light-subtle hover-shadow transition-all">
-                        <div class="d-flex align-items-center gap-2.5">
-                            <div class="bg-success bg-opacity-10 text-success p-2 rounded-2">
-                                <i class="bi bi-person-gear fs-5"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold small">Xử lý Đăng ký &amp; Rút môn</div>
-                                <div class="text-muted" style="font-size: 0.72rem;">Xét duyệt đơn cứu xét &bull; ghi điểm W</div>
-                            </div>
-                        </div>
-                        <i class="bi bi-chevron-right text-muted small"></i>
-                    </a>
-
-                    <a href="/admin/tuition" class="p-2.5 rounded-3 border d-flex align-items-center justify-content-between text-decoration-none text-dark bg-light-subtle hover-shadow transition-all">
-                        <div class="d-flex align-items-center gap-2.5">
-                            <div class="bg-warning bg-opacity-10 text-warning-emphasis p-2 rounded-2">
-                                <i class="bi bi-wallet2 fs-5"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold small">Quản lý Học Phí &amp; Dự Thi</div>
-                                <div class="text-muted" style="font-size: 0.72rem;">Chế tài thi &bull; gia hạn học phí</div>
-                            </div>
-                        </div>
-                        <i class="bi bi-chevron-right text-muted small"></i>
-                    </a>
-
-                    <a href="/ai-advisor" class="p-2.5 rounded-3 border d-flex align-items-center justify-content-between text-decoration-none text-dark bg-light-subtle hover-shadow transition-all">
-                        <div class="d-flex align-items-center gap-2.5">
-                            <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-2">
-                                <i class="bi bi-stars fs-5"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold small">Trợ Lý AI Đào Tạo</div>
-                                <div class="text-muted" style="font-size: 0.72rem;">Phân tích sĩ số, cảnh báo quá tải</div>
-                            </div>
-                        </div>
-                        <i class="bi bi-chevron-right text-muted small"></i>
-                    </a>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small fw-bold text-dark"><i class="bi bi-shield-check text-success me-1"></i> Trạng Thái Hệ Thống</span>
+                    <span class="badge bg-success-subtle text-success small">Đang Hoạt Động</span>
+                </div>
+                <div class="small text-muted mb-2">
+                    Cổng sinh viên và phân hệ quản lý học vụ đang mở đồng bộ theo kế hoạch HK1.
+                </div>
+                <div class="d-flex justify-content-between text-secondary border-top pt-2" style="font-size: 0.75rem;">
+                    <span><i class="bi bi-database me-1 text-primary"></i>@courses.Count Môn học</span>
+                    <span><i class="bi bi-grid me-1 text-info"></i>@sections.Count Lớp HP</span>
+                    <span><i class="bi bi-check2-circle me-1 text-success"></i>@enrollments.Count ĐK</span>
                 </div>
             </div>
         </div>

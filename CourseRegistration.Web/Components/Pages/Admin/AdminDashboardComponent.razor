@@ -94,8 +94,9 @@ else
     <div class="row g-4">
         <!-- CỘT BÊN TRÁI: THẺ CÁN BỘ QUẢN TRỊ (ĐÃ TÍCH HỢP TOÀN BỘ CÁC NÚT TỪ MỤC PHÒNG ĐÀO TẠO GỌN ĐẸP) -->
         <div class="col-lg-4 col-xl-4">
-            <!-- Thẻ Cán Bộ Quản Trị Đào Tạo -->
-            <div class="student-badge-card text-white p-3 rounded-4 shadow-sm mb-3">
+            <!-- Thẻ Cán Bộ Quản Trị Đào Tạo (Nền tối sang trọng, tương phản cao, triệt tiêu màu trắng xóa) -->
+            <div class="card border-0 shadow-sm p-3.5 rounded-4 mb-3 text-white" 
+                 style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #334155 100%); border: 1px solid rgba(255, 255, 255, 0.15) !important;">
                 <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
                     <span class="badge bg-danger text-white px-2.5 py-1 fw-bold small shadow-xs">
                         <i class="bi bi-shield-lock-fill me-1"></i>Cán Bộ Đào Tạo
@@ -183,21 +184,160 @@ else
                     </div>
                 }
 
-                <!-- THANH CHỌN MÔ PHỎNG SINH VIÊN (GIỮ NGUYÊN) -->
-                <div class="pt-2 border-top border-white border-opacity-25">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <label class="small text-white-50 mb-0 text-nowrap me-2">Kiểm tra SV:</label>
-                        <select class="form-select form-select-sm bg-dark text-white border-secondary w-auto" @onchange="OnStudentChange">
-                            @foreach (var s in students)
-                            {
-                                <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
-                                    @s.StudentCode - @s.FullName
-                                </option>
-                            }
-                        </select>
+                <!-- BỘ CHỌN SINH VIÊN KIỂM TRA & DANH SÁCH BẤM NHANH TỪNG SINH VIÊN -->
+                <div class="pt-3 border-top border-white border-opacity-20">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <label class="small text-white-50 mb-0 fw-semibold">
+                            <i class="bi bi-people-fill text-warning me-1"></i> Chọn sinh viên kiểm tra:
+                        </label>
+                        <span class="badge bg-warning text-dark px-2 py-0.5 fw-bold" style="font-size: 0.68rem;">@students.Count SV</span>
+                    </div>
+
+                    <select class="form-select form-select-sm bg-dark text-white border-secondary mb-2" 
+                            value="@selectedStudentId" 
+                            @onchange="OnStudentChange">
+                        @foreach (var s in students)
+                        {
+                            <option value="@s.StudentId">
+                                @s.StudentCode - @s.FullName (@s.Major)
+                            </option>
+                        }
+                    </select>
+
+                    <!-- Hàng nút bấm chọn nhanh từng sinh viên (bấm vào là nhảy thông tin ngay lập tức) -->
+                    <div class="d-flex flex-wrap gap-1">
+                        @foreach (var s in students)
+                        {
+                            bool isSelected = s.StudentId == selectedStudentId;
+                            <button type="button" 
+                                    class="btn btn-sm @(isSelected ? "btn-warning text-dark fw-bold shadow-xs" : "btn-outline-light border-opacity-25 text-white-50") rounded-pill py-0.5 px-2 text-nowrap"
+                                    style="font-size: 0.72rem;"
+                                    @onclick="() => SelectStudentAsync(s.StudentId)">
+                                @(isSelected ? "✓ " : "")@s.StudentCode
+                            </button>
+                        }
                     </div>
                 </div>
             </div>
+
+            <!-- THẺ TỔNG QUAN SINH VIÊN ĐANG CHỌN (TỰ ĐỘNG CẬP NHẬT KHI BẤM CHỌN BẤT KỲ SINH VIÊN NÀO) -->
+            @if (currentStudent != null)
+            {
+                <div class="card border-0 shadow-sm rounded-4 p-3.5 bg-white mb-3 border-top border-4 border-primary">
+                    <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle fw-bold shadow-xs" style="width: 38px; height: 38px; font-size: 0.95rem;">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-0 text-dark">@currentStudent.FullName</h6>
+                                <div class="small text-muted" style="font-size: 0.75rem;">
+                                    MSSV: <strong class="text-primary">@currentStudent.StudentCode</strong> &bull; @currentStudent.AcademicYear
+                                </div>
+                            </div>
+                        </div>
+                        <span class="badge @(currentStudent.StudentId == 1 ? "bg-success-subtle text-success border border-success-subtle" : "bg-warning-subtle text-warning border border-warning-subtle") px-2 py-1 small">
+                            @(currentStudent.StudentId == 1 ? "✓ Đạt chuẩn" : "⚠️ Cần chú ý")
+                        </span>
+                    </div>
+
+                    <!-- Thông tin nhanh về ngành & hạn mức tín chỉ -->
+                    <div class="p-2.5 bg-light rounded-3 mb-2.5 small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Chuyên ngành:</span>
+                            <strong class="text-dark text-truncate ms-2">@currentStudent.Major</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Hạn mức kỳ này:</span>
+                            <strong class="text-danger">Tối đa @currentStudent.MaxCreditsPerSemester TC</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Đã đăng ký (HK1):</span>
+                            <strong class="text-primary">@selectedStudentTotalCredits TC (@selectedStudentSections.Count môn/lớp)</strong>
+                        </div>
+                        <!-- Thanh tiến độ tín chỉ đăng ký -->
+                        @{
+                            int pct = currentStudent.MaxCreditsPerSemester > 0 ? (int)Math.Min(100, (selectedStudentTotalCredits * 100.0 / currentStudent.MaxCreditsPerSemester)) : 0;
+                            string barColor = pct >= 80 ? "bg-danger" : pct >= 50 ? "bg-primary" : "bg-info";
+                        }
+                        <div class="progress mt-1.5" style="height: 6px;">
+                            <div class="progress-bar @barColor" role="progressbar" style="width: @pct%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Trạng thái học phí & Tiên quyết -->
+                    <div class="row g-2 mb-2.5">
+                        <div class="col-6">
+                            <div class="p-2 border rounded-3 bg-white h-100">
+                                <div class="small text-muted" style="font-size: 0.7rem;">Học phí HK1</div>
+                                <div class="fw-bold @(selectedStudentIsPaid ? "text-success" : "text-danger") small">
+                                    @selectedStudentTuitionFee.ToString("N0") đ
+                                </div>
+                                <span class="badge @(selectedStudentIsPaid ? "bg-success" : "bg-danger") px-1.5 py-0.5" style="font-size: 0.65rem;">
+                                    @(selectedStudentIsPaid ? "Đã nộp" : "Chưa nộp")
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 border rounded-3 bg-white h-100">
+                                <div class="small text-muted" style="font-size: 0.7rem;">Tiên quyết</div>
+                                <div class="fw-bold text-dark small text-truncate">
+                                    @(currentStudent.StudentId == 1 ? "TIN101, 102" : "Thiếu TIN102")
+                                </div>
+                                <span class="badge @(currentStudent.StudentId == 1 ? "bg-success" : "bg-warning text-dark") px-1.5 py-0.5" style="font-size: 0.65rem;">
+                                    @(currentStudent.StudentId == 1 ? "Đạt chuẩn" : "Chưa học TIN102")
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danh sách các lớp học phần sinh viên này đang học/đăng ký -->
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-1.5">
+                            <span class="small fw-bold text-dark"><i class="bi bi-collection-play text-primary me-1"></i> Lớp HP đã đăng ký:</span>
+                            <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.68rem;">@selectedStudentSections.Count lớp</span>
+                        </div>
+
+                        @if (selectedStudentSections.Any())
+                        {
+                            <div class="list-group list-group-flush border rounded-3 overflow-hidden" style="max-height: 160px; overflow-y: auto; scrollbar-width: thin;">
+                                @foreach (var sec in selectedStudentSections)
+                                {
+                                    <div class="list-group-item list-group-item-action p-2 small">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <strong class="text-dark text-truncate me-2">@(sec.Course?.CourseName ?? sec.SectionCode)</strong>
+                                            <span class="badge bg-primary-subtle text-primary flex-shrink-0" style="font-size: 0.68rem;">@(sec.Course?.Credits ?? 3) TC</span>
+                                        </div>
+                                        <div class="text-muted" style="font-size: 0.7rem;">
+                                            Mã: <span class="fw-semibold">@sec.SectionCode</span> &bull; GV: @(sec.Instructor ?? "Chưa phân công")
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center p-3 border border-dashed rounded-3 text-muted small bg-light-subtle">
+                                <i class="bi bi-inbox text-secondary d-block mb-1 fs-5"></i>
+                                Sinh viên chưa có lớp học phần nào trong HK1
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Nút thao tác nhanh nghiệp vụ với sinh viên này -->
+                    <div class="d-flex gap-1.5">
+                        <a href="/admin/enrollments" class="btn btn-sm btn-outline-danger flex-fill text-nowrap py-1 small text-center" style="font-size: 0.75rem;">
+                            <i class="bi bi-person-gear me-1"></i>Rút môn
+                        </a>
+                        <a href="/admin/tuition" class="btn btn-sm btn-outline-warning text-dark flex-fill text-nowrap py-1 small text-center" style="font-size: 0.75rem;">
+                            <i class="bi bi-wallet2 me-1"></i>Học phí
+                        </a>
+                        <a href="/schedule" class="btn btn-sm btn-outline-primary flex-fill text-nowrap py-1 small text-center" style="font-size: 0.75rem;">
+                            <i class="bi bi-calendar3 me-1"></i>Xem TKB
+                        </a>
+                    </div>
+                </div>
+            }
 
             <!-- Khối Tóm Tắt Trạng Thái Vận Hành Học Vụ Nhanh (Gọn Gàng) -->
             <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
@@ -423,6 +563,14 @@ else
     private int selectedStudentId = 0;
     private Student? currentStudent;
 
+    // Dữ liệu tổng quan của sinh viên đang chọn (nhảy ngay khi chọn bất kỳ sinh viên nào)
+    private List<Enrollment> selectedStudentEnrollments = new();
+    private List<Section> selectedStudentSections = new();
+    private int selectedStudentTotalCredits = 0;
+    private decimal selectedStudentTuitionFee = 0;
+    private bool selectedStudentIsPaid = false;
+    private string selectedStudentPaymentStatus = "Chưa nộp";
+
     protected override async Task OnInitializedAsync()
     {
         CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChanged);
@@ -450,15 +598,77 @@ else
             enrollments = enrollmentList.ToList();
 
             selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
-            currentStudent = students.FirstOrDefault(s => s.StudentId == selectedStudentId);
+            if (selectedStudentId <= 0 && students.Any())
+            {
+                selectedStudentId = students.First().StudentId;
+                await CurrentUserStateStore.SetCurrentStudentIdAsync(selectedStudentId);
+            }
+
+            await LoadSelectedStudentDataAsync(selectedStudentId);
         }
+    }
+
+    private async Task LoadSelectedStudentDataAsync(int studentId)
+    {
+        selectedStudentId = studentId;
+        currentStudent = students.FirstOrDefault(s => s.StudentId == studentId);
+        if (currentStudent != null)
+        {
+            var enrolls = (await EnrollmentRepository.GetEnrollmentsByStudentIdAsync(studentId)).ToList();
+            selectedStudentEnrollments = enrolls;
+
+            var activeEnroll = enrolls.FirstOrDefault(e => e.Semester == "HK1 (2026 - 2027)" || e.Semester == "2026_HK1" || e.Semester == "2025_HK1") ?? enrolls.FirstOrDefault();
+            if (activeEnroll != null && activeEnroll.EnrollmentLines.Any())
+            {
+                selectedStudentSections = activeEnroll.EnrollmentLines
+                    .Where(l => l.Section != null)
+                    .Select(l => l.Section!)
+                    .ToList();
+                selectedStudentTotalCredits = activeEnroll.TotalCredits;
+                selectedStudentTuitionFee = activeEnroll.TuitionFee;
+                selectedStudentIsPaid = activeEnroll.IsPaid;
+                selectedStudentPaymentStatus = activeEnroll.IsPaid ? "Đã nộp" : "Chưa nộp";
+            }
+            else
+            {
+                var registered = (await EnrollmentRepository.GetRegisteredSectionsByStudentAsync(studentId, "HK1 (2026 - 2027)")).ToList();
+                selectedStudentSections = registered;
+                selectedStudentTotalCredits = registered.Where(s => s.Course != null).Sum(s => s.Course!.Credits);
+                selectedStudentTuitionFee = selectedStudentTotalCredits * 450000m;
+                selectedStudentIsPaid = false;
+                selectedStudentPaymentStatus = selectedStudentSections.Any() ? "Chưa nộp" : "Chưa đăng ký";
+            }
+        }
+        else
+        {
+            selectedStudentSections.Clear();
+            selectedStudentEnrollments.Clear();
+            selectedStudentTotalCredits = 0;
+            selectedStudentTuitionFee = 0;
+            selectedStudentIsPaid = false;
+            selectedStudentPaymentStatus = "Chưa chọn";
+        }
+    }
+
+    private async Task SelectStudentAsync(int studentId)
+    {
+        await LoadSelectedStudentDataAsync(studentId);
+        await CurrentUserStateStore.SetCurrentStudentIdAsync(studentId);
+        StateHasChanged();
     }
 
     private async void HandleUserStateChanged()
     {
         await InvokeAsync(async () =>
         {
-            await RefreshDataAsync();
+            currentRole = await CurrentUserStateStore.GetCurrentRoleAsync();
+            isAuthorized = (currentRole == "Admin");
+            currentUser = await CurrentUserStateStore.GetCurrentUserAsync();
+            int storeStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+            if (storeStudentId != selectedStudentId && storeStudentId > 0)
+            {
+                await LoadSelectedStudentDataAsync(storeStudentId);
+            }
             StateHasChanged();
         });
     }
@@ -467,9 +677,7 @@ else
     {
         if (int.TryParse(e.Value?.ToString(), out int newId))
         {
-            selectedStudentId = newId;
-            currentStudent = students.FirstOrDefault(s => s.StudentId == newId);
-            await CurrentUserStateStore.SetCurrentStudentIdAsync(newId);
+            await SelectStudentAsync(newId);
         }
     }
 

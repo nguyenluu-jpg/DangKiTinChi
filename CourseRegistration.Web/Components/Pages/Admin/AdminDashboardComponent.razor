@@ -110,43 +110,76 @@ else
                     </div>
                 </div>
 
-                <!-- HÀNG 1: CÁC BUTTON CHÍNH TRÊN 1 DÒNG DUY NHẤT (FLEX-NOWRAP, KHÔNG BỊ XUỐNG DÒNG) -->
-                <div class="d-flex gap-1.5 mb-2 flex-nowrap">
-                    <a href="/admin/courses" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1.5 small text-center">
+                <!-- TẤT CẢ CÁC NÚT NGHIỆP VỤ TRÊN CHUNG 1 HÀNG DUY NHẤT (FLEX-NOWRAP, KHÔNG BỊ RỚT DÒNG) -->
+                <div class="d-flex gap-1 mb-2 flex-nowrap overflow-x-auto py-1" style="scrollbar-width: none;">
+                    <a href="/admin/courses" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center" title="Môn học">
                         <i class="bi bi-book me-1"></i>Môn học
                     </a>
-                    <a href="/admin/sections" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1.5 small text-center">
+                    <a href="/admin/sections" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center" title="Lớp HP">
                         <i class="bi bi-collection me-1"></i>Lớp HP
                     </a>
-                    <a href="/admin/enrollments" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1.5 small text-center">
+                    <a href="/admin/enrollments" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center" title="Rút môn">
                         <i class="bi bi-person-gear me-1"></i>Rút môn
                     </a>
-                </div>
-
-                <!-- HÀNG 2: CÁC BUTTON BỔ SUNG TỪ MỤC PHÒNG ĐÀO TẠO (TRÊN 1 DÒNG DUY NHẤT) -->
-                <div class="d-flex gap-1.5 mb-2 flex-nowrap">
-                    <a href="/admin/tuition" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-2 py-1.5 small text-center">
-                        <i class="bi bi-wallet2 text-warning me-1"></i>Học phí &amp; Dự thi
+                    <a href="/admin/tuition" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center" title="Học phí">
+                        <i class="bi bi-wallet2 text-warning me-1"></i>Học phí
                     </a>
-                    <a href="/ai-advisor" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-2 py-1.5 small text-center">
+                    <a href="/ai-advisor" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center" title="Trợ lý AI">
                         <i class="bi bi-stars text-warning me-1"></i>Trợ lý AI
                     </a>
                 </div>
 
-                <!-- Bấm để mở rộng toàn bộ thông tin đào tạo (khi kéo/mở có hết thông tin, rất gọn đẹp) -->
+                <!-- Bấm để mở rộng toàn bộ thông tin đào tạo (khi kéo có hết thông tin, rất gọn đẹp) -->
                 <button type="button" 
-                        class="btn btn-sm btn-outline-light w-100 py-1 mb-2 d-flex align-items-center justify-content-between rounded-3 border-opacity-50"
-                        style="font-size: 0.78rem;"
+                        class="btn btn-sm btn-outline-light w-100 py-1.5 mb-2 d-flex align-items-center justify-content-between rounded-3 border-opacity-50"
+                        style="font-size: 0.8rem;"
                         @onclick="() => isInfoCardExpanded = !isInfoCardExpanded">
-                    <span><i class="bi bi-info-circle me-1"></i> Chi tiết liên hệ &amp; Trực ban</span>
+                    <span><i class="bi bi-info-circle-fill me-1.5 text-warning"></i> Thông tin tiếp nhận &amp; Trực ban</span>
                     <i class="bi @(isInfoCardExpanded ? "bi-chevron-up" : "bi-chevron-down")"></i>
                 </button>
                 @if (isInfoCardExpanded)
                 {
-                    <div class="p-2.5 bg-black bg-opacity-30 rounded-3 mb-2 small text-white-50" style="font-size: 0.75rem;">
-                        <div><i class="bi bi-building text-primary me-1"></i><strong class="text-white">Bộ phận:</strong> Tòa nhà Điều hành A1 (P. A1-102)</div>
-                        <div class="mt-1"><i class="bi bi-clock text-info me-1"></i><strong class="text-white">Tiếp sinh viên:</strong> 07h30-11h30 &bull; 13h30-17h00</div>
-                        <div class="mt-1"><i class="bi bi-telephone text-success me-1"></i><strong class="text-white">Hotline:</strong> 1900 6868 &bull; daotao@edu.vn</div>
+                    <div class="p-3 bg-black bg-opacity-35 rounded-3 mb-2 small text-white-50 border border-white border-opacity-10" 
+                         style="font-size: 0.76rem; max-height: 240px; overflow-y: auto; scrollbar-width: thin;">
+                        <div class="fw-bold text-white mb-1.5 pb-1 border-bottom border-white border-opacity-20 d-flex align-items-center justify-content-between">
+                            <span><i class="bi bi-building text-primary me-1"></i> Trụ sở &amp; Tiếp nhận:</span>
+                            <span class="badge bg-danger text-white" style="font-size: 0.65rem;">Một Cửa</span>
+                        </div>
+                        <div class="text-white-50 mb-1">
+                            <strong class="text-white">Địa chỉ:</strong> Tầng 1, Tòa nhà Điều hành A1 (Khu Hiệu Bộ)
+                        </div>
+                        <div class="text-white-50 mb-2">
+                            <strong class="text-white">Phòng tiếp nhận:</strong> P. A1-102 (Bàn 1 &ndash; 4)
+                        </div>
+
+                        <div class="fw-bold text-white mb-1.5 pb-1 border-bottom border-white border-opacity-20">
+                            <i class="bi bi-clock-fill text-info me-1"></i> Thời gian tiếp sinh viên:
+                        </div>
+                        <div class="text-white-50 mb-1">
+                            &bull; <strong>Sáng:</strong> 07h30 &ndash; 11h30 (Thứ 2 &ndash; Thứ 6)
+                        </div>
+                        <div class="text-white-50 mb-1">
+                            &bull; <strong>Chiều:</strong> 13h30 &ndash; 17h00 (Thứ 2 &ndash; Thứ 6)
+                        </div>
+                        <div class="text-white-50 mb-2">
+                            &bull; <strong>Thứ 7, CN, Lễ:</strong> Cổng trực tuyến 24/7
+                        </div>
+
+                        <div class="fw-bold text-white mb-1.5 pb-1 border-bottom border-white border-opacity-20">
+                            <i class="bi bi-telephone-fill text-success me-1"></i> Đường dây nóng &amp; Hỗ trợ:
+                        </div>
+                        <div class="text-white-50 mb-1">
+                            &bull; <strong>Hotline:</strong> <span class="text-success fw-bold">1900 6868</span>
+                        </div>
+                        <div class="text-white-50 mb-1">
+                            &bull; <strong>Điện thoại bàn:</strong> (024) 3883 144 (Máy lẻ: 101, 102)
+                        </div>
+                        <div class="text-white-50 mb-1">
+                            &bull; <strong>Kỹ thuật cổng:</strong> (024) 3883 145
+                        </div>
+                        <div class="text-white-50">
+                            &bull; <strong>Email:</strong> <a href="mailto:daotao@edu.vn" class="text-info text-decoration-none">daotao@edu.vn</a>
+                        </div>
                     </div>
                 }
 
@@ -240,88 +273,7 @@ else
                 </div>
             </div>
 
-            <!-- THẺ THÔNG TIN LIÊN HỆ & GIỜ LÀM VIỆC CHÍNH THỨC CỦA PHÒNG ĐÀO TẠO -->
-            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
-                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
-                    <h5 class="fw-bold mb-0 text-dark d-flex align-items-center">
-                        <i class="bi bi-building-fill text-danger me-2"></i>
-                        Thông Tin Liên Hệ &amp; Tiếp Nhận Học Vụ &bull; Phòng Đào Tạo
-                    </h5>
-                    <span class="badge bg-danger-subtle text-danger px-2.5 py-1 small fw-semibold">
-                        Trực Tiếp &amp; Trực Tuyến
-                    </span>
-                </div>
 
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded-3 h-100 border">
-                            <div class="fw-bold text-dark mb-2 d-flex align-items-center">
-                                <i class="bi bi-geo-alt-fill text-danger me-2"></i> Trụ Sở Làm Việc
-                            </div>
-                            <div class="small text-secondary mb-1">
-                                <strong>Đơn vị:</strong> Phòng Đào Tạo &bull; Bộ phận Một Cửa Sinh Viên
-                            </div>
-                            <div class="small text-secondary mb-1">
-                                <strong>Địa chỉ:</strong> Tầng 1, Tòa nhà Điều hành A1 (Khu Hiệu Bộ)
-                            </div>
-                            <div class="small text-secondary">
-                                <strong>Phòng tiếp công dân:</strong> Phòng A1-102 &bull; Bàn 1 đến Bàn 4
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded-3 h-100 border">
-                            <div class="fw-bold text-dark mb-2 d-flex align-items-center">
-                                <i class="bi bi-clock-fill text-primary me-2"></i> Thời Gian Tiếp Sinh Viên
-                            </div>
-                            <div class="small text-secondary mb-1">
-                                <strong>Buổi sáng:</strong> 07h30 &ndash; 11h30 (Thứ 2 đến Thứ 6)
-                            </div>
-                            <div class="small text-secondary mb-1">
-                                <strong>Buổi chiều:</strong> 13h30 &ndash; 17h00 (Thứ 2 đến Thứ 6)
-                            </div>
-                            <div class="small text-secondary">
-                                <strong>Thứ 7, CN &amp; Ngày lễ:</strong> Nghỉ tiếp công dân; Cổng trực tuyến 24/7
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded-3 h-100 border">
-                            <div class="fw-bold text-dark mb-2 d-flex align-items-center">
-                                <i class="bi bi-telephone-fill text-success me-2"></i> Đường Dây Nóng (Hotline)
-                            </div>
-                            <div class="small text-secondary mb-1">
-                                <strong>Tổng đài hỗ trợ:</strong> <span class="fw-bold text-success">1900 6868</span>
-                            </div>
-                            <div class="small text-secondary mb-1">
-                                <strong>Điện thoại bàn:</strong> (024) 3883 144 &bull; Số máy lẻ: 101, 102
-                            </div>
-                            <div class="small text-secondary">
-                                <strong>Hỗ trợ kỹ thuật cổng:</strong> (024) 3883 145
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded-3 h-100 border">
-                            <div class="fw-bold text-dark mb-2 d-flex align-items-center">
-                                <i class="bi bi-envelope-at-fill text-info me-2"></i> Hòm Thư &amp; Kênh Trực Tuyến
-                            </div>
-                            <div class="small text-secondary mb-1">
-                                <strong>Email tiếp nhận đơn:</strong> <a href="mailto:daotao@edu.vn" class="fw-semibold text-decoration-none">daotao@edu.vn</a>
-                            </div>
-                            <div class="small text-secondary mb-1">
-                                <strong>Cổng thông tin đào tạo:</strong> <a href="/" class="fw-semibold text-decoration-none">Cổng Đăng Ký Học Phần Trực Tuyến</a>
-                            </div>
-                            <div class="small text-secondary">
-                                <strong>Thời gian phản hồi email:</strong> Trong vòng 24 &ndash; 48 giờ làm việc
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- THẺ QUY TRÌNH HỌC VỤ & TIẾN ĐỘ 3 GIAI ĐOẠN ĐÀO TẠO TÍN CHỈ -->
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">

@@ -89,38 +89,64 @@
                     </div>
 
                     <!-- Các nút chính trên 1 dòng duy nhất (flex-nowrap, không rớt dòng) -->
-                    <div class="d-flex gap-1 mb-2 flex-nowrap">
-                        <a href="/admin" class="btn btn-sm btn-danger fw-bold flex-fill text-nowrap px-1 py-1 small text-center shadow-xs">
+                    <div class="d-flex gap-1 mb-2 flex-nowrap overflow-x-auto py-1" style="scrollbar-width: none;">
+                        <a href="/admin" class="btn btn-sm btn-danger fw-bold flex-fill text-nowrap px-1.5 py-1 small text-center shadow-xs" title="Tổng quan">
                             <i class="bi bi-speedometer2 me-1"></i>Tổng quan
                         </a>
-                        <a href="/admin/courses" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center">
+                        <a href="/admin/courses" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1.5 py-1 small text-center" title="Môn học">
                             <i class="bi bi-book me-1"></i>Môn học
                         </a>
-                        <a href="/admin/sections" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center">
+                        <a href="/admin/sections" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1.5 py-1 small text-center" title="Lớp HP">
                             <i class="bi bi-collection me-1"></i>Lớp HP
                         </a>
-                        <a href="/admin/enrollments" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center">
+                        <a href="/admin/enrollments" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1.5 py-1 small text-center" title="Rút môn">
                             <i class="bi bi-person-gear me-1"></i>Rút môn
+                        </a>
+                        <a href="/admin/tuition" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1.5 py-1 small text-center" title="Học phí">
+                            <i class="bi bi-wallet2 text-warning me-1"></i>Học phí
                         </a>
                     </div>
 
                     <!-- Bấm để mở rộng toàn bộ thông tin đào tạo (khi kéo/mở có hết thông tin, rất gọn đẹp) -->
                     <button type="button" 
-                            class="btn btn-sm btn-outline-light w-100 py-1 mb-2 d-flex align-items-center justify-content-between rounded-3 border-opacity-50"
-                            style="font-size: 0.78rem;"
+                            class="btn btn-sm btn-outline-light w-100 py-1.5 mb-2 d-flex align-items-center justify-content-between rounded-3 border-opacity-50"
+                            style="font-size: 0.8rem;"
                             @onclick="() => isAdminInfoExpanded = !isAdminInfoExpanded">
-                        <span><i class="bi bi-info-circle me-1"></i> Thông tin tiếp nhận &amp; Giờ trực</span>
+                        <span><i class="bi bi-info-circle-fill me-1.5 text-warning"></i> Thông tin tiếp nhận &amp; Giờ trực</span>
                         <i class="bi @(isAdminInfoExpanded ? "bi-chevron-up" : "bi-chevron-down")"></i>
                     </button>
                     @if (isAdminInfoExpanded)
                     {
-                        <div class="p-2.5 bg-black bg-opacity-30 rounded-3 mb-2 small text-white-50" style="font-size: 0.75rem;">
-                            <div><i class="bi bi-building text-primary me-1"></i><strong class="text-white">Bộ phận:</strong> Tòa nhà Điều hành A1 (P. A1-102)</div>
-                            <div class="mt-1"><i class="bi bi-clock text-info me-1"></i><strong class="text-white">Giờ làm việc:</strong> 07h30-11h30 &bull; 13h30-17h00 (T2-T6)</div>
-                            <div class="mt-1"><i class="bi bi-telephone text-success me-1"></i><strong class="text-white">Hotline:</strong> 1900 6868 &bull; daotao@edu.vn</div>
-                            <div class="mt-2 pt-1 border-top border-white border-opacity-10 d-flex gap-2">
-                                <a href="/admin/tuition" class="btn btn-sm btn-outline-warning py-0 px-2 text-warning flex-fill text-center" style="font-size: 0.72rem;"><i class="bi bi-wallet2 me-1"></i>Học phí</a>
-                                <a href="/ai-advisor" class="btn btn-sm btn-outline-info py-0 px-2 text-info flex-fill text-center" style="font-size: 0.72rem;"><i class="bi bi-stars me-1"></i>Trợ lý AI</a>
+                        <div class="p-3 bg-black bg-opacity-35 rounded-3 mb-2 small text-white-50 border border-white border-opacity-10" 
+                             style="font-size: 0.76rem; max-height: 220px; overflow-y: auto; scrollbar-width: thin;">
+                            <div class="fw-bold text-white mb-1.5 pb-1 border-bottom border-white border-opacity-20 d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-building text-primary me-1"></i> Trụ sở &amp; Tiếp nhận:</span>
+                                <span class="badge bg-danger text-white" style="font-size: 0.65rem;">Một Cửa</span>
+                            </div>
+                            <div class="text-white-50 mb-1">
+                                <strong class="text-white">Địa chỉ:</strong> Tòa nhà Điều hành A1 (P. A1-102, Bàn 1 &ndash; 4)
+                            </div>
+                            <div class="text-white-50 mb-2">
+                                <strong class="text-white">Giờ trực tiếp SV:</strong> 07h30 &ndash; 11h30 &bull; 13h30 &ndash; 17h00 (T2 &ndash; T6)
+                            </div>
+
+                            <div class="fw-bold text-white mb-1.5 pb-1 border-bottom border-white border-opacity-20">
+                                <i class="bi bi-telephone-fill text-success me-1"></i> Đường dây nóng &amp; Kênh trực tuyến:
+                            </div>
+                            <div class="text-white-50 mb-1">
+                                &bull; <strong>Hotline:</strong> <span class="text-success fw-bold">1900 6868</span> &bull; (024) 3883 144
+                            </div>
+                            <div class="text-white-50 mb-2">
+                                &bull; <strong>Email:</strong> <a href="mailto:daotao@edu.vn" class="text-info text-decoration-none">daotao@edu.vn</a>
+                            </div>
+
+                            <div class="pt-1 border-top border-white border-opacity-20 d-flex gap-2">
+                                <a href="/ai-advisor" class="btn btn-sm btn-outline-warning py-1 px-2 text-warning flex-fill text-center" style="font-size: 0.74rem;">
+                                    <i class="bi bi-stars me-1"></i>Trợ lý AI Đào Tạo
+                                </a>
+                                <a href="/phong-dao-tao" class="btn btn-sm btn-outline-light py-1 px-2 text-white flex-fill text-center" style="font-size: 0.74rem;">
+                                    <i class="bi bi-speedometer2 me-1"></i>Quản trị học vụ
+                                </a>
                             </div>
                         </div>
                     }

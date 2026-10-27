@@ -193,11 +193,13 @@
 
                 <!-- Chân Cửa Sổ: Nhập câu hỏi & Gửi -->
                 <div class="ai-chat-footer p-2 bg-white">
-                    <form @onsubmit="SendMessage" class="d-flex gap-1 align-items-center">
+                    <form @onsubmit="SendMessage" @onsubmit:preventDefault class="d-flex gap-1 align-items-center">
                         <input type="text" 
                                class="form-control form-control-sm rounded-pill border shadow-none px-3" 
                                placeholder="Hỏi Cố vấn AI về môn học, giảng viên, quy chế, học phí..." 
                                @bind="inputQuestion" 
+                               @bind:event="oninput" 
+                               @onkeydown="HandleInputKeyDown" 
                                disabled="@isThinking" />
                         <button type="submit" 
                                 class="btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ai-send-btn shadow-sm" 
@@ -358,6 +360,14 @@
     {
         inputQuestion = prompt;
         await SendMessage();
+    }
+
+    private async Task HandleInputKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
     }
 
     private async Task ScrollChatToBottomAsync()

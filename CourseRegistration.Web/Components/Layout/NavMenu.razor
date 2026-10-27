@@ -7,7 +7,7 @@
 @implements IDisposable
 
 <!-- Dropdown Backdrop Overlay (Tự động đóng tất cả dropdown khi bấm ra ngoài bất kỳ đâu) -->
-@if (isAdminDropdownOpen || isUserDropdownOpen || isMobileNavExpanded)
+@if (isAdminDropdownOpen || isUserDropdownOpen || isLookupDropdownOpen || isMobileNavExpanded)
 {
     <div class="dropdown-backdrop-overlay" @onclick="CloseAllDropdowns"></div>
 }
@@ -48,10 +48,38 @@
                         <i class="bi bi-house-door me-1"></i> Trang chủ
                     </NavLink>
                 </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="/sections" @onclick="CloseAllDropdowns">
-                        <i class="bi bi-search me-1"></i> Tra cứu học phần
-                    </NavLink>
+                <!-- Nhóm Tra cứu: Gồm Tra cứu học phần & Kế hoạch đăng ký riêng biệt -->
+                <li class="nav-item dropdown position-relative">
+                    <button class="nav-link dropdown-toggle d-flex align-items-center bg-transparent border-0 @(IsLookupActive ? "active text-white" : "")" 
+                            type="button" 
+                            @onclick="ToggleLookupDropdown">
+                        <i class="bi bi-search me-1"></i> Tra cứu
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow border-0 rounded-3 p-2 @(isLookupDropdownOpen ? "show" : "")" style="min-width: 270px;">
+                        <li>
+                            <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-white" href="/sections" @onclick="CloseAllDropdowns">
+                                <div class="bg-primary bg-opacity-25 text-primary p-2 rounded-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                    <i class="bi bi-search"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold small">Tra cứu học phần</div>
+                                    <div class="text-secondary" style="font-size: 0.72rem;">Tìm môn học & chọn lớp vào giỏ</div>
+                                </div>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider border-secondary opacity-50 my-1"></li>
+                        <li>
+                            <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-white" href="/registration-plan" @onclick="CloseAllDropdowns">
+                                <div class="bg-info bg-opacity-25 text-info p-2 rounded-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                    <i class="bi bi-calendar3-range"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold small">Kế hoạch đăng ký</div>
+                                    <div class="text-secondary" style="font-size: 0.72rem;">Tiến độ 3 giai đoạn & mở cổng</div>
+                                </div>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
                 <li class="nav-item">
                     <NavLink class="nav-link" href="/schedule" @onclick="CloseAllDropdowns">
@@ -360,6 +388,7 @@
     private bool isAuthenticated = false;
     private int cartCount = 0;
 
+    private bool isLookupDropdownOpen = false;
     private bool isAdminDropdownOpen = false;
     private bool isUserDropdownOpen = false;
     private bool isMobileNavExpanded = false;
@@ -374,14 +403,24 @@
                 (s.FullName?.Contains(studentSearchKeyword, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 (s.Major?.Contains(studentSearchKeyword, StringComparison.OrdinalIgnoreCase) ?? false));
 
+    private bool IsLookupActive =>
+        NavigationManager.Uri.Contains("/sections", StringComparison.OrdinalIgnoreCase) ||
+        NavigationManager.Uri.Contains("/registration-plan", StringComparison.OrdinalIgnoreCase);
+
     protected override async Task OnInitializedAsync()
     {
+        NavigationManager.LocationChanged += HandleLocationChanged;
         CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
         CartStateStore.AddStateChangeListeners(HandleCartStateChange);
 
         availableStudents = (await StudentRepository.GetAllStudentsAsync()).ToList();
         await RefreshUserState();
         await RefreshCartCount();
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        StateHasChanged();
     }
 
     private async void HandleUserStateChange()
@@ -410,14 +449,23 @@
         cartCount = await CartStateStore.GetItemsCount();
     }
 
+    private void ToggleLookupDropdown()
+    {
+        isAdminDropdownOpen = false;
+        isUserDropdownOpen = false;
+        isLookupDropdownOpen = !isLookupDropdownOpen;
+    }
+
     private void ToggleAdminDropdown()
     {
+        isLookupDropdownOpen = false;
         isUserDropdownOpen = false;
         isAdminDropdownOpen = !isAdminDropdownOpen;
     }
 
     private void ToggleUserDropdown()
     {
+        isLookupDropdownOpen = false;
         isAdminDropdownOpen = false;
         isUserDropdownOpen = !isUserDropdownOpen;
     }
@@ -437,6 +485,7 @@
 
     private void CloseAllDropdowns()
     {
+        isLookupDropdownOpen = false;
         isAdminDropdownOpen = false;
         isUserDropdownOpen = false;
         isMobileNavExpanded = false;
@@ -452,6 +501,7 @@
 
     public void Dispose()
     {
+        NavigationManager.LocationChanged -= HandleLocationChanged;
         CurrentUserStateStore.RemoveStateChangeListeners(HandleUserStateChange);
         CartStateStore.RemoveStateChangeListeners(HandleCartStateChange);
     }

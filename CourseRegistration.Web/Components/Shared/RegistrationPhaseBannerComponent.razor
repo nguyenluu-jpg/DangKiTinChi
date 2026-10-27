@@ -1,6 +1,86 @@
 @namespace CourseRegistration.Web.Components.Shared
 @inject IRegistrationPeriodService RegistrationPeriodService
 
+@if (IsCompact)
+{
+    <!-- Dải trạng thái gọn gàng (Compact Status Ribbon) cho trang Tra Cứu -->
+    <div class="card border-0 shadow-sm rounded-4 mb-3 bg-white overflow-hidden border-start border-4 @(isOpen ? "border-success" : "border-secondary")">
+        <div class="p-3 d-flex justify-content-between align-items-center flex-wrap gap-2.5">
+            <div class="d-flex align-items-center gap-3">
+                <div class="phase-icon-box @(isOpen ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary") rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" style="width: 40px; height: 40px;">
+                    <i class="bi @(isOpen ? "bi-broadcast" : "bi-lock-fill") fs-5"></i>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="fw-bold text-dark fs-6">@selectedSemester?.ShortName</span>
+                        @if (isOpen)
+                        {
+                            <span class="badge bg-success text-white rounded-pill px-2.5 py-1 small fw-semibold d-inline-flex align-items-center gap-1.5 shadow-xs">
+                                <span class="pulse-dot"></span> ĐANG MỞ ĐĂNG KÝ
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary text-white rounded-pill px-2.5 py-1 small fw-semibold">
+                                CỔNG ĐÃ KHÓA
+                            </span>
+                        }
+                    </div>
+                    <div class="small text-secondary mt-0.5 d-flex align-items-center gap-2 flex-wrap">
+                        @if (activePhase != null)
+                        {
+                            <span>
+                                Hiện tại: <strong class="text-primary">Giai đoạn @activePhase.PhaseNumber: @(activePhase.PhaseNumber == 1 ? "ĐK Chính thức" : activePhase.PhaseNumber == 2 ? "ĐK Bổ sung & Học vượt" : "Rút môn & Học phí")</strong>
+                            </span>
+                            <span>&bull;</span>
+                            <span>Thời hạn: <strong>@activePhase.StartDate.ToString("dd/MM") &rarr; @activePhase.EndDate.ToString("dd/MM/yyyy")</strong></span>
+                        }
+                        else
+                        {
+                            <span>Ngoài khung thời gian đăng ký của học kỳ này.</span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
+                @if (ShowControls)
+                {
+                    <!-- Dropdown chọn học kỳ -->
+                    <select class="form-select form-select-sm fw-semibold text-primary border-primary-subtle rounded-pill shadow-xs" 
+                            style="width: auto; min-width: 150px;"
+                            value="@SelectedSemesterCode" 
+                            @onchange="HandleSemesterChanged">
+                        @foreach (var sem in allSemesters)
+                        {
+                            <option value="@sem.SemesterCode">@sem.ShortName</option>
+                        }
+                    </select>
+
+                    <!-- Dropdown mô phỏng giai đoạn (Demo Giảng viên theo GRADING.md) -->
+                    <select class="form-select form-select-sm text-secondary rounded-pill shadow-xs" 
+                            style="width: auto; font-size: 0.8rem;"
+                            value="@(RegistrationPeriodService.SimulatedPhaseOverride?.ToString() ?? "0")" 
+                            @onchange="HandlePhaseOverrideChanged"
+                            title="Chế độ biểu diễn cho Giảng viên">
+                        <option value="0">⏱️ Thời gian thực tế</option>
+                        <option value="1">GĐ 1: ĐK Chuẩn</option>
+                        <option value="2">GĐ 2: ĐK Bổ sung</option>
+                        <option value="3">GĐ 3: Rút môn & Phí</option>
+                    </select>
+                }
+
+                <a href="/registration-plan" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1 shadow-xs">
+                    <i class="bi bi-calendar3-range"></i>
+                    <span>Xem kế hoạch chi tiết</span>
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
 <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden phase-banner-card">
     <!-- Header gọn gàng, thanh lịch -->
     <div class="px-4 py-3 bg-light-subtle border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -269,16 +349,24 @@
                         <strong class="text-success">Cổng đăng ký trực tuyến đang mở:</strong> Sinh viên có thể chọn thêm lớp học phần, đổi lịch học và kiểm tra đối chiếu hạn mức tín chỉ tự động bên dưới!
                     </span>
                 </div>
-                @if (RegistrationPeriodService.SimulatedPhaseOverride.HasValue)
-                {
-                    <button class="btn btn-sm btn-outline-success py-1 px-3 rounded-pill small fw-medium" @onclick="ResetSimulation">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i> Trở về thời gian thực tế
-                    </button>
-                }
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    @if (RegistrationPeriodService.SimulatedPhaseOverride.HasValue)
+                    {
+                        <button class="btn btn-sm btn-outline-success py-1 px-3 rounded-pill small fw-medium" @onclick="ResetSimulation">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Trở về thời gian thực tế
+                        </button>
+                    }
+                    <a href="/sections" class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-xs">
+                        <i class="bi bi-search"></i>
+                        <span>Tra Cứu & Đăng Ký Môn Ngay</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
             </div>
         }
     </div>
 </div>
+}
 
 <style>
     .phase-banner-card {
@@ -397,6 +485,9 @@
 </style>
 
 @code {
+    [Parameter]
+    public bool IsCompact { get; set; } = false;
+
     [Parameter]
     public string SelectedSemesterCode { get; set; } = "2026_HK1";
 

@@ -1,0 +1,217 @@
+@page "/registration-plan"
+@namespace CourseRegistration.Web.Components.Pages
+@inject IRegistrationPeriodService RegistrationPeriodService
+@inject ICurrentUserStateStore CurrentUserStateStore
+@inject IStudentRepository StudentRepository
+@inject IRegistrationCartStateStore CartStateStore
+@implements IDisposable
+
+<!-- Thanh chuyển đổi nhóm Tra cứu (Pill Switcher) & Tiêu đề -->
+<div class="mb-4">
+    <!-- Nhóm nút chuyển tab Tra cứu / Kế hoạch cực kỳ trực quan -->
+    <div class="d-inline-flex p-1 bg-white rounded-pill border shadow-xs mb-3">
+        <a href="/sections" class="btn btn-sm btn-light text-secondary rounded-pill px-3 py-1.5 fw-semibold border-0">
+            <i class="bi bi-search me-1.5"></i> Tra Cứu Lớp Học Phần
+        </a>
+        <a href="/registration-plan" class="btn btn-sm btn-primary rounded-pill px-3 py-1.5 fw-semibold shadow-xs">
+            <i class="bi bi-calendar3-range me-1.5"></i> Kế Hoạch Đăng Ký
+        </a>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-calendar-check-fill text-primary me-2"></i>Kế Hoạch & Tiến Độ Đăng Ký Học Phần
+            </h2>
+            <p class="text-muted mb-0">Lộ trình 3 giai đoạn đăng ký tín chỉ chính thức, quy chế học vụ và thời hạn nộp học phí</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="/sections" class="btn btn-primary d-inline-flex align-items-center shadow-sm">
+                <i class="bi bi-search me-1.5"></i>
+                <span>Tra Cứu & Chọn Lớp Ngay</span>
+            </a>
+            <a href="/cart" class="btn btn-outline-primary d-inline-flex align-items-center shadow-sm">
+                <i class="bi bi-cart3 me-1"></i>
+                <span>Giỏ Môn</span>
+                @if (cartCount > 0)
+                {
+                    <span class="badge bg-primary text-white ms-1.5 rounded-pill">@cartCount</span>
+                }
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Khối 3 Giai đoạn Kế hoạch tương tác đầy đủ -->
+<RegistrationPhaseBannerComponent IsCompact="false" 
+                                  @bind-SelectedSemesterCode="currentSemesterCode" 
+                                  OnPhaseChanged="HandlePhaseChanged" />
+
+<!-- Khung Thông tin Quy định Hạn mức & Hướng dẫn Sinh viên -->
+<div class="row g-4 mb-4">
+    <!-- Cột 1: Quy định Hạn mức Tín chỉ & Học vụ -->
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-4">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="p-2.5 rounded-3 bg-primary-subtle text-primary">
+                    <i class="bi bi-shield-check fs-4"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold text-dark mb-0">Quy Chế & Hạn Mức Tín Chỉ</h5>
+                    <div class="small text-muted">Quy định áp dụng cho sinh viên toàn trường</div>
+                </div>
+            </div>
+
+            <ul class="list-group list-group-flush border-top border-light-subtle">
+                <li class="list-group-item px-0 py-3 d-flex align-items-start gap-3 bg-transparent">
+                    <span class="badge bg-primary rounded-circle p-1.5 mt-0.5"><i class="bi bi-check2"></i></span>
+                    <div>
+                        <strong class="text-dark">Sinh viên bình thường (Tích lũy tốt):</strong>
+                        <div class="small text-secondary mt-0.5">
+                            Đăng ký tối đa <strong>24 tín chỉ</strong> và tối thiểu <strong>12 tín chỉ</strong> trong học kỳ chính để duy trì tư cách sinh viên chính quy.
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item px-0 py-3 d-flex align-items-start gap-3 bg-transparent">
+                    <span class="badge bg-warning text-dark rounded-circle p-1.5 mt-0.5"><i class="bi bi-exclamation"></i></span>
+                    <div>
+                        <strong class="text-dark">Sinh viên Cảnh báo học vụ:</strong>
+                        <div class="small text-secondary mt-0.5">
+                            Bị giới hạn tối đa <strong>14 tín chỉ/kỳ</strong> để tập trung cải thiện kết quả học tập (Ví dụ SV Trần Thị Mai - SV21002).
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item px-0 py-3 d-flex align-items-start gap-3 bg-transparent">
+                    <span class="badge bg-info text-white rounded-circle p-1.5 mt-0.5"><i class="bi bi-diagram-3"></i></span>
+                    <div>
+                        <strong class="text-dark">Điều kiện học phần Tiên quyết:</strong>
+                        <div class="small text-secondary mt-0.5">
+                            Phải có điểm học phần tiên quyết &ge; 4.0 (hoặc đạt) mới được đăng ký môn học tiếp theo trong lộ trình đào tạo.
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item px-0 py-3 d-flex align-items-start gap-3 bg-transparent">
+                    <span class="badge bg-success text-white rounded-circle p-1.5 mt-0.5"><i class="bi bi-clock-history"></i></span>
+                    <div>
+                        <strong class="text-dark">Rút môn học (Giai đoạn 3):</strong>
+                        <div class="small text-secondary mt-0.5">
+                            Nộp đơn rút học phần trong Giai đoạn 3 không bị ghi nhận điểm F trên bảng điểm tốt nghiệp.
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Cột 2: Quy trình 4 bước Đăng ký Chuẩn -->
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-4">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="p-2.5 rounded-3 bg-success-subtle text-success">
+                    <i class="bi bi-check2-all fs-4"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold text-dark mb-0">Quy Trình Đăng Ký 4 Bước</h5>
+                    <div class="small text-muted">Các bước hoàn tất học phần hợp lệ</div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-column gap-3">
+                <div class="d-flex gap-3 p-2.5 rounded-3 bg-light-subtle border">
+                    <div class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 28px; height: 28px;">1</div>
+                    <div>
+                        <div class="fw-bold text-dark small">Tra cứu & Lọc lớp học phần</div>
+                        <div class="text-secondary" style="font-size: 0.8rem;">
+                            Vào trang <em>Tra cứu lớp học phần</em>, chọn môn học và kiểm tra đối chiếu điều kiện tiên quyết tự động.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 p-2.5 rounded-3 bg-light-subtle border">
+                    <div class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 28px; height: 28px;">2</div>
+                    <div>
+                        <div class="fw-bold text-dark small">Thêm vào giỏ & Kiểm tra trùng lịch</div>
+                        <div class="text-secondary" style="font-size: 0.8rem;">
+                            Bấm "Thêm vào giỏ", hệ thống tự động kiểm tra xung đột thời khóa biểu và hạn mức tín chỉ thời gian thực.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 p-2.5 rounded-3 bg-light-subtle border">
+                    <div class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 28px; height: 28px;">3</div>
+                    <div>
+                        <div class="fw-bold text-dark small">Gửi phiếu đăng ký học phần</div>
+                        <div class="text-secondary" style="font-size: 0.8rem;">
+                            Vào "Giỏ đăng ký", kiểm tra tổng số tín chỉ và bấm "Gửi phiếu đăng ký" để hệ thống ghi nhận chính thức.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 p-2.5 rounded-3 bg-light-subtle border">
+                    <div class="badge bg-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 28px; height: 28px;">4</div>
+                    <div>
+                        <div class="fw-bold text-dark small">Hoàn tất học phí (VietQR Napas247)</div>
+                        <div class="text-secondary" style="font-size: 0.8rem;">
+                            Quét mã VietQR tại cổng học phí để gạch nợ tự động 24/7 và đạt điều kiện dự thi học kỳ.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Banner Kêu gọi Thao tác Cuối trang -->
+<div class="card border-0 shadow-sm rounded-4 p-4 text-white position-relative overflow-hidden" 
+     style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #2563eb 100%);">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 position-relative" style="z-index: 1;">
+        <div>
+            <h4 class="fw-bold mb-1 text-white">Bạn Đã Nắm Rõ Kế Hoạch Đăng Ký?</h4>
+            <p class="mb-0 text-white-50 small">
+                Hãy tiến hành tra cứu học phần và đăng ký lớp phù hợp với thời khóa biểu của bạn ngay bây giờ.
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="/sections" class="btn btn-light px-4 py-2 fw-semibold text-primary shadow-sm rounded-pill">
+                <i class="bi bi-search me-1.5"></i> Đến Trang Tra Cứu Lớp Ngay
+            </a>
+            <a href="/schedule" class="btn btn-outline-light px-3 py-2 fw-semibold rounded-pill">
+                <i class="bi bi-calendar3 me-1.5"></i> Xem Thời Khóa Biểu
+            </a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string currentSemesterCode = "2026_HK1";
+    private int cartCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentSemesterCode = RegistrationPeriodService.CurrentSemesterCode ?? "2026_HK1";
+        CartStateStore.AddStateChangeListeners(HandleCartChanged);
+        await RefreshCartCount();
+    }
+
+    private async void HandleCartChanged()
+    {
+        await RefreshCartCount();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshCartCount()
+    {
+        cartCount = await CartStateStore.GetItemsCount();
+    }
+
+    private Task HandlePhaseChanged()
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        CartStateStore.RemoveStateChangeListeners(HandleCartChanged);
+    }
+}

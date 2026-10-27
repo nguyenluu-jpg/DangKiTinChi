@@ -11,25 +11,40 @@
 @inject IRegistrationPeriodService RegistrationPeriodService
 @implements IDisposable
 
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <div>
-        <h2 class="fw-bold mb-1">
-            <i class="bi bi-search text-primary me-2"></i>Tra Cứu & Đăng Ký Lớp Học Phần
-        </h2>
-        <p class="text-muted mb-0">Hệ thống đối chiếu thời gian thực điều kiện tiên quyết, trùng lịch & hạn mức tín chỉ</p>
+<!-- Thanh chuyển đổi nhóm Tra cứu (Pill Switcher) & Tiêu đề -->
+<div class="mb-3">
+    <!-- Nhóm nút chuyển tab Tra cứu / Kế hoạch cực kỳ trực quan -->
+    <div class="d-inline-flex p-1 bg-white rounded-pill border shadow-xs mb-3">
+        <a href="/sections" class="btn btn-sm btn-primary rounded-pill px-3 py-1.5 fw-semibold shadow-xs">
+            <i class="bi bi-search me-1.5"></i> Tra Cứu Lớp Học Phần
+        </a>
+        <a href="/registration-plan" class="btn btn-sm btn-light text-secondary rounded-pill px-3 py-1.5 fw-semibold border-0">
+            <i class="bi bi-calendar3-range me-1.5"></i> Kế Hoạch Đăng Ký
+        </a>
     </div>
-    <a href="/cart" class="btn btn-primary d-inline-flex align-items-center shadow-sm">
-        <i class="bi bi-cart-check me-2"></i>
-        <span>Vào Giỏ Đăng Ký</span>
-        @if (cartSectionIds.Count > 0)
-        {
-            <span class="badge bg-white text-primary ms-2 rounded-pill">@cartSectionIds.Count</span>
-        }
-    </a>
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-search text-primary me-2"></i>Tra Cứu & Đăng Ký Lớp Học Phần
+            </h2>
+            <p class="text-muted mb-0">Hệ thống đối chiếu thời gian thực điều kiện tiên quyết, trùng lịch & hạn mức tín chỉ</p>
+        </div>
+        <a href="/cart" class="btn btn-primary d-inline-flex align-items-center shadow-sm">
+            <i class="bi bi-cart-check me-2"></i>
+            <span>Vào Giỏ Đăng Ký</span>
+            @if (cartSectionIds.Count > 0)
+            {
+                <span class="badge bg-white text-primary ms-2 rounded-pill">@cartSectionIds.Count</span>
+            }
+        </a>
+    </div>
 </div>
 
-<!-- Kế hoạch & Tiến độ Đăng ký Học phần -->
-<RegistrationPhaseBannerComponent @bind-SelectedSemesterCode="currentSemesterCode" OnPhaseChanged="HandleSemesterOrPhaseChanged" />
+<!-- Dải thông tin Tiến độ & Trạng thái Đăng ký Gọn Gàng (Compact Status Ribbon) -->
+<RegistrationPhaseBannerComponent IsCompact="true" 
+                                  @bind-SelectedSemesterCode="currentSemesterCode" 
+                                  OnPhaseChanged="HandleSemesterOrPhaseChanged" />
 
 <!-- Thông báo thao tác giỏ hàng (Feedback Toast) -->
 @if (!string.IsNullOrEmpty(feedbackMessage))

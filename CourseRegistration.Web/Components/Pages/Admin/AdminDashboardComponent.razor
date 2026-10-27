@@ -1,0 +1,555 @@
+@page "/admin"
+@page "/admin/dashboard"
+@page "/phong-dao-tao"
+@namespace CourseRegistration.Web.Components.Pages.Admin
+@using CourseRegistration.CoreBusiness.Models
+@using CourseRegistration.UseCases.PluginInterfaces.DataStore
+@using CourseRegistration.UseCases.PluginInterfaces.StateStore
+@using CourseRegistration.UseCases.PluginInterfaces.UI
+@inject ICourseRepository CourseRepository
+@inject ISectionRepository SectionRepository
+@inject IStudentRepository StudentRepository
+@inject IEnrollmentRepository EnrollmentRepository
+@inject ICurrentUserStateStore CurrentUserStateStore
+@inject ILoginModalService LoginModalService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+@if (!isAuthorized)
+{
+    <div class="row justify-content-center py-5">
+        <div class="col-md-8 col-lg-6 text-center">
+            <div class="card border-0 shadow-sm p-4 p-md-5 rounded-4 bg-white">
+                <div class="mb-3 text-danger">
+                    <i class="bi bi-shield-slash-fill display-3"></i>
+                </div>
+                <h3 class="fw-bold text-dark mb-2">Yêu Cầu Quyền Quản Trị Viên</h3>
+                <div class="badge bg-danger-subtle text-danger px-3 py-1 mb-3 fs-6">
+                    HTTP 403 Forbidden &bull; Phân hệ Quản lý Phòng Đào Tạo
+                </div>
+                
+                <p class="text-muted small mb-4">
+                    Khu vực này chỉ dành cho cán bộ quản lý thuộc <strong>Phòng Đào Tạo</strong>. Vui lòng đăng nhập với tài khoản Admin để truy cập toàn bộ tính năng điều hành học vụ.
+                </p>
+
+                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                    <button type="button" 
+                            class="btn btn-danger px-4 py-2 fw-semibold shadow-sm"
+                            @onclick="() => LoginModalService.Open()">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Cán Bộ Admin
+                    </button>
+                    <a href="/" class="btn btn-outline-secondary px-4 py-2">
+                        <i class="bi bi-house-door me-1"></i> Trở Về Cổng Sinh Viên
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- HÀNG TRÊN CÙNG: CHỈ DUY NHẤT 1 CÁI PHÒNG ĐÀO TẠO MÀU ĐỎ -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 pb-3 border-bottom">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge bg-danger text-white px-3 py-2 fw-bold fs-6 rounded-pill shadow-xs d-inline-flex align-items-center gap-1.5">
+                <i class="bi bi-shield-lock-fill"></i> Phòng Đào Tạo
+            </span>
+            <span class="text-secondary small fw-semibold">
+                Trung Tâm Điều Hành &amp; Quản Lý Học Vụ &bull; Học Kỳ 1 (2026 - 2027)
+            </span>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1.5 rounded-pill small">
+                <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i> Cổng Đăng Ký Đang Mở
+            </span>
+            <a href="/" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-house-door me-1"></i> Cổng Sinh Viên
+            </a>
+        </div>
+    </div>
+
+    <!-- HÀNG PHÂN HỆ NGHIỆP VỤ ĐÀO TẠO (SUBNAV PILLS) -->
+    <div class="d-flex align-items-center gap-2 mb-4 overflow-x-auto pb-1 flex-nowrap">
+        <a href="/admin" class="btn btn-danger btn-sm rounded-pill px-3 fw-semibold text-nowrap shadow-xs">
+            <i class="bi bi-speedometer2 me-1"></i> Tổng Quan
+        </a>
+        <a href="/admin/courses" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold text-nowrap">
+            <i class="bi bi-book me-1"></i> Danh Mục Môn Học
+        </a>
+        <a href="/admin/sections" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold text-nowrap">
+            <i class="bi bi-collection me-1"></i> Mở &amp; Quản Lý Lớp HP
+        </a>
+        <a href="/admin/enrollments" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold text-nowrap">
+            <i class="bi bi-person-gear me-1"></i> Đăng Ký &amp; Rút Môn SV
+        </a>
+        <a href="/admin/tuition" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold text-nowrap">
+            <i class="bi bi-wallet2 me-1"></i> Học Phí &amp; Chế Tài Thi
+        </a>
+        <a href="/ai-advisor" class="btn btn-outline-warning text-dark btn-sm rounded-pill px-3 fw-semibold text-nowrap">
+            <i class="bi bi-stars me-1 text-warning"></i> Trợ Lý AI
+        </a>
+    </div>
+
+    <!-- GIAO DIỆN TỔNG QUAN CHUYÊN BIỆT CHO MÁY TÍNH (DESKTOP LAYOUT) -->
+    <div class="row g-4">
+        <!-- CỘT BÊN TRÁI: THẺ CÁN BỘ QUẢN TRỊ (ĐỂ NGUYÊN THÔNG TIN TRANG TRÍ) + LỐI TẮT PHÂN HỆ -->
+        <div class="col-lg-4 col-xl-4">
+            <!-- Thẻ Cán Bộ Quản Trị Đào Tạo (Giữ nguyên trang trí và chức năng mô phỏng sinh viên) -->
+            <div class="student-badge-card text-white p-3 rounded-4 shadow-sm mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
+                    <span class="badge bg-danger text-white px-2 py-1 fw-bold small">
+                        <i class="bi bi-shield-lock-fill me-1"></i>Phòng Đào Tạo
+                    </span>
+                    <span class="badge bg-white bg-opacity-25 text-white px-2 py-1 small">Quản trị viên</span>
+                </div>
+
+                <div class="mb-3">
+                    <h5 class="fw-bold mb-0 text-white">@(currentUser?.FullName ?? "Cán bộ Quản lý Đào tạo")</h5>
+                    <div class="small text-white-50">
+                        Hệ thống Đào tạo Tín chỉ &bull; HK1 (2026 - 2027)
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mb-3">
+                    <a href="/admin/courses" class="btn btn-sm btn-outline-light flex-fill">
+                        <i class="bi bi-book me-1"></i>Môn học
+                    </a>
+                    <a href="/admin/sections" class="btn btn-sm btn-outline-light flex-fill">
+                        <i class="bi bi-collection me-1"></i>Lớp HP
+                    </a>
+                    <a href="/admin/enrollments" class="btn btn-sm btn-outline-light flex-fill">
+                        <i class="bi bi-person-gear me-1"></i>Rút môn
+                    </a>
+                </div>
+
+                <div class="pt-2 border-top border-white border-opacity-25">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <label class="small text-white-50 mb-0 text-nowrap me-2">Kiểm tra SV:</label>
+                        <select class="form-select form-select-sm bg-dark text-white border-secondary w-auto" @onchange="OnStudentChange">
+                            @foreach (var s in students)
+                            {
+                                <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
+                                    @s.StudentCode - @s.FullName
+                                </option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thẻ Lối Tắt Nghiệp Vụ Quản Trị Đào Tạo -->
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
+                <h6 class="fw-bold text-dark mb-3 d-flex align-items-center">
+                    <i class="bi bi-grid-fill text-danger me-2"></i> Nghiệp Vụ Phòng Đào Tạo
+                </h6>
+                <div class="d-flex flex-column gap-2">
+                    <a href="/admin/courses" class="p-2.5 rounded-3 border d-flex align-items-center justify-content-between text-decoration-none text-dark bg-light-subtle hover-shadow transition-all">
+                        <div class="d-flex align-items-center gap-2.5">
+                            <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-2">
+                                <i class="bi bi-book fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold small">Danh mục Môn học</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">@courses.Count học phần trong CTĐT</div>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted small"></i>
+                    </a>
+
+                    <a href="/admin/sections" class="p-2.5 rounded-3 border d-flex align-items-center justify-content-between text-decoration-none text-dark bg-light-subtle hover-shadow transition-all">
+                        <div class="d-flex align-items-center gap-2.5">
+                            <div class="bg-info bg-opacity-10 text-info p-2 rounded-2">
+                                <i class="bi bi-collection fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold small">Mở &amp; Quản lý Lớp HP</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">@sections.Count lớp mở &bull; phân công GV</div>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted small"></i>
+                    </a>
+
+                    <a href="/admin/enrollments" class="p-2.5 rounded-3 border d-flex align-items-center justify-content-between text-decoration-none text-dark bg-light-subtle hover-shadow transition-all">
+                        <div class="d-flex align-items-center gap-2.5">
+                            <div class="bg-success bg-opacity-10 text-success p-2 rounded-2">
+                                <i class="bi bi-person-gear fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold small">Xử lý Đăng ký &amp; Rút môn</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">Xét duyệt đơn cứu xét &bull; ghi điểm W</div>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted small"></i>
+                    </a>
+
+                    <a href="/admin/tuition" class="p-2.5 rounded-3 border d-flex align-items-center justify-content-between text-decoration-none text-dark bg-light-subtle hover-shadow transition-all">
+                        <div class="d-flex align-items-center gap-2.5">
+                            <div class="bg-warning bg-opacity-10 text-warning-emphasis p-2 rounded-2">
+                                <i class="bi bi-wallet2 fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold small">Quản lý Học Phí &amp; Dự Thi</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">Chế tài thi &bull; gia hạn học phí</div>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted small"></i>
+                    </a>
+
+                    <a href="/ai-advisor" class="p-2.5 rounded-3 border d-flex align-items-center justify-content-between text-decoration-none text-dark bg-light-subtle hover-shadow transition-all">
+                        <div class="d-flex align-items-center gap-2.5">
+                            <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-2">
+                                <i class="bi bi-stars fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold small">Trợ Lý AI Đào Tạo</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">Phân tích sĩ số, cảnh báo quá tải</div>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted small"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- CỘT BÊN PHẢI: BỔ SUNG THÔNG TIN PHÒNG ĐÀO TẠO & THỐNG KÊ HỌC VỤ ĐẸP CHO MÁY TÍNH -->
+        <div class="col-lg-8 col-xl-8">
+            <!-- 4 Thẻ Thống Kê Học Vụ Nhanh (Metric Ribbons) -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm p-3 rounded-4 bg-white h-100 border-top border-4 border-primary">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Học Phần CTĐT</span>
+                            <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-circle">
+                                <i class="bi bi-book-half"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-0">@courses.Count</h3>
+                        <small class="text-muted">Môn học đã ban hành</small>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm p-3 rounded-4 bg-white h-100 border-top border-4 border-info">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Lớp Học Phần</span>
+                            <div class="bg-info bg-opacity-10 text-info p-2 rounded-circle">
+                                <i class="bi bi-collection"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-0">@sections.Count</h3>
+                        <small class="text-muted">Lớp mở trong HK1</small>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm p-3 rounded-4 bg-white h-100 border-top border-4 border-success">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Lượt Đăng Ký</span>
+                            <div class="bg-success bg-opacity-10 text-success p-2 rounded-circle">
+                                <i class="bi bi-people-fill"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-0">@enrollments.Count</h3>
+                        <small class="text-muted">Phiếu đăng ký SV</small>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm p-3 rounded-4 bg-white h-100 border-top border-4 border-warning">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Tổng Sinh Viên</span>
+                            <div class="bg-warning bg-opacity-10 text-warning-emphasis p-2 rounded-circle">
+                                <i class="bi bi-mortarboard-fill"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-0">@students.Count</h3>
+                        <small class="text-muted">Tài khoản quản lý</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- THẺ THÔNG TIN LIÊN HỆ & GIỜ LÀM VIỆC CHÍNH THỨC CỦA PHÒNG ĐÀO TẠO -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold mb-0 text-dark d-flex align-items-center">
+                        <i class="bi bi-building-fill text-danger me-2"></i>
+                        Thông Tin Liên Hệ &amp; Tiếp Nhận Học Vụ &bull; Phòng Đào Tạo
+                    </h5>
+                    <span class="badge bg-danger-subtle text-danger px-2.5 py-1 small fw-semibold">
+                        Trực Tiếp &amp; Trực Tuyến
+                    </span>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 h-100 border">
+                            <div class="fw-bold text-dark mb-2 d-flex align-items-center">
+                                <i class="bi bi-geo-alt-fill text-danger me-2"></i> Trụ Sở Làm Việc
+                            </div>
+                            <div class="small text-secondary mb-1">
+                                <strong>Đơn vị:</strong> Phòng Đào Tạo &bull; Bộ phận Một Cửa Sinh Viên
+                            </div>
+                            <div class="small text-secondary mb-1">
+                                <strong>Địa chỉ:</strong> Tầng 1, Tòa nhà Điều hành A1 (Khu Hiệu Bộ)
+                            </div>
+                            <div class="small text-secondary">
+                                <strong>Phòng tiếp công dân:</strong> Phòng A1-102 &bull; Bàn 1 đến Bàn 4
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 h-100 border">
+                            <div class="fw-bold text-dark mb-2 d-flex align-items-center">
+                                <i class="bi bi-clock-fill text-primary me-2"></i> Thời Gian Tiếp Sinh Viên
+                            </div>
+                            <div class="small text-secondary mb-1">
+                                <strong>Buổi sáng:</strong> 07h30 &ndash; 11h30 (Thứ 2 đến Thứ 6)
+                            </div>
+                            <div class="small text-secondary mb-1">
+                                <strong>Buổi chiều:</strong> 13h30 &ndash; 17h00 (Thứ 2 đến Thứ 6)
+                            </div>
+                            <div class="small text-secondary">
+                                <strong>Thứ 7, CN &amp; Ngày lễ:</strong> Nghỉ tiếp công dân; Cổng trực tuyến 24/7
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 h-100 border">
+                            <div class="fw-bold text-dark mb-2 d-flex align-items-center">
+                                <i class="bi bi-telephone-fill text-success me-2"></i> Đường Dây Nóng (Hotline)
+                            </div>
+                            <div class="small text-secondary mb-1">
+                                <strong>Tổng đài hỗ trợ:</strong> <span class="fw-bold text-success">1900 6868</span>
+                            </div>
+                            <div class="small text-secondary mb-1">
+                                <strong>Điện thoại bàn:</strong> (024) 3883 144 &bull; Số máy lẻ: 101, 102
+                            </div>
+                            <div class="small text-secondary">
+                                <strong>Hỗ trợ kỹ thuật cổng:</strong> (024) 3883 145
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 h-100 border">
+                            <div class="fw-bold text-dark mb-2 d-flex align-items-center">
+                                <i class="bi bi-envelope-at-fill text-info me-2"></i> Hòm Thư &amp; Kênh Trực Tuyến
+                            </div>
+                            <div class="small text-secondary mb-1">
+                                <strong>Email tiếp nhận đơn:</strong> <a href="mailto:daotao@edu.vn" class="fw-semibold text-decoration-none">daotao@edu.vn</a>
+                            </div>
+                            <div class="small text-secondary mb-1">
+                                <strong>Cổng thông tin đào tạo:</strong> <a href="/" class="fw-semibold text-decoration-none">Cổng Đăng Ký Học Phần Trực Tuyến</a>
+                            </div>
+                            <div class="small text-secondary">
+                                <strong>Thời gian phản hồi email:</strong> Trong vòng 24 &ndash; 48 giờ làm việc
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- THẺ QUY TRÌNH HỌC VỤ & TIẾN ĐỘ 3 GIAI ĐOẠN ĐÀO TẠO TÍN CHỈ -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold mb-0 text-dark d-flex align-items-center">
+                        <i class="bi bi-calendar3-range text-danger me-2"></i>
+                        Quy Chế &amp; Tiến Độ Đào Tạo Tín Chỉ &bull; Học Kỳ 1 (2026 - 2027)
+                    </h5>
+                    <span class="badge bg-secondary-subtle text-secondary px-2.5 py-1 small">Quy chế Đại học chính quy</span>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="border rounded-3 p-3 bg-light-subtle h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="badge bg-secondary text-white">Giai đoạn 1</span>
+                                <span class="small text-muted">10/10 - 15/10</span>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1">ĐK Theo Kế Hoạch</h6>
+                            <p class="small text-muted mb-0">
+                                Mở cổng cho sinh viên đăng ký môn học theo đúng tiến độ khung chương trình của khóa &amp; ngành.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="border rounded-3 p-3 bg-primary-subtle border-primary h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="badge bg-primary text-white">Giai đoạn 2 (Hiện tại)</span>
+                                <span class="small text-primary fw-semibold">16/10 - 22/10</span>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1">ĐK Tự Do &amp; Điều Chỉnh</h6>
+                            <p class="small text-secondary mb-0">
+                                Cho phép đăng ký học vượt, học cải thiện, học ghép lớp và đổi lớp học phần trên cổng trực tuyến.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="border rounded-3 p-3 bg-light-subtle h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="badge bg-danger text-white">Giai đoạn 3</span>
+                                <span class="small text-muted">23/10 - 05/11</span>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1">Rút Môn Ghi Điểm W</h6>
+                            <p class="small text-muted mb-0">
+                                Cổng sinh viên đóng tính năng tự hủy. Mọi đơn rút môn phải nộp về Phòng Đào Tạo để xử lý học vụ.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning border-0 rounded-3 mt-3 mb-0 small d-flex align-items-start gap-2">
+                    <i class="bi bi-exclamation-triangle-fill fs-5 text-warning flex-shrink-0 mt-0.5"></i>
+                    <div>
+                        <strong>Lưu ý nghiệp vụ dành cho Cán bộ Phòng Đào Tạo:</strong>
+                        <ul class="mb-0 ps-3 mt-1">
+                            <li>Rút môn trực tuyến trong Giai đoạn 2 được hoàn trả 100% học phí và không lưu lại dấu vết học phần.</li>
+                            <li>Rút môn tại Giai đoạn 3 (sau 23h59 ngày 22/10/2026) được ghi nhận <strong>điểm W</strong> trên bảng điểm, học phí không hoàn lại.</li>
+                            <li>Chỉ cán bộ Phòng Đào Tạo mới có quyền đăng ký bổ sung cứu xét và duyệt rút môn học vụ sau khi cổng sinh viên đã đóng.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- THẺ THEO DÕI SĨ SỐ LỚP HỌC PHẦN TRÊN MÁY TÍNH -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold mb-0 text-dark d-flex align-items-center">
+                        <i class="bi bi-graph-up text-danger me-2"></i>
+                        Theo Dõi Tình Trạng Lớp Học Phần Mở (Desktop Monitor)
+                    </h5>
+                    <a href="/admin/sections" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                        <i class="bi bi-gear me-1"></i> Quản lý toàn bộ lớp
+                    </a>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Mã Lớp</th>
+                                <th>Môn Học</th>
+                                <th>Giảng Viên</th>
+                                <th class="text-center">Sĩ Số / Chỉ Tiêu</th>
+                                <th class="text-center">Tỷ Lệ Lấp Đầy</th>
+                                <th class="text-end">Trạng Thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var sec in sections.Take(6))
+                            {
+                                int currentEnroll = sec.CurrentEnrollment;
+                                int maxCap = sec.MaxCapacity > 0 ? sec.MaxCapacity : 40;
+                                int percent = (int)Math.Round((double)currentEnroll / maxCap * 100);
+                                string badgeColor = percent >= 90 ? "bg-danger" : percent >= 60 ? "bg-success" : "bg-warning text-dark";
+
+                                <tr>
+                                    <td class="fw-bold text-dark">@sec.SectionCode</td>
+                                    <td>
+                                        <div class="fw-semibold">@(sec.Course?.CourseName ?? $"HP #{sec.CourseId}")</div>
+                                        <div class="text-muted" style="font-size: 0.72rem;">@(sec.Course?.CourseCode ?? "") &bull; @(sec.Course?.Credits ?? 3) TC</div>
+                                    </td>
+                                    <td>@(sec.InstructorName ?? "Chưa phân công")</td>
+                                    <td class="text-center fw-bold">@currentEnroll / @maxCap</td>
+                                    <td class="text-center" style="min-width: 140px;">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="progress flex-grow-1" style="height: 6px;">
+                                                <div class="progress-bar @badgeColor" role="progressbar" style="width: @Math.Min(percent, 100)%;"></div>
+                                            </div>
+                                            <span class="small fw-semibold" style="font-size: 0.72rem;">@percent%</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        @if (percent >= 100)
+                                        {
+                                            <span class="badge bg-danger">Hết chỗ</span>
+                                        }
+                                        else if (percent >= 80)
+                                        {
+                                            <span class="badge bg-warning text-dark">Sắp đầy</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">Còn chỗ</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isAuthorized = false;
+    private string currentRole = string.Empty;
+    private UserAccount? currentUser;
+    private List<Student> students = new();
+    private List<Course> courses = new();
+    private List<Section> sections = new();
+    private List<Enrollment> enrollments = new();
+    private int selectedStudentId = 0;
+    private Student? currentStudent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChanged);
+        await RefreshDataAsync();
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        isAuthorized = await CurrentUserStateStore.IsInRoleAsync("Admin");
+        currentRole = await CurrentUserStateStore.GetCurrentRoleAsync();
+        currentUser = await CurrentUserStateStore.GetCurrentUserAsync();
+
+        if (isAuthorized)
+        {
+            var studentList = await StudentRepository.GetAllStudentsAsync();
+            students = studentList.ToList();
+
+            var courseList = await CourseRepository.GetAllCoursesAsync();
+            courses = courseList.ToList();
+
+            var sectionList = await SectionRepository.GetAllSectionsAsync();
+            sections = sectionList.ToList();
+
+            var enrollmentList = await EnrollmentRepository.GetEnrollmentsBySemesterAsync("HK1 (2026 - 2027)");
+            enrollments = enrollmentList.ToList();
+
+            selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+            currentStudent = students.FirstOrDefault(s => s.StudentId == selectedStudentId);
+        }
+    }
+
+    private async void HandleUserStateChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await RefreshDataAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task OnStudentChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newId))
+        {
+            selectedStudentId = newId;
+            currentStudent = students.FirstOrDefault(s => s.StudentId == newId);
+            await CurrentUserStateStore.SetCurrentStudentIdAsync(newId);
+        }
+    }
+
+    public void Dispose()
+    {
+        CurrentUserStateStore.RemoveStateChangeListeners(HandleUserStateChanged);
+    }
+}

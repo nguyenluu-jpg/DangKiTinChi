@@ -42,23 +42,193 @@
 
     @if (!isAuthenticated)
     {
-        <!-- Chưa đăng nhập -->
-        <div class="card border-0 shadow-sm rounded-4 text-center py-5 bg-white mb-4">
-            <div class="card-body py-4">
-                <div class="mb-3">
-                    <i class="bi bi-person-lock fs-1 text-primary"></i>
+        <!-- Chế độ Cố Vấn Học Thuật Khách & Tra Cứu Toàn Trường -->
+        <div class="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4 border-start border-primary border-4">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-primary-subtle text-primary p-3 fs-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-secondary-subtle text-secondary px-2 py-1">Chế Độ Khách Tham Quan</span>
+                            <span class="badge bg-success-subtle text-success px-2 py-1">
+                                <i class="bi bi-circle-fill text-success" style="font-size: 6px;"></i> Trực tuyến 24/7
+                            </span>
+                        </div>
+                        <h4 class="fw-bold text-dark mb-0">Tra Cứu Học Thuật &amp; Tư Vấn Thông Tin Học Phần AI</h4>
+                        <div class="small text-muted">
+                            Bạn có thể tự do đặt bất kỳ câu hỏi nào về môn học, giảng viên, phòng học, mức học phí, và quy chế tín chỉ của nhà trường.
+                        </div>
+                    </div>
                 </div>
-                <h4 class="fw-bold text-dark mb-2">Vui Lòng Đăng Nhập Để Nhận Tư Vấn</h4>
-                <p class="text-muted mx-auto mb-4" style="max-width: 500px;">
-                    Cố vấn AI cần xác thực danh tính sinh viên hoặc cán bộ quản lý để cung cấp giải pháp tra cứu &amp; tư vấn tương ứng.
-                </p>
-                <button type="button" 
-                        class="btn btn-primary btn-lg px-4 fw-bold shadow-sm"
-                        @onclick="() => LoginModalService.Open()">
-                    <i class="bi bi-box-arrow-in-right me-2"></i> Đăng Nhập Tài Khoản
+
+                <div>
+                    <button type="button" 
+                            class="btn btn-outline-primary fw-bold shadow-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2"
+                            @onclick="() => LoginModalService.Open()">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        <span>Đăng Nhập Sinh Viên (Xem lộ trình cá nhân)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tác vụ tra cứu nhanh -->
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted mb-2">Câu hỏi gợi ý nhanh:</label>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" 
+                            @onclick='() => AskGuestPreset("Môn Lập trình Ứng dụng Web do ai dạy và có mấy lớp?")'>
+                        👨‍🏫 Môn Lập trình Web
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" 
+                            @onclick='() => AskGuestPreset("Môn Cơ sở dữ liệu có bao nhiêu sinh viên và giảng viên nào dạy?")'>
+                        📊 Môn Cơ sở dữ liệu
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" 
+                            @onclick='() => AskGuestPreset("Quy định mức học phí tín chỉ năm học 2026 - 2027 thế nào?")'>
+                        💰 Mức học phí &amp; VietQR
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" 
+                            @onclick='() => AskGuestPreset("Sinh viên được đăng ký tối đa bao nhiêu tín chỉ trong một kỳ?")'>
+                        ⚖️ Hạn mức số tín chỉ
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" 
+                            @onclick='() => AskGuestPreset("Thời gian mở cổng đăng ký học phần học kỳ 2026_HK1?")'>
+                        📅 Thời gian mở cổng
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" 
+                            @onclick='() => AskGuestPreset("Quy chế rút môn học và xử lý điểm F như thế nào?")'>
+                        📋 Quy chế rút môn &amp; Điểm F
+                    </button>
+                </div>
+            </div>
+
+            <!-- Thanh tìm kiếm thông minh -->
+            <div class="input-group mb-2">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-primary"></i></span>
+                <input type="text" class="form-control border-start-0 py-2" 
+                       placeholder="Hỏi Cố vấn AI về môn học, giảng viên, phòng học, học phí, quy chế..." 
+                       @bind="guestQuery" 
+                       @bind:event="oninput" 
+                       @onkeydown="HandleGuestKeyDown" />
+                <button class="btn btn-primary px-4 fw-bold" type="button" @onclick="AskGuestAi" disabled="@isGuestLoading">
+                    @if (isGuestLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span>Đang phân tích...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-stars me-1"></i>
+                        <span>Hỏi Cố Vấn AI</span>
+                    }
                 </button>
             </div>
+            @if (isGuestLoading)
+            {
+                <div class="alert alert-info py-2 px-3 rounded-3 mt-2 mb-0 d-flex align-items-center gap-2 small animate__animated animate__fadeIn">
+                    <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                    <span><strong>Xin chờ chút nhé!</strong> Cố vấn AI đang tra cứu cơ sở dữ liệu học vụ thời gian thực...</span>
+                </div>
+            }
         </div>
+
+        @if (guestResult != null)
+        {
+            <!-- KẾT QUẢ TRẢ LỜI CỦA AI CHO KHÁCH -->
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4 border-start border-info border-4 animate__animated animate__fadeIn">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill shadow-sm">
+                            <i class="bi bi-robot me-1 text-warning"></i>
+                            Cố Vấn Học Thuật AI
+                        </span>
+                        <span class="badge bg-info-subtle text-info-emphasis border px-2 py-1">
+                            @guestResult.Category
+                        </span>
+                    </div>
+                    <span class="text-muted small">Cập nhật: @guestResult.GeneratedAt.ToString("dd/MM/yyyy HH:mm:ss")</span>
+                </div>
+
+                <div class="ai-response-bubble p-4 rounded-4 shadow-sm bg-white border border-primary-subtle mb-3">
+                    <div class="ai-response-content text-dark" style="font-size: 0.96rem; line-height: 1.75;">
+                        @((MarkupString)FormatMessage(guestResult.AnswerSummary))
+                    </div>
+                </div>
+
+                @if (guestResult.ActionableSuggestions.Any())
+                {
+                    <div class="card border-0 shadow-sm bg-light p-3 rounded-4 mb-3 border-start border-primary border-4">
+                        <div class="fw-bold mb-2 small d-flex align-items-center gap-2 text-primary">
+                            <i class="bi bi-lightbulb-fill text-warning fs-5"></i>
+                            <span>Gợi ý hướng dẫn từ Cố vấn AI:</span>
+                        </div>
+                        <ul class="mb-0 ps-3 small d-flex flex-column gap-1 text-dark">
+                            @foreach (var sug in guestResult.ActionableSuggestions)
+                            {
+                                <li>@sug</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                @if (guestResult.Sections.Any())
+                {
+                    <h6 class="fw-bold text-dark mt-3 mb-2">
+                        <i class="bi bi-table text-primary me-1"></i> Danh Sách Lớp Học Phần Liên Quan:
+                    </h6>
+                    <div class="table-responsive rounded-3 border mb-3">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light small">
+                                <tr>
+                                    <th>Mã Lớp</th>
+                                    <th>Tên Học Phần</th>
+                                    <th>Giảng Viên</th>
+                                    <th>Sĩ Số (Hiện tại / Tối đa)</th>
+                                    <th>Tỷ Lệ Lấp Đầy</th>
+                                    <th>Trạng Thái &amp; Ghi Chú</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sec in guestResult.Sections)
+                                {
+                                    <tr>
+                                        <td class="fw-bold text-primary">@sec.SectionCode</td>
+                                        <td class="fw-semibold">@sec.CourseName</td>
+                                        <td class="small text-muted">@sec.Instructor</td>
+                                        <td class="small fw-bold">@sec.CurrentEnrollment / @sec.MaxCapacity SV</td>
+                                        <td style="min-width: 140px;">
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar @(sec.FillRate >= 90 ? "bg-danger" : (sec.FillRate >= 50 ? "bg-primary" : "bg-secondary"))" 
+                                                     role="progressbar" 
+                                                     style="width: @(Math.Min(100, sec.FillRate))%;"></div>
+                                            </div>
+                                            <span class="small fw-semibold text-muted">@sec.FillRate%</span>
+                                        </td>
+                                        <td>
+                                            <span class="@sec.StatusBadge me-1">@sec.Note</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <div class="alert alert-warning border-0 rounded-4 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-check-fill fs-4 text-warning"></i>
+                        <span class="small">
+                            Bạn muốn AI phân tích học bạ cá nhân và tự động lên lịch học tối ưu cho riêng bạn?
+                        </span>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm fw-bold rounded-pill px-3 shadow-sm" @onclick="() => LoginModalService.Open()">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Sinh Viên Ngay
+                    </button>
+                </div>
+            </div>
+        }
     }
     else
     {
@@ -586,6 +756,11 @@
     private bool isAdminLoading = false;
     private AdminAiQueryResult? adminResult;
 
+    // Quản lý chế độ Khách (Chưa đăng nhập)
+    private string guestQuery = string.Empty;
+    private bool isGuestLoading = false;
+    private AdminAiQueryResult? guestResult;
+
     private List<Student> studentList = new List<Student>();
     private string userPrompt = string.Empty;
     private bool isLoading = false;
@@ -600,11 +775,59 @@
         studentList = (await StudentRepository.GetAllStudentsAsync()).ToList();
         await RefreshUserState();
 
-        // Khởi tạo giao diện chào mừng từ AI cho Admin Copilot (giữ ô nhập trống sạch sẽ)
-        if (currentRole == "Admin")
+        // Khởi tạo giao diện chào mừng từ AI
+        if (!isAuthenticated)
+        {
+            guestResult = await AdminAiAssistantUseCase.ExecuteAsync("chào", "2026_HK1");
+            guestQuery = string.Empty;
+        }
+        else if (currentRole == "Admin")
         {
             adminResult = await AdminAiAssistantUseCase.ExecuteAsync("chào", "2026_HK1");
             adminQuery = string.Empty;
+        }
+    }
+
+    private async Task AskGuestPreset(string queryText)
+    {
+        guestQuery = queryText;
+        await AskGuestAi();
+    }
+
+    private async Task HandleGuestKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AskGuestAi();
+        }
+    }
+
+    private async Task AskGuestAi()
+    {
+        if (string.IsNullOrWhiteSpace(guestQuery) || isGuestLoading) return;
+
+        isGuestLoading = true;
+        StateHasChanged();
+
+        await Task.Delay(250);
+
+        try
+        {
+            guestResult = await AdminAiAssistantUseCase.ExecuteAsync(guestQuery.Trim(), "2026_HK1");
+        }
+        catch (Exception ex)
+        {
+            guestResult = new AdminAiQueryResult
+            {
+                Query = guestQuery,
+                Category = "Lỗi xử lý",
+                AnswerSummary = "Đã xảy ra lỗi khi phân tích câu hỏi: " + ex.Message
+            };
+        }
+        finally
+        {
+            isGuestLoading = false;
+            StateHasChanged();
         }
     }
 

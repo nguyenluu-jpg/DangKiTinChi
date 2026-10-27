@@ -2,12 +2,16 @@
 @using CourseRegistration.CoreBusiness.Models
 @using CourseRegistration.UseCases.StudentPortal.AiAdvisor
 @using CourseRegistration.UseCases.AdminPortal.AiAdminAssistant.Interfaces
+@using CourseRegistration.UseCases.PluginInterfaces.DataStore
 @inject IGetAiAdviceUseCase GetAiAdviceUseCase
 @inject IAdminAiAssistantUseCase AdminAiAssistantUseCase
 @inject ICurrentUserStateStore CurrentUserStateStore
 @inject IStudentRepository StudentRepository
+@inject ICourseRepository CourseRepository
+@inject ISectionRepository SectionRepository
 @inject ILoginModalService LoginModalService
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 @if (!isOnAiAdvisorPage)
@@ -16,7 +20,7 @@
         <!-- Cửa sổ Chatbot Cố Vấn AI thu nhỏ nổi ở góc phải -->
         @if (isChatOpen)
         {
-            <div class="card border-0 shadow-lg ai-robot-chat-window">
+            <div class="card border-0 shadow-lg ai-robot-chat-window animate__animated animate__fadeInUp">
                 <!-- Header Cửa sổ Chat -->
                 <div class="ai-chat-header d-flex justify-content-between align-items-center p-3 text-white">
                     <div class="d-flex align-items-center gap-2">
@@ -98,14 +102,22 @@
                         }
                     }
 
+                    <!-- Trạng thái phản hồi tức thì: Đang đọc câu hỏi & Xin chờ chút sinh động -->
                     @if (isThinking)
                     {
-                        <div class="d-flex align-items-center gap-2 mb-3">
-                            <div class="ai-bot-avatar-sm flex-shrink-0">
+                        <div class="d-flex align-items-start gap-2 mb-3 animate__animated animate__fadeIn">
+                            <div class="ai-bot-avatar-sm flex-shrink-0 ai-avatar-thinking">
                                 <i class="bi bi-robot"></i>
                             </div>
-                            <div class="ai-msg-bubble bot-bubble shadow-sm">
-                                <div class="ai-typing-indicator">
+                            <div class="ai-msg-bubble bot-bubble shadow-sm flex-grow-1 border-primary-subtle" style="background: #f0f7ff;">
+                                <div class="d-flex align-items-center gap-2 text-primary fw-bold small mb-1">
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <span>@thinkingStatusMessage</span>
+                                </div>
+                                <div class="small text-muted" style="font-size: 0.76rem;">
+                                    <i class="bi bi-hourglass-split text-primary me-1"></i>Xin chờ chút nhé, AI đang tra cứu dữ liệu &amp; chuẩn bị câu trả lời...
+                                </div>
+                                <div class="ai-typing-indicator mt-1">
                                     <span></span><span></span><span></span>
                                 </div>
                             </div>
@@ -132,6 +144,9 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Lớp Lập trình Web do ai dạy?")'>
                                     👨‍🏫 Môn Lập trình Web
                                 </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Báo cáo tổng quan học kỳ 2026_HK1")'>
+                                    📈 Báo cáo tổng quan
+                                </button>
                             }
                             else if (isAuthenticated && currentStudent != null)
                             {
@@ -150,14 +165,23 @@
                             }
                             else
                             {
-                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Môn Lập trình Web ai dạy?")'>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Môn Lập trình Web do ai dạy?")'>
                                     👨‍🏫 Môn Lập trình Web
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Quy định mức học phí tín chỉ năm nay thế nào?")'>
-                                    💰 Mức học phí tín chỉ
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Môn Cơ sở dữ liệu có mấy lớp mở?")'>
+                                    📊 Môn Cơ sở dữ liệu
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Mức học phí 1 tín chỉ bao nhiêu tiền?")'>
+                                    💰 Mức học phí & VietQR
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Sinh viên được đăng ký tối đa bao nhiêu tín chỉ?")'>
+                                    ⚖️ Hạn mức số tín chỉ
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Thời gian mở cổng đăng ký học phần khi nào?")'>
                                     📅 Thời gian mở cổng
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill chip-btn" @onclick='() => SendQuickPrompt("Quy chế rút môn học và điểm F xử lý thế nào?")'>
+                                    📋 Quy chế rút môn & Điểm F
                                 </button>
                                 <button type="button" class="btn btn-sm btn-primary py-0 px-2 rounded-pill chip-btn fw-bold" @onclick="() => LoginModalService.Open()">
                                     🔑 Đăng nhập sinh viên
@@ -172,13 +196,21 @@
                     <form @onsubmit="SendMessage" class="d-flex gap-1 align-items-center">
                         <input type="text" 
                                class="form-control form-control-sm rounded-pill border shadow-none px-3" 
-                               placeholder="Hỏi Cố vấn AI về môn học, quy chế..." 
+                               placeholder="Hỏi Cố vấn AI về môn học, giảng viên, quy chế, học phí..." 
                                @bind="inputQuestion" 
                                disabled="@isThinking" />
                         <button type="submit" 
-                                class="btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ai-send-btn" 
-                                disabled="@(isThinking || string.IsNullOrWhiteSpace(inputQuestion))">
-                            <i class="bi bi-send-fill"></i>
+                                class="btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ai-send-btn shadow-sm" 
+                                disabled="@(isThinking || string.IsNullOrWhiteSpace(inputQuestion))"
+                                title="Gửi câu hỏi">
+                            @if (isThinking)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" style="width: 14px; height: 14px;"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-send-fill"></i>
+                            }
                         </button>
                     </form>
                     <div class="text-center mt-1">
@@ -226,12 +258,16 @@
     private bool isChatOpen = false;
     private bool isBubbleDismissed = false;
     private bool isThinking = false;
+    private string thinkingStatusMessage = "Cố vấn AI đang đọc câu hỏi của bạn...";
     private string inputQuestion = string.Empty;
 
     private bool isAuthenticated = false;
     private string currentRole = string.Empty;
     private Student? currentStudent;
     private List<Student> allStudents = new List<Student>();
+    private List<Course> allCourses = new List<Course>();
+    private List<Section> allSections = new List<Section>();
+    private List<Prerequisite> allPrerequisites = new List<Prerequisite>();
 
     private List<ChatMessageModel> chatMessages = new List<ChatMessageModel>();
 
@@ -242,7 +278,15 @@
         CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
         NavigationManager.LocationChanged += HandleLocationChanged;
 
-        allStudents = (await StudentRepository.GetAllStudentsAsync()).ToList();
+        try
+        {
+            allStudents = (await StudentRepository.GetAllStudentsAsync()).ToList();
+            allCourses = (await CourseRepository.GetAllCoursesAsync()).ToList();
+            allSections = (await SectionRepository.GetSectionsBySemesterAsync("2026_HK1")).ToList();
+            allPrerequisites = (await CourseRepository.GetAllPrerequisitesAsync()).ToList();
+        }
+        catch { }
+
         await RefreshUserState();
         InitDefaultMessage();
     }
@@ -294,18 +338,19 @@
             chatMessages.Add(new ChatMessageModel
             {
                 IsUser = false,
-                Content = "Xin chào bạn! Tôi là **Cố vấn học thuật AI** của Trường Đại học Kinh tế Huế. Bạn có thể hỏi tôi về **giảng viên, môn học, quy chế tín chỉ, mức học phí**, hoặc **Đăng nhập** tài khoản để tôi phân tích lộ trình học tập tối ưu riêng cho bạn nhé!",
+                Content = "Xin chào bạn! Tôi là **Cố vấn học thuật AI** của Trường Đại học Kinh tế Huế. Bạn có thể hỏi tôi về **môn học, giảng viên, phòng học, lịch học, quy chế tín chỉ, mức học phí VietQR**, hoặc **Đăng nhập tài khoản** để tôi phân tích thời khóa biểu tối ưu riêng cho bạn nhé!",
                 Timestamp = DateTime.Now
             });
         }
     }
 
-    private void ToggleChat()
+    private async Task ToggleChat()
     {
         isChatOpen = !isChatOpen;
         if (isChatOpen)
         {
             isBubbleDismissed = true;
+            await ScrollChatToBottomAsync();
         }
     }
 
@@ -315,6 +360,15 @@
         await SendMessage();
     }
 
+    private async Task ScrollChatToBottomAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("aiChatScrollToBottom", ".ai-chat-body");
+        }
+        catch { }
+    }
+
     private async Task SendMessage()
     {
         if (string.IsNullOrWhiteSpace(inputQuestion) || isThinking) return;
@@ -322,6 +376,7 @@
         string question = inputQuestion.Trim();
         inputQuestion = string.Empty;
 
+        // 1. Phản hồi tức thì ngay khi bấm Gửi (Instant feedback)
         chatMessages.Add(new ChatMessageModel
         {
             IsUser = true,
@@ -330,7 +385,15 @@
         });
 
         isThinking = true;
+        thinkingStatusMessage = "Cố vấn AI đang đọc câu hỏi của bạn...";
         await InvokeAsync(StateHasChanged);
+        await ScrollChatToBottomAsync();
+
+        // 2. Chuyển đổi trạng thái "Xin chờ chút..." sinh động (200ms)
+        await Task.Delay(200);
+        thinkingStatusMessage = "Đang tra cứu cơ sở dữ liệu đào tạo & quy chế...";
+        await InvokeAsync(StateHasChanged);
+        await ScrollChatToBottomAsync();
 
         try
         {
@@ -358,39 +421,9 @@
             }
             else
             {
-                // Người dùng CHƯA ĐĂNG NHẬP: Xử lý chuẩn xác, không tự tiện gán thông tin sinh viên khác
-                string qNorm = RemoveDiacritics(question.ToLowerInvariant());
-
-                bool isPersonalQuery = qNorm.Contains("cua toi") ||
-                                       qNorm.Contains("cho toi") ||
-                                       qNorm.Contains("toi nen") ||
-                                       qNorm.Contains("goi y mon") ||
-                                       qNorm.Contains("mon ky nay") ||
-                                       qNorm.Contains("hoc ba") ||
-                                       qNorm.Contains("diem cua toi") ||
-                                       qNorm.Contains("tien quyet cua toi");
-
-                if (isPersonalQuery)
-                {
-                    chatMessages.Add(new ChatMessageModel
-                    {
-                        IsUser = false,
-                        Content = "Bạn hiện **chưa đăng nhập tài khoản sinh viên** nên AI chưa thể tra cứu học bạ cá nhân và điều kiện tiên quyết của riêng bạn. Vui lòng **Đăng nhập** để AI có thể phân tích lộ trình học tập tối ưu nhất cho bạn nhé!",
-                        ShowLoginButton = true,
-                        Timestamp = DateTime.Now
-                    });
-                }
-                else
-                {
-                    string answer = HandleGuestGeneralQuery(qNorm);
-                    chatMessages.Add(new ChatMessageModel
-                    {
-                        IsUser = false,
-                        Content = answer,
-                        ShowLoginButton = answer.Contains("Đăng nhập"),
-                        Timestamp = DateTime.Now
-                    });
-                }
+                // Người dùng CHƯA ĐĂNG NHẬP: Bộ máy Cố Vấn Học Thuật Khách Toàn Diện
+                var response = await HandleGuestUniversalQueryAsync(question);
+                chatMessages.Add(response);
             }
         }
         catch (Exception ex)
@@ -406,55 +439,475 @@
         {
             isThinking = false;
             await InvokeAsync(StateHasChanged);
+            await ScrollChatToBottomAsync();
         }
     }
 
-    private string HandleGuestGeneralQuery(string qNorm)
+    /// <summary>
+    /// BỘ MÁY CỐ VẤN HỌC THUẬT KHÁCH TOÀN DIỆN (UNIVERSAL GUEST ADVISOR ENGINE)
+    /// Đọc đúng câu hỏi, trả lời chính xác dữ liệu môn học, giảng viên, phòng học, học phí và quy chế tín chỉ.
+    /// Tuyệt đối KHÔNG trả lời chung chung hoặc từ chối câu hỏi của khách!
+    /// </summary>
+    private async Task<ChatMessageModel> HandleGuestUniversalQueryAsync(string question)
     {
-        if (qNorm.Contains("web") || qNorm.Contains("lap trinh web") || qNorm.Contains("thay long") || qNorm.Contains("ha ngoc long"))
+        await Task.Yield();
+
+        string qLower = question.ToLowerInvariant().Trim();
+        string qNorm = RemoveDiacritics(qLower);
+
+        // 1. Kiểm tra câu hỏi mang tính cá nhân (Học bạ của tôi, điểm của tôi, gợi ý riêng cho tôi)
+        bool isPersonalQuery = qNorm.Contains("cua toi") ||
+                               qNorm.Contains("cho toi") ||
+                               qNorm.Contains("toi nen") ||
+                               qNorm.Contains("goi y mon") ||
+                               qNorm.Contains("mon ky nay") ||
+                               qNorm.Contains("hoc ba") ||
+                               qNorm.Contains("diem cua toi") ||
+                               qNorm.Contains("tien quyet cua toi") ||
+                               qNorm.Contains("lich cua toi") ||
+                               qNorm.Contains("so tin chi cua toi");
+
+        if (isPersonalQuery)
         {
-            return "👨‍🏫 **Thông tin môn Lập trình Ứng dụng Web (WEB301):**\n\n" +
-                   "- **Giảng viên phụ trách:** **TS. Hà Ngọc Long**.\n" +
-                   "- **Số tín chỉ:** 4 Tín chỉ (Lý thuyết & Thực hành Web hiện đại).\n" +
-                   "- **Lịch học (Nhóm 1):** Thứ Hai, Tiết 1 - 4 tại **Lab 402**.\n" +
-                   "- **Điều kiện tiên quyết:** Bắt buộc hoàn thành môn *Lập trình Hướng đối tượng (TIN102)*.";
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "👋 **Chào bạn! Bạn hiện đang ở chế độ Khách (chưa đăng nhập).**\n\n" +
+                          "Để Cố vấn AI có thể đọc học bạ, điểm số tích lũy cá nhân và phân tích điều kiện tiên quyết riêng cho bạn, vui lòng bấm nút **Đăng nhập ngay** bên dưới nhé!\n\n" +
+                          "🔑 **Tài khoản thử nghiệm demo:**\n" +
+                          "- Sinh viên: `sv21001` (Mật khẩu: `123456`)\n" +
+                          "- Quản trị viên: `admin` (Mật khẩu: `admin123`)\n\n" +
+                          "💡 *Tuy nhiên, bạn hoàn toàn có thể hỏi tôi về bất kỳ môn học nào trong trường (như Lập trình Web, Cơ sở dữ liệu...), giảng viên phụ trách, mức học phí, hoặc quy chế tín chỉ!*",
+                ShowLoginButton = true,
+                Timestamp = DateTime.Now
+            };
         }
-        else if (qNorm.Contains("hoc phi") || qNorm.Contains("bao nhieu tien") || qNorm.Contains("dong tien") || qNorm.Contains("ngan hang") || qNorm.Contains("stk"))
+
+        // 2. Tra cứu Môn học cụ thể trong CSDL (Course Entity Matching)
+        var matchedCourse = FindMatchingCourse(qNorm);
+        if (matchedCourse != null)
         {
-            return "💰 **Quy định mức thu học phí năm học 2026 - 2027:**\n\n" +
-                   "- **Đơn giá:** **450.000 đ / tín chỉ**.\n" +
-                   "- **Tài khoản thu học phí:** **101705201967** (Ngân hàng TMCP Quân Đội - MB Bank).\n" +
-                   "- **Đơn vị thụ hưởng:** **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**.\n" +
-                   "- Hỗ trợ quét mã VietQR tự động điền nội dung và gạch nợ học phí tức thì 24/7.";
+            var courseSections = allSections.Where(s => s.CourseId == matchedCourse.CourseId).ToList();
+            var prereqs = allPrerequisites.Where(p => p.CourseId == matchedCourse.CourseId).ToList();
+            var prereqCourses = allCourses.Where(c => prereqs.Any(p => p.PrerequisiteCourseId == c.CourseId)).ToList();
+
+            string prereqText = prereqCourses.Any()
+                ? string.Join(", ", prereqCourses.Select(c => $"**{c.CourseName} ({c.CourseCode})**"))
+                : "Không yêu cầu (sinh viên có thể đăng ký tự do)";
+
+            string sectionsText = string.Empty;
+            if (courseSections.Any())
+            {
+                var lines = courseSections.Select(s =>
+                    $"- **Lớp {s.SectionCode}:** Giảng viên **{s.Instructor}** | Phòng **{s.Room}** | {FormatSchedule(s)} | Sĩ số: **{s.CurrentEnrollment}/{s.MaxCapacity}** (Còn trống: **{Math.Max(0, s.MaxCapacity - s.CurrentEnrollment)} chỗ**).");
+                sectionsText = string.Join("\n", lines);
+            }
+            else
+            {
+                sectionsText = "- Hiện tại học kỳ này chưa xếp lịch mở lớp cho môn này.";
+            }
+
+            int tuitionEstimate = matchedCourse.Credits * 450000;
+
+            string responseContent = $"📘 **Thông Tin Học Phần: {matchedCourse.CourseName} ({matchedCourse.CourseCode}):**\n\n" +
+                   $"- **Số tín chỉ:** **{matchedCourse.Credits} Tín chỉ** (Học phí tạm tính: **{tuitionEstimate:N0} VNĐ**).\n" +
+                   $"- **Mô tả học phần:** {matchedCourse.Description}\n" +
+                   $"- **Điều kiện tiên quyết:** {prereqText}.\n\n" +
+                   $"🏫 **Danh sách lớp học phần đang mở trong kỳ (2026_HK1):**\n" +
+                   sectionsText +
+                   "\n\n💡 Bạn hãy **Đăng nhập tài khoản** để có thể chọn môn này vào Giỏ đăng ký học phần nhé!";
+
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = responseContent,
+                ShowLoginButton = true,
+                Timestamp = DateTime.Now
+            };
         }
-        else if (qNorm.Contains("thoi gian") || qNorm.Contains("khi nao") || qNorm.Contains("lich") || qNorm.Contains("mo cong") || qNorm.Contains("han nop"))
+
+        // 3. Tra cứu Giảng viên cụ thể trong CSDL (Instructor Matching)
+        var matchedInstructor = FindMatchingInstructor(qNorm);
+        if (matchedInstructor != null && matchedInstructor.Value.Sections.Any())
         {
-            return "📅 **Kế hoạch đăng ký học phần & nộp học phí học kỳ 2026_HK1:**\n\n" +
-                   "- **Đợt đăng ký chính thức:** Từ ngày **15/01/2026 đến hết 28/01/2026**.\n" +
-                   "- **Đợt đăng ký bổ sung / rút môn:** Từ **05/02/2026 đến 12/02/2026**.\n" +
-                   "- **Thời hạn nộp học phí:** Trong vòng 15 ngày kể từ ngày gửi phiếu đăng ký.";
+            var (instName, instSections) = matchedInstructor.Value;
+            int totalEnrolled = instSections.Sum(s => s.CurrentEnrollment);
+            int totalCap = instSections.Sum(s => s.MaxCapacity);
+
+            var classLines = instSections.Select(s =>
+                $"- **Lớp {s.SectionCode} - {s.Course?.CourseName} ({s.Course?.Credits}TC):** Phòng **{s.Room}** | {FormatSchedule(s)} | Sĩ số: **{s.CurrentEnrollment}/{s.MaxCapacity}**.");
+
+            string responseContent = $"👨‍🏫 **Thông Tin Giảng Viên: {instName}**\n\n" +
+                   $"Trong học kỳ 2026_HK1, giảng viên đang phụ trách **{instSections.Count} lớp học phần** với tổng số **{totalEnrolled}/{totalCap} sinh viên** đăng ký:\n\n" +
+                   string.Join("\n", classLines) +
+                   "\n\n💡 Bạn có thể đăng nhập để ghi danh vào các lớp của thầy/cô!";
+
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = responseContent,
+                ShowLoginButton = true,
+                Timestamp = DateTime.Now
+            };
         }
-        else if (qNorm.Contains("tien quyet") || qNorm.Contains("dieu kien"))
+
+        // 4. Tra cứu Học Phí & Thanh Toán VietQR
+        bool isTuition = qNorm.Contains("hoc phi") || qNorm.Contains("bao nhieu tien") || qNorm.Contains("dong tien") ||
+                         qNorm.Contains("nop tien") || qNorm.Contains("ngan hang") || qNorm.Contains("stk") ||
+                         qNorm.Contains("so tai khoan") || qNorm.Contains("vietqr") || qNorm.Contains("mb bank") ||
+                         qNorm.Contains("chuyen khoan");
+        if (isTuition)
         {
-            return "⚠️ **Quy chế điều kiện môn học tiên quyết:**\n\n" +
-                   "- Sinh viên bắt buộc phải qua môn tiên quyết (điểm tích lũy >= 4.0 / thang 10) mới được phép đăng ký môn tiếp theo.\n" +
-                   "- *Ví dụ:* Môn **Lập trình Ứng dụng Web (WEB301)** do **TS. Hà Ngọc Long** dạy yêu cầu sinh viên phải qua môn **Lập trình Hướng đối tượng (TIN102)**.\n" +
-                   "- Bạn hãy **Đăng nhập** để AI kiểm tra danh sách môn bạn đã đạt nhé!";
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "💰 **Quy Định Mức Thu Học Phí & Thanh Toán Năm Học 2026 - 2027:**\n\n" +
+                          "- **Đơn giá tín chỉ:** **450.000 VNĐ / tín chỉ**.\n" +
+                          "- **Ví dụ cụ thể:**\n" +
+                          "  + Môn 3 tín chỉ: **1.350.000 VNĐ**\n" +
+                          "  + Môn 4 tín chỉ: **1.800.000 VNĐ**\n" +
+                          "  + Học kỳ tiêu chuẩn (14 tín chỉ): **6.300.000 VNĐ**\n\n" +
+                          "- **Thông tin tài khoản thu học phí nhà trường:**\n" +
+                          "  + Số tài khoản: **101705201967**\n" +
+                          "  + Ngân hàng: **MB Bank (Ngân hàng TMCP Quân Đội)**\n" +
+                          "  + Đơn vị thụ hưởng: **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**\n\n" +
+                          "- **Thanh toán thông minh qua VietQR:** Hệ thống tự động tạo mã VietQR Napas247 điền sẵn số tiền và nội dung `[MSSV] HP 2026_HK1`, gạch nợ tức thì 24/7.\n" +
+                          "- **Hạn nộp học phí:** Trong vòng 15 ngày kể từ ngày gửi phiếu đăng ký học phần.",
+                Timestamp = DateTime.Now
+            };
         }
-        else if (qNorm.Contains("tin chi") || qNorm.Contains("han muc") || qNorm.Contains("toi da") || qNorm.Contains("toi thieu"))
+
+        // 5. Kế hoạch & Thời gian mở cổng đăng ký
+        bool isPeriod = qNorm.Contains("thoi gian") || qNorm.Contains("khi nao") || qNorm.Contains("lich mo cong") ||
+                        qNorm.Contains("han nop") || qNorm.Contains("dot dang ky") || qNorm.Contains("mo cong") ||
+                        qNorm.Contains("dong cong");
+        if (isPeriod)
         {
-            return "⚖️ **Hạn mức số tín chỉ trong một học kỳ:**\n\n" +
-                   "- **Tối thiểu:** 12 tín chỉ trong học kỳ chính.\n" +
-                   "- **Tối đa:** 24 tín chỉ (đối với sinh viên có học lực bình thường trở lên).\n" +
-                   "- Sinh viên bị cảnh báo học vụ chỉ được đăng ký tối đa 14 tín chỉ.";
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "📅 **Kế Hoạch Đăng Ký Học Phần Học Kỳ 2026_HK1:**\n\n" +
+                          "1. **Đợt đăng ký chính thức:** Từ **15/01/2026 đến hết 28/01/2026** (Cổng mở trực tuyến 24/24).\n" +
+                          "2. **Đợt đăng ký bổ sung & Rút môn trực tuyến:** Từ **05/02/2026 đến 12/02/2026**.\n" +
+                          "3. **Thời hạn nộp học phí:** Đến hết ngày **28/02/2026**.\n" +
+                          "4. **Ngày bắt đầu học kỳ mới:** Ngày **01/03/2026**.\n\n" +
+                          "💡 Bạn hãy tranh thủ đăng ký sớm ngay khi mở cổng để giữ được lớp học và khung giờ ưng ý nhất!",
+                Timestamp = DateTime.Now
+            };
         }
-        else
+
+        // 6. Quy chế Hạn mức tín chỉ
+        bool isCreditLimit = qNorm.Contains("tin chi") && (qNorm.Contains("toi da") || qNorm.Contains("toi thieu") ||
+                             qNorm.Contains("han muc") || qNorm.Contains("gioi han") || qNorm.Contains("bao nhieu"));
+        if (isCreditLimit)
         {
-            return "Cảm ơn câu hỏi của bạn! Tôi có thể giải đáp về **môn Lập trình Web (TS. Hà Ngọc Long)**, **học phí tín chỉ**, **thời gian đăng ký** và **quy chế tiên quyết**. Hoặc bạn có thể **Đăng nhập tài khoản sinh viên** để tôi tư vấn cụ thể lộ trình riêng cho bạn nhé!";
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "⚖️ **Quy Định Về Hạn Mức Tín Chỉ Trong Một Học Kỳ:**\n\n" +
+                          "- **Hạn mức tối thiểu:** **10 - 12 tín chỉ / học kỳ chính** (nhằm đảm bảo tiến độ đào tạo đúng niên khóa).\n" +
+                          "- **Hạn mức tối đa:** **24 tín chỉ / học kỳ chính** (cho phép sinh viên khá giỏi học vượt hoặc rút ngắn thời gian đào tạo).\n" +
+                          "- **Sinh viên bị cảnh báo học vụ:** Bị giới hạn chỉ được đăng ký tối đa **14 tín chỉ** để tập trung cải thiện kết quả.\n" +
+                          "- **Học kỳ phụ (kỳ hè):** Đăng ký tối đa **8 - 10 tín chỉ**.",
+                Timestamp = DateTime.Now
+            };
         }
+
+        // 7. Quy chế Thang điểm, GPA, Học lại & Điểm F
+        bool isGrading = qNorm.Contains("thang diem") || qNorm.Contains("gpa") || qNorm.Contains("diem f") ||
+                         qNorm.Contains("diem d") || qNorm.Contains("hoc lai") || qNorm.Contains("cai thien") ||
+                         qNorm.Contains("qua mon") || qNorm.Contains("canh bao") || qNorm.Contains("buoc thoi hoc");
+        if (isGrading)
+        {
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "📊 **Quy Chế Thang Điểm & Học Vụ Tín Chỉ:**\n\n" +
+                          "- **Quy đổi Thang điểm 10 sang Thang điểm 4 & Điểm chữ:**\n" +
+                          "  + Điểm A (8.5 - 10.0): **4.0** (Xuất sắc)\n" +
+                          "  + Điểm B+ (8.0 - 8.4): **3.5** (Giỏi)\n" +
+                          "  + Điểm B (7.0 - 7.9): **3.0** (Khá)\n" +
+                          "  + Điểm C+ (6.5 - 6.9): **2.5** (Trung bình khá)\n" +
+                          "  + Điểm C (5.5 - 6.4): **2.0** (Trung bình)\n" +
+                          "  + Điểm D+ (5.0 - 5.4): **1.5** (Trung bình yếu)\n" +
+                          "  + Điểm D (4.0 - 4.9): **1.0** (Đạt chuẩn qua môn)\n" +
+                          "  + Điểm F (< 4.0): **0.0** (Chưa đạt - Bắt buộc học lại)\n\n" +
+                          "- **Học lại:** Áp dụng khi bị điểm F. Điểm F không được tính tích lũy tín chỉ.\n" +
+                          "- **Học cải thiện:** Điểm D, D+ được phép đăng ký học lại để nâng GPA. Sau khi học xong, hệ thống lấy điểm cao nhất.\n" +
+                          "- **Cảnh báo học vụ:** Sinh viên có ĐTB tích lũy < 1.2 (năm 1), < 1.4 (năm 2), < 1.6 (năm 3), < 1.8 (năm 4) sẽ bị cảnh báo.",
+                Timestamp = DateTime.Now
+            };
+        }
+
+        // 8. Hướng dẫn các bước đăng ký học phần trên website
+        bool isGuide = qNorm.Contains("cach dang ky") || qNorm.Contains("huong dan") || qNorm.Contains("cac buoc") ||
+                       qNorm.Contains("lam sao de dang ky") || qNorm.Contains("quy trinh");
+        if (isGuide)
+        {
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "🚀 **Hướng Dẫn 5 Bước Đăng Ký Học Phần Trực Tuyến:**\n\n" +
+                          "1. **Bước 1 - Đăng nhập tài khoản:** Bấm nút **'Đăng nhập'** góc trên, dùng mã sinh viên (VD: `sv21001` - MK: `123456`).\n" +
+                          "2. **Bước 2 - Chọn môn học:** Vào menu **'Tra cứu học phần'** hoặc dùng **'Cố vấn AI'** để xem gợi ý môn học tối ưu.\n" +
+                          "3. **Bước 3 - Thêm vào giỏ:** Chọn lớp học phần phù hợp (chú ý giảng viên, phòng, lịch học) và bấm **'Thêm vào giỏ'**.\n" +
+                          "4. **Bước 4 - Xác nhận đăng ký:** Vào **'Giỏ đăng ký'**, kiểm tra tổng số tín chỉ (10 - 24 TC) và bấm **'Gửi phiếu đăng ký'**.\n" +
+                          "5. **Bước 5 - Xem thời khóa biểu & Nộp học phí:** Kiểm tra lưới lịch tuần và quét mã VietQR để hoàn tất học phí.",
+                ShowLoginButton = true,
+                Timestamp = DateTime.Now
+            };
+        }
+
+        // 9. Quy chế Tiên quyết
+        bool isPrereq = qNorm.Contains("tien quyet") || qNorm.Contains("dieu kien") || qNorm.Contains("hoc truoc");
+        if (isPrereq)
+        {
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "⚠️ **Quy Định Về Học Phần Tiên Quyết:**\n\n" +
+                          "- **Nguyên tắc:** Sinh viên bắt buộc phải hoàn thành học phần tiên quyết với điểm số **từ 5.0/10 trở lên** mới được phép ghi danh vào học phần tiếp theo.\n" +
+                          "- **Ví dụ điển hình trong chương trình đào tạo:**\n" +
+                          "  + Môn *Nhập môn lập trình (TIN101)* là tiên quyết của *Lập trình Hướng đối tượng (TIN102)* & *Cấu trúc dữ liệu & Giải thuật (TIN201)*.\n" +
+                          "  + Môn *Lập trình Hướng đối tượng (TIN102)* là tiên quyết của *Lập trình Web (WEB301)* & *Kỹ thuật phần mềm (KTPM302)*.\n" +
+                          "  + Môn *Cơ sở dữ liệu (CSDL201)* là tiên quyết của *CSDL Phân tán & NoSQL (CSDL202)*.\n\n" +
+                          "💡 Bạn hãy **Đăng nhập** để AI kiểm tra danh sách các môn bạn đã qua và mở khóa các môn tương ứng nhé!",
+                ShowLoginButton = true,
+                Timestamp = DateTime.Now
+            };
+        }
+
+        // 10. Quy chế Rút môn
+        bool isDrop = qNorm.Contains("rut mon") || qNorm.Contains("huy mon") || qNorm.Contains("bo mon") || qNorm.Contains("xin rut");
+        if (isDrop)
+        {
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "📋 **Quy Chế Rút Môn & Hủy Học Phần Dành Cho Sinh Viên:**\n\n" +
+                          "- **Trong thời gian đăng ký trực tuyến:** Bạn có thể tự do xóa hoặc đổi sang lớp khác trong mục **'Giỏ đăng ký'** hoàn toàn miễn phí và không bị ghi điểm F vào bảng điểm.\n" +
+                          "- **Sau khi kết thúc thời hạn trực tuyến:** Cổng trực tuyến sẽ đóng. Để rút môn, bạn cần làm đơn có xác nhận của Cố vấn học tập và nộp về **Phòng Đào Tạo**.\n" +
+                          "- **Hạn mức sau rút:** Tổng số tín chỉ còn lại trong kỳ **không được thấp hơn 10 tín chỉ**.",
+                Timestamp = DateTime.Now
+            };
+        }
+
+        // 11. Thông tin Trường & Các Khoa / Ngành đào tạo
+        bool isUni = qNorm.Contains("truong") || qNorm.Contains("dai hoc kinh te") || qNorm.Contains("nganh") ||
+                     qNorm.Contains("khoa") || qNorm.Contains("dia chi") || qNorm.Contains("hue");
+        if (isUni)
+        {
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "🏫 **Trường Đại Học Kinh Tế - Đại Học Huế (HCE):**\n\n" +
+                          "- **Địa chỉ:** Số 99 Hồ Đắc Di, TP. Huế, Tỉnh Thừa Thiên Huế.\n" +
+                          "- **Website:** https://hce.edu.vn\n" +
+                          "- **Các ngành đào tạo nổi bật:**\n" +
+                          "  + Hệ thống thông tin quản lý & Thương mại điện tử\n" +
+                          "  + Công nghệ thông tin & Kinh tế số\n" +
+                          "  + Quản trị kinh doanh & Marketing\n" +
+                          "  + Kế toán - Kiểm toán\n" +
+                          "  + Tài chính - Ngân hàng\n" +
+                          "  + Kinh tế & Luật kinh tế.\n\n" +
+                          "Hệ thống Đăng ký Tín chỉ trực tuyến này đang phục vụ toàn bộ sinh viên trong trường với dữ liệu thời gian thực!",
+                Timestamp = DateTime.Now
+            };
+        }
+
+        // 12. Thủ tục sinh viên & Bảo lưu
+        bool isAffair = qNorm.Contains("giay xac nhan") || qNorm.Contains("nghia vu") || qNorm.Contains("the sinh vien") ||
+                        qNorm.Contains("vay von") || qNorm.Contains("bao luu");
+        if (isAffair)
+        {
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "📄 **Hướng Dẫn Thủ Tục Hành Chính Sinh Viên:**\n\n" +
+                          "- **Giấy xác nhận sinh viên (hoãn nghĩa vụ quân sự, vay vốn, vé xe buýt):** Nộp yêu cầu tại Bộ phận Một Cửa (Phòng Đào Tạo - Nhà Hiệu Bộ), nhận kết quả sau 24 - 48h.\n" +
+                          "- **Cấp lại thẻ sinh viên:** Đăng ký tại Văn phòng Khoa quản lý.\n" +
+                          "- **Bảo lưu kết quả học tập:** Nộp đơn kèm minh chứng hợp lệ về Phòng Đào Tạo trước khi kỳ học bắt đầu ít nhất 2 tuần.",
+                Timestamp = DateTime.Now
+            };
+        }
+
+        // 13. Học bổng
+        bool isScholar = qNorm.Contains("hoc bong") || qNorm.Contains("khen thuong");
+        if (isScholar)
+        {
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "🏆 **Chính Sách Học Bổng Khuyến Khích Học Tập:**\n\n" +
+                          "- **Điều kiện:** Đăng ký >= 14 tín chỉ trong kỳ chính, không bị điểm F và Điểm rèn luyện từ loại Tốt trở lên.\n" +
+                          "- **Mức học bổng:**\n" +
+                          "  + **Xuất sắc:** GPA >= 3.6 & Điểm rèn luyện Xuất sắc (>= 90đ).\n" +
+                          "  + **Giỏi:** GPA 3.2 - 3.59 & Điểm rèn luyện Tốt (>= 80đ).\n" +
+                          "  + **Khá:** GPA 2.5 - 3.19 & Điểm rèn luyện Khá trở lên.",
+                Timestamp = DateTime.Now
+            };
+        }
+
+        // 14. Chào hỏi thân thiện
+        bool isGreeting = qNorm == "chao" || qNorm.StartsWith("chao ") || qNorm.Contains("xin chao") ||
+                          qNorm.Contains("hello") || qNorm == "hi" || qNorm.StartsWith("hi ") ||
+                          qNorm.Contains("ban la ai") || qNorm.Contains("tro giup");
+        if (isGreeting)
+        {
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = "👋 **Xin chào bạn! Tôi là Cố vấn Học thuật AI của Trường Đại học Kinh tế Huế.**\n\n" +
+                          "Tôi có thể hỗ trợ bạn tra cứu toàn bộ thông tin học vụ:\n" +
+                          "- 📘 **Môn học & Học phần:** Hỏi môn *Lập trình Web*, *Cơ sở dữ liệu*, *Kỹ thuật phần mềm*, số tín chỉ, điều kiện tiên quyết...\n" +
+                          "- 👨‍🏫 **Giảng viên:** Tra cứu giảng dạy của *TS. Hà Ngọc Long*, *PGS.TS. Ngô Văn Dũng*, *TS. Phạm Thanh Tùng*...\n" +
+                          "- 💰 **Học phí & VietQR:** 450.000 đ/tín chỉ, số tài khoản MB Bank, cách quét mã gạch nợ tức thì.\n" +
+                          "- ⚖️ **Quy chế tín chỉ:** Hạn mức 10-24 tín chỉ, quy định rút môn, thang điểm 4, cảnh báo học vụ.\n\n" +
+                          "👉 Hoặc bấm **Đăng nhập** để AI đọc học bạ cá nhân và đề xuất thời khóa biểu tối ưu cho bạn!",
+                ShowLoginButton = true,
+                Timestamp = DateTime.Now
+            };
+        }
+
+        // 15. Tra cứu mờ từ khóa (Fuzzy search qua các môn học và giảng viên trong CSDL)
+        var stopWords = new HashSet<string> { "co", "la", "cac", "nhung", "cho", "cua", "trong", "va", "ve", "duoc", "khong", "thi", "de", "voi", "o", "tai", "nhu", "nao", "gi", "sao", "mot", "hai", "ba", "lop", "mon", "hoc" };
+        var queryWords = qNorm.Split(new[] { ' ', ',', '.', '?', '!', ':', ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length >= 2 && !stopWords.Contains(w))
+            .ToList();
+
+        var matchedSections = allSections.Where(s =>
+            queryWords.Any(w =>
+                (s.Course != null && RemoveDiacritics(s.Course.CourseName).Contains(w)) ||
+                (s.Course != null && s.Course.CourseCode.ToLowerInvariant().Contains(w)) ||
+                (!string.IsNullOrEmpty(s.Instructor) && RemoveDiacritics(s.Instructor).Contains(w)) ||
+                s.SectionCode.ToLowerInvariant().Contains(w) ||
+                (!string.IsNullOrEmpty(s.Room) && s.Room.ToLowerInvariant().Contains(w))
+            )
+        ).Take(5).ToList();
+
+        if (matchedSections.Any())
+        {
+            var lines = matchedSections.Select(s =>
+                $"- **{s.SectionCode} - {s.Course?.CourseName} ({s.Course?.Credits}TC):** GV **{s.Instructor}** | Phòng **{s.Room}** | {FormatSchedule(s)} | Còn: **{Math.Max(0, s.MaxCapacity - s.CurrentEnrollment)} chỗ**.");
+
+            return new ChatMessageModel
+            {
+                IsUser = false,
+                Content = $"🔍 **Kết quả tìm kiếm liên quan đến \"{question}\":**\n\n" +
+                          string.Join("\n", lines) +
+                          "\n\n💡 Bạn có thể hỏi chi tiết về từng môn học, giảng viên phụ trách hoặc **Đăng nhập** để đăng ký nhé!",
+                ShowLoginButton = true,
+                Timestamp = DateTime.Now
+            };
+        }
+
+        // 16. Phản hồi thông minh tổng hợp (Universal Academic Overview)
+        return new ChatMessageModel
+        {
+            IsUser = false,
+            Content = $"Cảm ơn câu hỏi của bạn về: *\"{question}\"*!\n\n" +
+                      $"Tôi là Cố vấn Học thuật AI của nhà trường. Tôi có thể giải đáp toàn diện các vấn đề sau:\n" +
+                      $"- 📘 **Tra cứu học phần:** Hỏi về *Lập trình ứng dụng Web*, *Cơ sở dữ liệu*, *Kỹ thuật phần mềm*, *An toàn thông tin*...\n" +
+                      $"- 👨‍🏫 **Giảng viên:** Thầy Hà Ngọc Long, Thầy Ngô Văn Dũng, Thầy Phạm Thanh Tùng, Thầy Lê Hoàng Sơn...\n" +
+                      $"- 💰 **Học phí tín chỉ:** 450.000 đ/tín chỉ, thanh toán VietQR Napas247 tự động gạch nợ.\n" +
+                      $"- ⚖️ **Quy chế học vụ:** Điều kiện môn tiên quyết, rút môn, hạn mức 10-24 tín chỉ, thang điểm 4.\n\n" +
+                      "👉 Bạn có thể gõ câu hỏi cụ thể hơn hoặc **Đăng nhập tài khoản sinh viên** để tôi phân tích thời khóa biểu phù hợp nhất cho bạn nhé!",
+            ShowLoginButton = true,
+            Timestamp = DateTime.Now
+        };
     }
 
-    private string RemoveDiacritics(string text)
+    private Course? FindMatchingCourse(string qNorm)
+    {
+        // 1. Khớp chính xác mã môn
+        foreach (var c in allCourses)
+        {
+            var code = c.CourseCode.ToLowerInvariant();
+            if (qNorm.Contains(code)) return c;
+        }
+
+        // 2. Khớp tên môn không dấu
+        foreach (var c in allCourses.OrderByDescending(c => c.CourseName.Length))
+        {
+            var cNorm = RemoveDiacritics(c.CourseName);
+            if (qNorm.Contains(cNorm)) return c;
+        }
+
+        // 3. Khớp biệt danh / từ khóa thông dụng
+        var aliases = new Dictionary<string, string[]>
+        {
+            ["WEB301"] = new[] { "lap trinh ung dung web", "lap trinh web", "ung dung web", "ltw", "web301", "web" },
+            ["WEB302"] = new[] { "web nang cao", "microservices", "web302" },
+            ["CSDL201"] = new[] { "co so du lieu", "csdl201", "csdl", "database", "du lieu", "sql" },
+            ["CSDL202"] = new[] { "csdl phan tan", "nosql", "csdl202", "mongodb" },
+            ["TIN101"] = new[] { "nhap mon lap trinh", "nmlt", "tin101", "nhap mon", "c#" },
+            ["TIN102"] = new[] { "lap trinh huong doi tuong", "huong doi tuong", "oop", "tin102" },
+            ["TIN201"] = new[] { "cau truc du lieu", "giai thuat", "ctdl", "tin201", "thuat toan" },
+            ["KTPM302"] = new[] { "ky thuat phan mem", "ktpm302", "ktpm", "phan mem", "scrum", "agile" },
+            ["ATTT401"] = new[] { "an toan thong tin", "attt401", "attt", "bao mat", "an toan mang" },
+            ["ATTT402"] = new[] { "an ninh mang", "attt402", "phong chong tan cong" },
+            ["AI401"] = new[] { "tri tue nhan tao", "ai401", "hoc may", "machine learning", "tri tue" },
+            ["TOEIC"] = new[] { "tieng anh", "anh van", "toeic", "ngoai ngu" }
+        };
+
+        foreach (var kv in aliases)
+        {
+            var matchedCourse = allCourses.FirstOrDefault(c => c.CourseCode.Equals(kv.Key, StringComparison.OrdinalIgnoreCase));
+            if (matchedCourse != null)
+            {
+                foreach (var alias in kv.Value)
+                {
+                    if (alias == "web")
+                    {
+                        if (qNorm.Contains("mon web") || qNorm.Contains("lop web") || qNorm.Contains("lap trinh web") || qNorm.Contains("hoc web"))
+                        {
+                            return matchedCourse;
+                        }
+                    }
+                    else if (qNorm.Contains(alias))
+                    {
+                        return matchedCourse;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private (string Name, List<Section> Sections)? FindMatchingInstructor(string qNorm)
+    {
+        var instructors = allSections.Select(s => s.Instructor).Where(i => !string.IsNullOrEmpty(i)).Distinct().ToList();
+
+        foreach (var inst in instructors)
+        {
+            var instNorm = RemoveDiacritics(inst.ToLowerInvariant());
+            if (qNorm.Contains(instNorm))
+            {
+                return (inst, allSections.Where(s => s.Instructor.Equals(inst, StringComparison.OrdinalIgnoreCase)).ToList());
+            }
+
+            var parts = instNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var lastName = parts.LastOrDefault();
+            if (!string.IsNullOrEmpty(lastName) && lastName.Length > 2)
+            {
+                if (qNorm.Contains("thay " + lastName) || qNorm.Contains("co " + lastName) || qNorm.Contains(lastName + " day") || qNorm.Contains("lop " + lastName))
+                {
+                    return (inst, allSections.Where(s => s.Instructor.Equals(inst, StringComparison.OrdinalIgnoreCase)).ToList());
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static string FormatSchedule(Section section)
+    {
+        if (section.Schedules == null || !section.Schedules.Any()) return "Chưa xếp lịch";
+        return string.Join("; ", section.Schedules.Select(s => $"Thứ {s.DayOfWeek} (Tiết {s.StartPeriod}-{s.EndPeriod})"));
+    }
+
+    private static string RemoveDiacritics(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
         var normalizedString = text.Normalize(System.Text.NormalizationForm.FormD);
@@ -475,7 +928,7 @@
             .Replace('Đ', 'D');
     }
 
-    private string FormatMarkdown(string text)
+    private static string FormatMarkdown(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 

@@ -41,7 +41,7 @@ namespace CourseRegistration.CoreBusiness.Services
                             PhaseNumber = 2,
                             PhaseName = "Giai đoạn 2: Đăng ký bổ sung, đổi lớp & Học vượt / Học lại",
                             ShortName = "Giai đoạn 2: ĐK Bổ Sung & Học Vượt",
-                            Description = "Mở rộng cho sinh viên đăng ký thêm môn còn chỉ tiêu, đổi nhóm lớp, sinh viên học vượt hoặc học cải thiện điểm (Bao trùm ngày thi 02/11/2026).",
+                            Description = "Mở rộng cho sinh viên đăng ký thêm môn còn chỉ tiêu, đổi nhóm lớp, sinh viên học vượt hoặc học cải thiện điểm theo kế hoạch.",
                             TargetAudience = "Toàn bộ sinh viên có nhu cầu bổ sung môn, chuyển lớp hoặc học vượt.",
                             StartDate = new DateTime(2026, 10, 27, 0, 0, 0),
                             EndDate = new DateTime(2026, 11, 5, 23, 59, 59)

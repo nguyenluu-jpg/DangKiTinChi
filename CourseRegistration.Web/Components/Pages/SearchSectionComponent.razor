@@ -28,7 +28,7 @@
     </a>
 </div>
 
-<!-- Banner 2 Học kỳ & 3 Giai đoạn linh hoạt (Bao trùm ngày thi 02/11/2026) -->
+<!-- Kế hoạch & Tiến độ Đăng ký Học phần -->
 <RegistrationPhaseBannerComponent @bind-SelectedSemesterCode="currentSemesterCode" OnPhaseChanged="HandleSemesterOrPhaseChanged" />
 
 <!-- Thông báo thao tác giỏ hàng (Feedback Toast) -->
@@ -97,20 +97,24 @@ else if (currentRole == "Admin")
 }
 else if (currentStudent != null)
 {
-    <div class="card border-0 shadow-sm p-3 mb-4 bg-white">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="card border-0 shadow-sm p-3 mb-4 bg-white rounded-4 border-start border-4 border-primary">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div class="d-flex align-items-center gap-3">
-                <div class="user-avatar @(currentStudent.StudentId == 1 ? "bg-primary text-white" : "bg-warning text-dark")">
+                <div class="user-avatar @(currentStudent.StudentId == 1 ? "bg-primary text-white" : "bg-warning text-dark") rounded-circle shadow-xs">
                     <i class="bi bi-person-fill fs-5"></i>
                 </div>
                 <div>
-                    <div class="fw-bold text-dark">
+                    <div class="fw-bold text-dark fs-6 d-flex align-items-center gap-2 flex-wrap">
                         @currentStudent.FullName 
-                        <span class="text-muted fw-normal">(@currentStudent.StudentCode &bull; @currentStudent.Major)</span>
+                        <span class="badge bg-light text-secondary border font-monospace">@currentStudent.StudentCode</span>
+                        <span class="text-muted small fw-normal">&bull; @currentStudent.Major</span>
                     </div>
-                    <div class="small text-muted">
-                        Hạn mức kỳ này: <strong class="text-primary">@currentStudent.MaxCreditsPerSemester Tín chỉ</strong>
-                        &bull; Đã chọn trong giỏ: <strong class="text-success">@cartTotalCredits TC</strong>
+                    <div class="small text-secondary mt-0.5 d-flex align-items-center gap-2.5 flex-wrap">
+                        <span>Hạn mức kỳ: <strong class="text-primary fw-bold">@currentStudent.MaxCreditsPerSemester TC</strong></span>
+                        <span>&bull;</span>
+                        <span>Đã chọn: <strong class="text-success fw-bold">@cartTotalCredits TC</strong> (@cartSectionIds.Count lớp)</span>
+                        <span>&bull;</span>
+                        <span>Còn được đăng ký: <strong class="text-dark fw-bold">@(Math.Max(0, currentStudent.MaxCreditsPerSemester - cartTotalCredits)) TC</strong></span>
                     </div>
                 </div>
             </div>
@@ -118,13 +122,13 @@ else if (currentStudent != null)
             <div>
                 @if (currentStudent.StudentCode == "SV21002")
                 {
-                    <span class="badge bg-danger-subtle text-danger px-3 py-2 small rounded-pill">
+                    <span class="badge bg-danger-subtle text-danger px-3 py-2 small rounded-pill border border-danger-subtle">
                         <i class="bi bi-exclamation-triangle-fill me-1"></i>Chưa đạt môn tiên quyết TIN102 &bull; Hệ thống sẽ chặn khi gửi phiếu đăng ký môn Web (WEB301)
                     </span>
                 }
                 else
                 {
-                    <span class="badge bg-success-subtle text-success px-3 py-2 small rounded-pill">
+                    <span class="badge bg-success-subtle text-success px-3 py-2 small rounded-pill border border-success-subtle">
                         <i class="bi bi-check2-circle me-1"></i>Đã đạt đủ điều kiện học phần tiên quyết
                     </span>
                 }
@@ -134,17 +138,17 @@ else if (currentStudent != null)
 }
 
 <!-- Thanh tìm kiếm & bộ lọc nâng cao -->
-<div class="card border-0 shadow-sm p-3 mb-4 bg-white">
-    <div class="row g-2 align-items-center">
+<div class="card border-0 shadow-sm p-3 mb-3 bg-white rounded-4">
+    <div class="row g-2.5 align-items-center">
         <!-- Input tìm kiếm từ khóa -->
-        <div class="col-md-5">
+        <div class="col-12 col-md-5">
             <div class="input-group">
-                <span class="input-group-text bg-light border-end-0">
-                    <i class="bi bi-search text-muted"></i>
+                <span class="input-group-text bg-light border-end-0 text-muted">
+                    <i class="bi bi-search"></i>
                 </span>
                 <input type="text" 
                        class="form-control border-start-0" 
-                       placeholder="Tìm theo tên học phần, mã môn (vd: WEB301), giảng viên..."
+                       placeholder="Tìm mã lớp (INT1001.01), tên học phần, GV..."
                        @bind="searchKeyword" 
                        @bind:event="oninput" 
                        @onkeyup="FilterSections" />
@@ -158,9 +162,9 @@ else if (currentStudent != null)
         </div>
 
         <!-- Lọc theo môn học -->
-        <div class="col-md-4">
-            <select class="form-select" @onchange="OnCourseFilterChanged">
-                <option value="0">-- Tất cả học phần trong kỳ --</option>
+        <div class="col-12 col-md-3">
+            <select class="form-select text-dark" @onchange="OnCourseFilterChanged">
+                <option value="0">-- Tất cả môn học --</option>
                 @foreach (var c in allCourses)
                 {
                     <option value="@c.CourseId">@c.CourseCode - @c.CourseName (@c.Credits TC)</option>
@@ -168,14 +172,32 @@ else if (currentStudent != null)
             </select>
         </div>
 
-        <!-- Toggle chỉ lớp còn chỗ & nút reset -->
-        <div class="col-md-3 d-flex align-items-center justify-content-between gap-2">
+        <!-- Toggle chỉ lớp còn chỗ & chuyển đổi dạng hiển thị -->
+        <div class="col-12 col-md-4 d-flex align-items-center justify-content-between justify-content-md-end gap-2.5 flex-wrap">
             <div class="form-check form-switch mb-0">
                 <input class="form-check-input" type="checkbox" id="availableOnlySwitch" 
                        checked="@onlyAvailable" @onchange="OnAvailableOnlyChanged">
-                <label class="form-check-label small fw-semibold" for="availableOnlySwitch">
+                <label class="form-check-label small fw-semibold text-secondary" for="availableOnlySwitch">
                     Chỉ hiện còn chỗ
                 </label>
+            </div>
+
+            <!-- Chuyển đổi Dạng Bảng / Dạng Thẻ -->
+            <div class="btn-group btn-group-sm shadow-xs" role="group">
+                <button type="button" 
+                        class="btn @(isTableView ? "btn-primary" : "btn-outline-secondary") d-flex align-items-center gap-1 px-2.5 py-1.5" 
+                        @onclick="() => isTableView = true"
+                        title="Xem dạng Bảng chi tiết">
+                    <i class="bi bi-table"></i>
+                    <span class="d-none d-sm-inline fw-medium">Dạng Bảng</span>
+                </button>
+                <button type="button" 
+                        class="btn @(!isTableView ? "btn-primary" : "btn-outline-secondary") d-flex align-items-center gap-1 px-2.5 py-1.5" 
+                        @onclick="() => isTableView = false"
+                        title="Xem dạng Thẻ lưới">
+                    <i class="bi bi-grid-fill"></i>
+                    <span class="d-none d-sm-inline fw-medium">Dạng Thẻ</span>
+                </button>
             </div>
 
             <button class="btn btn-outline-secondary btn-sm" title="Đặt lại bộ lọc" @onclick="HandleReset">
@@ -185,7 +207,7 @@ else if (currentStudent != null)
     </div>
 </div>
 
-<!-- Danh sách lớp học phần hiển thị qua Reusable SectionCardComponent (K3.1) -->
+<!-- Danh sách lớp học phần -->
 @if (isLoading)
 {
     <div class="text-center py-5">
@@ -212,40 +234,208 @@ else if (!string.IsNullOrEmpty(loadErrorMessage))
 }
 else if (!filteredSections.Any())
 {
-    <div class="card border-0 shadow-sm text-center py-5 bg-white">
+    <div class="card border-0 shadow-sm text-center py-5 bg-white rounded-4">
         <i class="bi bi-inbox fs-1 text-muted mb-2"></i>
         <h5 class="fw-bold text-muted">Không tìm thấy lớp học phần phù hợp</h5>
         <p class="small text-muted mb-3">Vui lòng thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc</p>
         <div>
-            <button class="btn btn-outline-primary btn-sm" @onclick="HandleReset">Đặt lại bộ lọc</button>
+            <button class="btn btn-outline-primary btn-sm rounded-pill px-3" @onclick="HandleReset">Đặt lại bộ lọc</button>
         </div>
     </div>
 }
 else
 {
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <span class="text-muted small fw-semibold">
-            Tìm thấy <strong>@filteredSections.Count</strong> lớp học phần phù hợp
-        </span>
+    <div class="d-flex justify-content-between align-items-center mb-2.5 flex-wrap gap-2">
+        <div class="text-secondary small fw-semibold">
+            Danh sách <strong>@filteredSections.Count</strong> lớp học phần &bull;
+            <span class="text-success">@filteredSections.Count(s => s.HasAvailableSlot) lớp còn chỗ trống</span>
+        </div>
+        <div class="small text-muted">
+            Nhấp <strong>"Thêm vào giỏ"</strong> để chọn học phần, sau đó vào <strong>"Giỏ Đăng Ký"</strong> để xác nhận.
+        </div>
     </div>
 
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-        @foreach (var sec in filteredSections)
-        {
-            bool isAdded = cartSectionIds.Contains(sec.SectionId);
-            string? prereqWarning = GetPrerequisiteWarning(sec);
-            bool hasPrereqMet = string.IsNullOrEmpty(prereqWarning) && HasAnyPrerequisite(sec);
+    @if (isTableView)
+    {
+        <!-- BẢNG TRA CỨU & ĐĂNG KÝ LỚP HỌC PHẦN (TABLE VIEW CHUYÊN NGHIỆP) -->
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 bg-white">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 section-table">
+                    <thead class="bg-light-subtle text-dark border-bottom">
+                        <tr>
+                            <th class="text-center py-3 ps-3" style="width: 45px;">#</th>
+                            <th class="py-3" style="width: 130px;">Mã Lớp HP</th>
+                            <th class="py-3" style="min-width: 220px;">Tên Học Phần & Môn Học</th>
+                            <th class="text-center py-3" style="width: 80px;">Số TC</th>
+                            <th class="py-3" style="width: 170px;">Giảng Viên</th>
+                            <th class="py-3" style="min-width: 200px;">Lịch Học & Phòng</th>
+                            <th class="py-3" style="width: 160px;">Sĩ Số & Lấp Đầy</th>
+                            <th class="py-3" style="width: 150px;">Tiên Quyết</th>
+                            <th class="text-end pe-3 py-3" style="width: 140px;">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < filteredSections.Count; i++)
+                        {
+                            var sec = filteredSections[i];
+                            bool isAdded = cartSectionIds.Contains(sec.SectionId);
+                            string? prereqWarning = GetPrerequisiteWarning(sec);
+                            bool hasPrereqMet = string.IsNullOrEmpty(prereqWarning) && HasAnyPrerequisite(sec);
+                            int fillPct = sec.MaxCapacity > 0 ? (sec.CurrentEnrollment * 100 / sec.MaxCapacity) : 0;
 
-            <div class="col">
-                <SectionCardComponent Section="@sec" 
-                                      IsInCart="@isAdded"
-                                      PrerequisiteWarning="@prereqWarning"
-                                      HasPrerequisiteMet="@hasPrereqMet"
-                                      OnAddToCart="@HandleAddToCart"
-                                      OnRemoveFromCart="@HandleRemoveFromCart" />
+                            <tr class="section-row @(isAdded ? "in-cart-row" : "")">
+                                <td class="text-center text-muted fw-semibold ps-3">@(i + 1)</td>
+                                <td>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2 py-1 fs-6 fw-bold">
+                                        @sec.SectionCode
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">@(sec.Course?.CourseName ?? "Học phần")</div>
+                                    <div class="small text-muted d-flex align-items-center gap-2 mt-0.5">
+                                        <span>Mã môn: <strong class="text-secondary font-monospace">@sec.Course?.CourseCode</strong></span>
+                                        @if (!string.IsNullOrEmpty(sec.Course?.Department))
+                                        {
+                                            <span>&bull;</span>
+                                            <span>@sec.Course?.Department</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary-subtle text-dark border border-secondary-subtle px-2 py-1 rounded-pill fw-bold">
+                                        @(sec.Course?.Credits ?? 0) TC
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="teacher-icon-circle bg-light text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0">
+                                            <i class="bi bi-person-fill"></i>
+                                        </div>
+                                        <div class="small">
+                                            <div class="fw-semibold text-dark">@sec.Instructor</div>
+                                            <div class="text-muted" style="font-size: 0.72rem;">Giảng viên cơ hữu</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (sec.Schedules != null && sec.Schedules.Any())
+                                    {
+                                        <div class="d-flex flex-column gap-1">
+                                            @foreach (var sched in sec.Schedules)
+                                            {
+                                                <div class="schedule-pill badge bg-light text-dark border text-start fw-normal py-1 px-2 d-inline-flex align-items-center gap-1.5">
+                                                    <i class="bi bi-clock-history text-primary"></i>
+                                                    <strong>@sched.DayOfWeekName</strong> (T.@sched.StartPeriod-@sched.EndPeriod)
+                                                    <span class="text-muted ms-auto">&bull; P.@(string.IsNullOrEmpty(sched.Room) ? (string.IsNullOrEmpty(sec.Room) ? "A1" : sec.Room) : sched.Room)</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small fst-italic">
+                                            <i class="bi bi-geo-alt me-1"></i>@(string.IsNullOrEmpty(sec.Room) ? "Chưa sắp lịch" : $"Phòng {sec.Room}")
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex justify-content-between align-items-center small mb-1">
+                                        <span class="fw-bold text-dark">@sec.CurrentEnrollment/@sec.MaxCapacity</span>
+                                        @if (sec.HasAvailableSlot)
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small">
+                                                Còn @sec.AvailableSlots
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill small">
+                                                Đã đầy
+                                            </span>
+                                        }
+                                    </div>
+                                    <div class="progress rounded-pill" style="height: 6px;">
+                                        <div class="progress-bar @(sec.CurrentEnrollment >= sec.MaxCapacity ? "bg-danger" : fillPct >= 80 ? "bg-warning" : "bg-primary")" 
+                                             role="progressbar" 
+                                             style="width: @Math.Min(100, fillPct)%">
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(prereqWarning))
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle d-inline-flex align-items-center gap-1 text-wrap text-start p-1.5 small" style="max-width: 150px;">
+                                            <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                                            <span>@prereqWarning</span>
+                                        </span>
+                                    }
+                                    else if (hasPrereqMet)
+                                    {
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill small">
+                                            <i class="bi bi-check-circle-fill"></i> Đủ điều kiện
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-muted border px-2 py-1 rounded-pill small">
+                                            Không bắt buộc
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-end pe-3">
+                                    @if (isAdded)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 px-2.5 py-1.5 rounded-pill shadow-xs" 
+                                                title="Nhấp để xóa khỏi giỏ"
+                                                @onclick="() => HandleRemoveFromCart(sec.SectionId)">
+                                            <i class="bi bi-trash"></i>
+                                            <span>Hủy chọn</span>
+                                        </button>
+                                    }
+                                    else if (!sec.HasAvailableSlot)
+                                    {
+                                        <button class="btn btn-sm btn-light text-muted border d-inline-flex align-items-center gap-1 px-2.5 py-1.5 rounded-pill opacity-75" disabled>
+                                            <i class="bi bi-lock-fill"></i>
+                                            <span>Hết chỗ</span>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1 px-2.5 py-1.5 rounded-pill shadow-xs" 
+                                                @onclick="() => HandleAddToCart(sec)">
+                                            <i class="bi bi-plus-circle"></i>
+                                            <span>Thêm vào giỏ</span>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
-        }
-    </div>
+        </div>
+    }
+    else
+    {
+        <!-- DẠNG THẺ LƯỚI (CARD GRID VIEW) -->
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
+            @foreach (var sec in filteredSections)
+            {
+                bool isAdded = cartSectionIds.Contains(sec.SectionId);
+                string? prereqWarning = GetPrerequisiteWarning(sec);
+                bool hasPrereqMet = string.IsNullOrEmpty(prereqWarning) && HasAnyPrerequisite(sec);
+
+                <div class="col">
+                    <SectionCardComponent Section="@sec" 
+                                          IsInCart="@isAdded"
+                                          PrerequisiteWarning="@prereqWarning"
+                                          HasPrerequisiteMet="@hasPrereqMet"
+                                          OnAddToCart="@HandleAddToCart"
+                                          OnRemoveFromCart="@HandleRemoveFromCart" />
+                </div>
+            }
+        </div>
+    }
 }
 
 @code {
@@ -267,6 +457,7 @@ else
     private bool isAuthenticated = false;
     private string currentRole = string.Empty;
     private string? feedbackMessage;
+    private bool isTableView = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -458,3 +649,38 @@ else
         CurrentUserStateStore.RemoveStateChangeListeners(HandleUserOrCartChanged);
     }
 }
+
+<style>
+    .section-table th {
+        font-weight: 600;
+        font-size: 0.82rem;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #475569;
+        background-color: #f8fafc;
+        border-top: none;
+    }
+    .section-row {
+        transition: background-color 0.15s ease-in-out;
+    }
+    .section-row:hover {
+        background-color: #f8fbff !important;
+    }
+    .in-cart-row {
+        background-color: #f0fdf4 !important;
+        border-left: 4px solid #16a34a !important;
+    }
+    .in-cart-row:hover {
+        background-color: #e6f9ed !important;
+    }
+    .teacher-icon-circle {
+        width: 34px;
+        height: 34px;
+        font-size: 1.1rem;
+        background: #f1f5f9;
+    }
+    .schedule-pill {
+        font-size: 0.76rem;
+        border-radius: 6px;
+    }
+</style>

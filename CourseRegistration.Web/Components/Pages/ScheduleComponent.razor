@@ -119,48 +119,6 @@ else
     <div class="mb-4">
         <ScheduleTableComponent Sections="@registeredSections" />
     </div>
-
-    <!-- Tóm tắt danh sách các môn đã đăng ký -->
-    <div class="card border-0 shadow-sm p-4 bg-white rounded-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold mb-0 text-dark">
-                <i class="bi bi-list-check text-primary me-2"></i>Tổng Hợp Các Lớp Đã Xác Nhận Trong Kỳ
-            </h5>
-            <span class="text-muted small">@registeredSections.Count() lớp</span>
-        </div>
-
-        <div class="row row-cols-1 row-cols-md-2 g-3">
-            @foreach (var sec in registeredSections)
-            {
-                <div class="col">
-                    <div class="p-3 border rounded-3 bg-light-subtle h-100">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="badge bg-primary-subtle text-primary fw-bold fs-6">@sec.SectionCode</span>
-                            <span class="badge bg-secondary">@(sec.Course?.Credits ?? 0) Tín chỉ</span>
-                        </div>
-                        <h6 class="fw-bold mb-2 text-dark">@sec.Course?.CourseName</h6>
-                        <div class="small text-muted mb-2">
-                            <div><i class="bi bi-person-badge me-1"></i> Giảng viên: <strong>@sec.Instructor</strong></div>
-                            <div><i class="bi bi-geo-alt me-1"></i> Phòng: <strong>@(string.IsNullOrEmpty(sec.Room) ? "Chưa xếp" : sec.Room)</strong></div>
-                        </div>
-
-                        @if (sec.Schedules != null && sec.Schedules.Any())
-                        {
-                            <div class="pt-2 border-top">
-                                <span class="small fw-bold text-muted me-1">Lịch:</span>
-                                @foreach (var sched in sec.Schedules)
-                                {
-                                    <span class="badge bg-info-subtle text-dark border me-1">
-                                        @sched.DayOfWeekName (T @sched.StartPeriod-@sched.EndPeriod)
-                                    </span>
-                                }
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
-        </div>
-    </div>
 }
 
 @code {

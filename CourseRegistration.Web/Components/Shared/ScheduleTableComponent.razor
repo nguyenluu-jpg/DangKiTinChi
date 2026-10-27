@@ -5,11 +5,11 @@
     <div class="btn-group btn-group-sm shadow-sm" role="group">
         <button type="button" class="btn @(viewMode == "Agenda" ? "btn-primary" : "btn-outline-primary")" 
                 @onclick="@(() => viewMode = "Agenda")">
-            <i class="bi bi-view-list me-1"></i> Lịch theo ngày (Tiện cho Điện thoại)
+            <i class="bi bi-view-list me-1"></i> Lịch học theo ngày
         </button>
         <button type="button" class="btn @(viewMode == "Grid" ? "btn-primary" : "btn-outline-primary")" 
                 @onclick="@(() => viewMode = "Grid")">
-            <i class="bi bi-grid-3x3 me-1"></i> Ma trận tuần (Desktop)
+            <i class="bi bi-grid-3x3 me-1"></i> Lịch học theo tuần
         </button>
     </div>
 

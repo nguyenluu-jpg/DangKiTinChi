@@ -1,83 +1,66 @@
 @namespace CourseRegistration.Web.Components.Shared
 @inject IRegistrationPeriodService RegistrationPeriodService
 
-<div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden phase-banner-card">
-    <div class="card-header bg-gradient-primary-subtle p-3 p-md-4 border-0">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="phase-icon-box bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm">
-                    <i class="bi bi-calendar2-range-fill fs-4"></i>
-                </div>
-                <div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <span class="badge bg-primary px-2.5 py-1 rounded-pill small fw-semibold">
-                            <i class="bi bi-mortarboard me-1"></i>Hệ thống Tín chỉ Đại học
+<div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden phase-banner-card">
+    <!-- Header gọn gàng, thanh lịch -->
+    <div class="px-4 py-3 bg-light-subtle border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <div class="phase-icon-box bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-xs">
+                <i class="bi bi-calendar3 fs-5"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <h6 class="fw-bold mb-0 text-dark fs-6">Kế Hoạch Đăng Ký Học Phần</h6>
+                    @if (isOpen)
+                    {
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 small fw-semibold d-inline-flex align-items-center gap-1.5">
+                            <span class="pulse-dot"></span> Đang mở đăng ký
                         </span>
-                        @if (isOpen)
-                        {
-                            <span class="badge bg-success text-white px-2.5 py-1 rounded-pill d-inline-flex align-items-center gap-1.5 shadow-xs fw-semibold">
-                                <span class="pulse-dot"></span> CỔNG ĐĂNG KÝ ĐANG MỞ
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary text-white px-2.5 py-1 rounded-pill fw-semibold">
-                                <i class="bi bi-lock-fill me-1"></i> CỔNG ĐĂNG KÝ ĐÃ KHÓA
-                            </span>
-                        }
-                        @if (activePhase != null)
-                        {
-                            <span class="badge bg-white text-primary border border-primary-subtle px-2.5 py-1 rounded-pill small fw-semibold">
-                                Giai đoạn @activePhase.PhaseNumber: @activePhase.ShortName
-                            </span>
-                        }
-                    </div>
-                    <h5 class="fw-bold mb-0 text-dark mt-1.5 fs-5">
-                        Kế Hoạch Đăng Ký Học Phần &bull; @selectedSemester?.SemesterName
-                    </h5>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2.5 py-1 small fw-semibold">
+                            <i class="bi bi-lock-fill me-1"></i> Cổng đã khóa
+                        </span>
+                    }
+                </div>
+                <div class="text-muted small mt-0.5">
+                    @selectedSemester?.SemesterName
                 </div>
             </div>
-
-            @if (ShowControls)
-            {
-                <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
-                    <!-- Chọn Học kỳ -->
-                    <div class="input-group input-group-sm semester-select-group shadow-xs">
-                        <span class="input-group-text bg-white border-end-0 text-muted">
-                            <i class="bi bi-calendar3 text-primary"></i>
-                        </span>
-                        <select class="form-select form-select-sm border-start-0 fw-semibold text-primary" 
-                                value="@SelectedSemesterCode" 
-                                @onchange="HandleSemesterChanged">
-                            @foreach (var sem in allSemesters)
-                            {
-                                <option value="@sem.SemesterCode">@sem.ShortName</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Bộ chuyển giai đoạn linh hoạt -->
-                    <div class="input-group input-group-sm demo-sim-group shadow-xs">
-                        <span class="input-group-text bg-white border-end-0 text-secondary" title="Chuyển đổi giai đoạn kiểm tra">
-                            <i class="bi bi-sliders"></i>
-                        </span>
-                        <select class="form-select form-select-sm border-start-0 text-dark fw-medium" 
-                                value="@(RegistrationPeriodService.SimulatedPhaseOverride?.ToString() ?? "0")" 
-                                @onchange="HandlePhaseOverrideChanged"
-                                title="Chuyển đổi giai đoạn hệ thống để kiểm tra quy chế học vụ">
-                            <option value="0">⏱️ Thời gian thực tế hệ thống</option>
-                            <option value="1">Giai đoạn 1: ĐK Chính thức</option>
-                            <option value="2">Giai đoạn 2: ĐK Bổ sung & Học vượt</option>
-                            <option value="3">Giai đoạn 3: Rút môn & Nộp học phí</option>
-                        </select>
-                    </div>
-                </div>
-            }
         </div>
+
+        @if (ShowControls)
+        {
+            <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
+                <!-- Chọn Học kỳ -->
+                <select class="form-select form-select-sm fw-semibold text-primary border-primary-subtle rounded-pill shadow-xs" 
+                        style="width: auto; min-width: 170px;"
+                        value="@SelectedSemesterCode" 
+                        @onchange="HandleSemesterChanged">
+                    @foreach (var sem in allSemesters)
+                    {
+                        <option value="@sem.SemesterCode">@sem.ShortName</option>
+                    }
+                </select>
+
+                <!-- Bộ chuyển giai đoạn kín đáo -->
+                <select class="form-select form-select-sm text-secondary rounded-pill shadow-xs" 
+                        style="width: auto; font-size: 0.8rem;"
+                        value="@(RegistrationPeriodService.SimulatedPhaseOverride?.ToString() ?? "0")" 
+                        @onchange="HandlePhaseOverrideChanged"
+                        title="Chuyển đổi giai đoạn">
+                    <option value="0">⏱️ Thời gian thực tế</option>
+                    <option value="1">GĐ 1: ĐK Chuẩn</option>
+                    <option value="2">GĐ 2: ĐK Bổ sung</option>
+                    <option value="3">GĐ 3: Rút môn & Phí</option>
+                </select>
+            </div>
+        }
     </div>
 
-    <!-- 3 Giai đoạn của học kỳ hiển thị dạng Stepper / Progress Cards -->
-    <div class="card-body p-3 p-md-4 bg-white">
+    <!-- 3 Giai đoạn: Màu sắc ấn tượng, Đầy đủ thông tin, Bắt mắt sinh viên -->
+    <div class="p-3 p-md-4">
         @if (selectedSemester != null)
         {
             <div class="row g-3">
@@ -88,74 +71,207 @@
                     bool isFuture = !isCurrent && DateTime.Now < phase.StartDate && !RegistrationPeriodService.SimulatedPhaseOverride.HasValue;
 
                     <div class="col-12 col-md-4">
-                        <div class="phase-card h-100 p-3 rounded-3 border @(isCurrent ? "border-primary bg-primary-subtle-light shadow-sm active-phase" : "border-light-subtle bg-light") position-relative">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge @(isCurrent ? "bg-primary text-white" : isPast ? "bg-secondary-subtle text-secondary" : "bg-light-subtle text-muted") rounded-pill px-2.5 py-1 fw-semibold">
-                                    Giai đoạn @phase.PhaseNumber
-                                </span>
+                        <div class="phase-step-card h-100 rounded-4 overflow-hidden position-relative d-flex flex-column @(isCurrent ? "hero-phase" : "normal-phase")">
+                            <!-- Dải màu trên đầu thẻ -->
+                            <div class="phase-top-bar @(phase.PhaseNumber == 1 ? "bar-phase-1" : phase.PhaseNumber == 2 ? "bar-phase-2" : "bar-phase-3")"></div>
 
-                                @if (isCurrent)
-                                {
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill small fw-bold d-inline-flex align-items-center gap-1">
-                                        <i class="bi bi-broadcast"></i> Đang diễn ra
+                            <div class="p-3.5 p-lg-4 d-flex flex-column flex-grow-1">
+                                <!-- Hàng header: Huy hiệu giai đoạn + Trạng thái -->
+                                <div class="d-flex justify-content-between align-items-center mb-2.5">
+                                    <span class="badge @(phase.PhaseNumber == 1 ? "badge-gd1" : phase.PhaseNumber == 2 ? "badge-gd2" : "badge-gd3") rounded-pill px-3 py-1.5 small fw-bold">
+                                        <i class="@(phase.PhaseNumber == 1 ? "bi bi-bookmark-check-fill" : phase.PhaseNumber == 2 ? "bi bi-lightning-charge-fill" : "bi bi-credit-card-2-front-fill") me-1"></i>
+                                        Giai đoạn @phase.PhaseNumber
                                     </span>
-                                }
-                                else if (isPast)
-                                {
-                                    <span class="badge bg-light text-muted border px-2 py-1 rounded-pill small">
-                                        <i class="bi bi-check2-all text-secondary me-1"></i> Đã kết thúc
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-light text-muted border px-2 py-1 rounded-pill small">
-                                        <i class="bi bi-clock-history me-1"></i> Sắp diễn ra
-                                    </span>
-                                }
+
+                                    @if (isCurrent)
+                                    {
+                                        <span class="badge bg-success text-white rounded-pill px-3 py-1.5 small fw-bold d-inline-flex align-items-center gap-1.5 shadow-sm">
+                                            <span class="pulse-dot"></span> ĐANG MỞ ĐĂNG KÝ
+                                        </span>
+                                    }
+                                    else if (isPast)
+                                    {
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2.5 py-1 small fw-medium">
+                                            <i class="bi bi-check2-circle text-secondary me-1"></i> Đã kết thúc
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2.5 py-1 small fw-semibold">
+                                            <i class="bi bi-clock-history me-1"></i> Sắp diễn ra
+                                        </span>
+                                    }
+                                </div>
+
+                                <!-- Tiêu đề giai đoạn -->
+                                <div class="phase-title fw-bold fs-6 mb-1 @(isCurrent ? "text-primary" : "text-dark") d-flex align-items-center gap-2">
+                                    @if (phase.PhaseNumber == 1)
+                                    {
+                                        <i class="bi bi-mortarboard-fill text-indigo fs-5"></i>
+                                        <span>Đăng Ký Chính Thức</span>
+                                    }
+                                    else if (phase.PhaseNumber == 2)
+                                    {
+                                        <i class="bi bi-stars text-warning fs-5"></i>
+                                        <span class="text-primary fw-bolder">ĐK Bổ Sung & Học Vượt</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-wallet2 text-danger fs-5"></i>
+                                        <span>Rút Môn & Nộp Học Phí</span>
+                                    }
+                                </div>
+
+                                <!-- Mô tả ngắn gọn của giai đoạn -->
+                                <p class="phase-desc small @(isCurrent ? "text-dark" : "text-muted") mb-2.5">
+                                    @if (phase.PhaseNumber == 1)
+                                    {
+                                        <span>Đăng ký học phần theo lộ trình kế hoạch đào tạo chuẩn của khóa.</span>
+                                    }
+                                    else if (phase.PhaseNumber == 2)
+                                    {
+                                        <span>Mở cổng bổ sung chỉ tiêu, đổi lớp và cho phép sinh viên học vượt.</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Nộp đơn rút môn không tính điểm F và hoàn tất nghĩa vụ học phí.</span>
+                                    }
+                                </p>
+
+                                <!-- Hộp thời gian áp dụng -->
+                                <div class="phase-time-box rounded-3 p-2 px-2.5 mb-2.5 d-flex align-items-center gap-2 @(isCurrent ? "time-box-active" : "time-box-normal")">
+                                    <i class="bi bi-calendar3 @(isCurrent ? "text-primary" : "text-secondary")"></i>
+                                    <div class="small fw-semibold @(isCurrent ? "text-primary" : "text-dark")">
+                                        @phase.StartDate.ToString("dd/MM/yyyy") &rarr; @phase.EndDate.ToString("dd/MM/yyyy")
+                                    </div>
+                                    @if (isCurrent)
+                                    {
+                                        <span class="badge bg-primary text-white ms-auto rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">Hiện hành</span>
+                                    }
+                                </div>
+
+                                <!-- Đối tượng áp dụng (Target Audience) -->
+                                <div class="phase-audience-chip rounded-3 p-2 mb-3 @(isCurrent ? "audience-hero" : "audience-normal")">
+                                    <div class="d-flex align-items-start gap-1.5 small">
+                                        <i class="bi bi-people-fill mt-0.5 @(isCurrent ? "text-primary" : "text-secondary")"></i>
+                                        <div>
+                                            <span class="fw-bold @(isCurrent ? "text-primary" : "text-secondary")">Đối tượng: </span>
+                                            <span class="@(isCurrent ? "text-dark fw-medium" : "text-secondary")">
+                                                @if (phase.PhaseNumber == 1)
+                                                {
+                                                    <span>Sinh viên chính quy đúng lộ trình khóa đào tạo</span>
+                                                }
+                                                else if (phase.PhaseNumber == 2)
+                                                {
+                                                    <span>Toàn bộ sinh viên (Bổ sung, đổi lớp, học vượt & cải thiện)</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>Sinh viên có nguyện vọng rút môn hoặc cần nộp học phí</span>
+                                                }
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Danh sách các nhiệm vụ & thông tin nổi bật của từng giai đoạn -->
+                                <div class="phase-features pt-2.5 border-top @(isCurrent ? "border-primary-subtle" : "border-light-subtle") d-flex flex-column gap-2 flex-grow-1">
+                                    <div class="small fw-bold @(isCurrent ? "text-primary" : "text-secondary") text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                                        Nội dung & Quyền lợi
+                                    </div>
+
+                                    @if (phase.PhaseNumber == 1)
+                                    {
+                                        <div class="d-flex align-items-center gap-2 small text-secondary">
+                                            <span class="feature-icon bg-indigo-subtle text-indigo"><i class="bi bi-journal-check"></i></span>
+                                            <span>Đăng ký môn học theo đúng tiến độ CTĐT</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 small text-secondary">
+                                            <span class="feature-icon bg-indigo-subtle text-indigo"><i class="bi bi-shield-check"></i></span>
+                                            <span>Ưu tiên giữ chỗ theo chuyên ngành quản lý</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 small text-secondary">
+                                            <span class="feature-icon bg-indigo-subtle text-indigo"><i class="bi bi-clock-history"></i></span>
+                                            <span>Thời hạn đăng ký chuẩn 12 ngày</span>
+                                        </div>
+                                    }
+                                    else if (phase.PhaseNumber == 2)
+                                    {
+                                        <div class="d-flex align-items-center gap-2 small text-dark fw-medium">
+                                            <span class="feature-icon bg-success text-white shadow-xs"><i class="bi bi-plus-circle-fill"></i></span>
+                                            <span><strong>Đăng ký thêm lớp:</strong> Tận dụng các chỉ tiêu còn trống</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 small text-dark fw-medium">
+                                            <span class="feature-icon bg-primary text-white shadow-xs"><i class="bi bi-arrow-left-right"></i></span>
+                                            <span><strong>Đổi nhóm lớp:</strong> Linh hoạt điều chỉnh lịch tránh trùng TKB</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 small text-dark fw-medium">
+                                            <span class="feature-icon bg-warning text-dark shadow-xs"><i class="bi bi-rocket-takeoff-fill"></i></span>
+                                            <span><strong>Học vượt & Cải thiện:</strong> Nâng điểm GPA hoặc đẩy nhanh tiến độ</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 small text-dark fw-medium">
+                                            <span class="feature-icon bg-info text-white shadow-xs"><i class="bi bi-shield-lock-fill"></i></span>
+                                            <span><strong>Tự động kiểm tra:</strong> Đối chiếu tiên quyết & hạn mức tín chỉ</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex align-items-center gap-2 small text-secondary">
+                                            <span class="feature-icon bg-danger-subtle text-danger"><i class="bi bi-file-earmark-x-fill"></i></span>
+                                            <span><strong>Rút môn học:</strong> Không ghi điểm F học bạ</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 small text-secondary">
+                                            <span class="feature-icon bg-success-subtle text-success"><i class="bi bi-qr-code-scan"></i></span>
+                                            <span><strong>Nộp học phí VietQR:</strong> Gạch nợ tự động 24/7</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 small text-secondary">
+                                            <span class="feature-icon bg-warning-subtle text-warning-emphasis"><i class="bi bi-clipboard2-check"></i></span>
+                                            <span><strong>Chốt danh sách:</strong> Ban hành danh sách thi chính thức</span>
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Chân thẻ: Thông báo trạng thái / Nút hành động nhanh -->
+                                <div class="mt-3 pt-2.5 border-top @(isCurrent ? "border-primary-subtle" : "border-light-subtle")">
+                                    @if (isCurrent)
+                                    {
+                                        <div class="phase-action-banner bg-primary text-white py-2 px-3 rounded-3 text-center fw-bold small shadow-sm d-flex align-items-center justify-content-center gap-2">
+                                            <i class="bi bi-lightning-charge-fill text-warning"></i>
+                                            <span>HỆ THỐNG ĐANG NHẬN ĐĂNG KÝ HỌC PHẦN</span>
+                                        </div>
+                                    }
+                                    else if (isPast)
+                                    {
+                                        <div class="text-center small text-muted py-1">
+                                            <i class="bi bi-lock-fill me-1"></i>Đã đóng cổng đăng ký Giai đoạn 1
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center small text-warning-emphasis py-1 fw-medium">
+                                            <i class="bi bi-hourglass-split me-1"></i>Sẽ mở cổng tiếp nhận sau Giai đoạn 2
+                                        </div>
+                                    }
+                                </div>
                             </div>
-
-                            <h6 class="fw-bold mb-1 text-dark d-flex align-items-center gap-1.5">
-                                @if (phase.PhaseNumber == 1)
-                                {
-                                    <i class="bi bi-clipboard2-check text-primary"></i>
-                                }
-                                else if (phase.PhaseNumber == 2)
-                                {
-                                    <i class="bi bi-lightning-charge text-warning"></i>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-shield-check text-info"></i>
-                                }
-                                @phase.ShortName
-                            </h6>
-
-                            <div class="small text-muted mb-2 d-flex align-items-center gap-1.5 fw-medium">
-                                <i class="bi bi-calendar-event text-secondary"></i>
-                                <span>@phase.StartDate.ToString("dd/MM/yyyy") &rarr; @phase.EndDate.ToString("dd/MM/yyyy")</span>
-                            </div>
-
-                            <p class="small text-secondary mb-0 line-clamp-2" title="@phase.Description">
-                                @phase.Description
-                            </p>
                         </div>
                     </div>
                 }
             </div>
 
-            <!-- Dòng thông báo chính thống từ Ban Đào Tạo -->
-            <div class="portal-notice-box mt-3 p-3 rounded-3 border border-primary-subtle bg-light d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div class="d-flex align-items-center gap-2.5 small text-dark">
-                    <div class="notice-icon text-primary flex-shrink-0">
-                        <i class="bi bi-info-circle-fill fs-5"></i>
-                    </div>
-                    <div>
-                        <strong class="text-primary-emphasis">Lưu ý sinh viên:</strong> Hệ thống tự động kiểm tra điều kiện tiên quyết và tính toán học phí theo thời gian thực. Trong giai đoạn mở cổng, sinh viên có thể tự do đăng ký thêm học phần hoặc đổi nhóm lớp phù hợp với thời khóa biểu.
-                    </div>
+            <!-- Thanh thông báo thời gian thực nổi bật -->
+            <div class="mt-3 px-3 py-2.5 rounded-3 border border-success-subtle bg-success-subtle d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-xs">
+                <div class="d-flex align-items-center gap-2.5 small text-success-emphasis">
+                    <span class="badge bg-success text-white p-1.5 rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-broadcast"></i>
+                    </span>
+                    <span>
+                        <strong class="text-success">Cổng đăng ký trực tuyến đang mở:</strong> Sinh viên có thể chọn thêm lớp học phần, đổi lịch học và kiểm tra đối chiếu hạn mức tín chỉ tự động bên dưới!
+                    </span>
                 </div>
                 @if (RegistrationPeriodService.SimulatedPhaseOverride.HasValue)
                 {
-                    <button class="btn btn-sm btn-outline-secondary py-1 px-3 rounded-pill fw-medium" @onclick="ResetSimulation">
+                    <button class="btn btn-sm btn-outline-success py-1 px-3 rounded-pill small fw-medium" @onclick="ResetSimulation">
                         <i class="bi bi-arrow-counterclockwise me-1"></i> Trở về thời gian thực tế
                     </button>
                 }
@@ -169,21 +285,94 @@
         border-radius: 1rem;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
     }
-    .bg-gradient-primary-subtle {
-        background: linear-gradient(135deg, #f0f7ff 0%, #e6f0fa 100%);
-        border-bottom: 1px solid rgba(13, 110, 253, 0.1);
-    }
     .phase-icon-box {
-        width: 48px;
-        height: 48px;
+        width: 40px;
+        height: 40px;
     }
-    .phase-card {
-        transition: all 0.2s ease;
+    .phase-step-card {
+        transition: all 0.25s ease-in-out;
+        border: 1px solid #e2e8f0;
+        background-color: #ffffff;
     }
-    .phase-card.active-phase {
-        border-width: 2px !important;
-        background-color: #f7fbff;
-        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.08);
+    .phase-step-card:hover {
+        transform: translateY(-3px);
+    }
+    .hero-phase {
+        background: linear-gradient(155deg, #ffffff 0%, #f0fdf4 40%, #eff6ff 100%) !important;
+        border: 2px solid #2563eb !important;
+        box-shadow: 0 10px 30px rgba(37, 99, 235, 0.15), 0 4px 12px rgba(16, 185, 129, 0.1) !important;
+    }
+    .normal-phase {
+        background-color: #fbfcfd;
+    }
+    .phase-top-bar {
+        height: 5px;
+        width: 100%;
+    }
+    .bar-phase-1 {
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    }
+    .bar-phase-2 {
+        background: linear-gradient(90deg, #2563eb, #06b6d4, #10b981);
+    }
+    .bar-phase-3 {
+        background: linear-gradient(90deg, #f59e0b, #ec4899);
+    }
+    .badge-gd1 {
+        background: linear-gradient(135deg, #4f46e5, #6366f1);
+        color: #ffffff;
+    }
+    .badge-gd2 {
+        background: linear-gradient(135deg, #2563eb, #0d9488);
+        color: #ffffff;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+    }
+    .badge-gd3 {
+        background: linear-gradient(135deg, #d97706, #e11d48);
+        color: #ffffff;
+    }
+    .text-indigo {
+        color: #4f46e5 !important;
+    }
+    .bg-indigo-subtle {
+        background-color: #e0e7ff !important;
+    }
+    .phase-desc {
+        line-height: 1.45;
+    }
+    .time-box-active {
+        background-color: #eff6ff;
+        border: 1px solid #bfdbfe;
+    }
+    .time-box-normal {
+        background-color: #f1f5f9;
+        border: 1px solid #e2e8f0;
+    }
+    .audience-hero {
+        background-color: rgba(37, 99, 235, 0.06);
+        border: 1px dashed #93c5fd;
+    }
+    .audience-normal {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+    }
+    .feature-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        font-size: 0.72rem;
+        flex-shrink: 0;
+    }
+    .bg-purple {
+        background-color: #8b5cf6 !important;
+    }
+    .phase-action-banner {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        letter-spacing: 0.3px;
+        transition: opacity 0.2s;
     }
     .pulse-dot {
         display: inline-block;
@@ -204,18 +393,6 @@
         100% {
             box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
         }
-    }
-    .semester-select-group {
-        min-width: 200px;
-    }
-    .demo-sim-group {
-        min-width: 260px;
-    }
-    .line-clamp-2 {
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
     }
 </style>
 

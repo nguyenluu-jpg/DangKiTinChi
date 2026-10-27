@@ -1,4 +1,5 @@
 @page "/sections"
+@page "/sections/plan"
 @namespace CourseRegistration.Web.Components.Pages
 @inject ISearchSectionUseCase SearchSectionUseCase
 @inject IAddSectionToCartUseCase AddSectionToCartUseCase
@@ -9,42 +10,208 @@
 @inject ICourseRepository CourseRepository
 @inject ILoginModalService LoginModalService
 @inject IRegistrationPeriodService RegistrationPeriodService
+@inject NavigationManager NavigationManager
 @implements IDisposable
 
 <!-- Thanh chuyển đổi nhóm Tra cứu (Pill Switcher) & Tiêu đề -->
 <div class="mb-3">
     <!-- Nhóm nút chuyển tab Tra cứu / Kế hoạch cực kỳ trực quan -->
     <div class="d-inline-flex p-1 bg-white rounded-pill border shadow-xs mb-3">
-        <a href="/sections" class="btn btn-sm btn-primary rounded-pill px-3 py-1.5 fw-semibold shadow-xs">
+        <button type="button" 
+                class="btn btn-sm @(currentTab == "search" ? "btn-primary shadow-xs" : "btn-light text-secondary border-0") rounded-pill px-3 py-1.5 fw-semibold"
+                @onclick='() => SwitchTab("search")'>
             <i class="bi bi-search me-1.5"></i> Tra Cứu Lớp Học Phần
-        </a>
-        <a href="/registration-plan" class="btn btn-sm btn-light text-secondary rounded-pill px-3 py-1.5 fw-semibold border-0">
+        </button>
+        <button type="button" 
+                class="btn btn-sm @(currentTab == "plan" ? "btn-primary shadow-xs" : "btn-light text-secondary border-0") rounded-pill px-3 py-1.5 fw-semibold"
+                @onclick='() => SwitchTab("plan")'>
             <i class="bi bi-calendar3-range me-1.5"></i> Kế Hoạch Đăng Ký
-        </a>
+        </button>
     </div>
 
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div>
-            <h2 class="fw-bold mb-1">
-                <i class="bi bi-search text-primary me-2"></i>Tra Cứu & Đăng Ký Lớp Học Phần
-            </h2>
-            <p class="text-muted mb-0">Hệ thống đối chiếu thời gian thực điều kiện tiên quyết, trùng lịch & hạn mức tín chỉ</p>
-        </div>
-        <a href="/cart" class="btn btn-primary d-inline-flex align-items-center shadow-sm">
-            <i class="bi bi-cart-check me-2"></i>
-            <span>Vào Giỏ Đăng Ký</span>
-            @if (cartSectionIds.Count > 0)
-            {
-                <span class="badge bg-white text-primary ms-2 rounded-pill">@cartSectionIds.Count</span>
-            }
-        </a>
+        @if (currentTab == "plan")
+        {
+            <div>
+                <h2 class="fw-bold mb-1">
+                    <i class="bi bi-calendar-check-fill text-primary me-2"></i>Kế Hoạch & Tiến Độ Đăng Ký Học Phần
+                </h2>
+                <p class="text-muted mb-0">Lộ trình 3 giai đoạn đăng ký tín chỉ chính thức, quy chế học vụ và thời hạn nộp học phí</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-primary d-inline-flex align-items-center shadow-sm" @onclick='() => SwitchTab("search")'>
+                    <i class="bi bi-search me-1.5"></i>
+                    <span>Vào Tra Cứu & Chọn Lớp</span>
+                </button>
+                <a href="/cart" class="btn btn-outline-primary d-inline-flex align-items-center shadow-sm">
+                    <i class="bi bi-cart-check me-2"></i>
+                    <span>Vào Giỏ Đăng Ký</span>
+                    @if (cartSectionIds.Count > 0)
+                    {
+                        <span class="badge bg-primary text-white ms-2 rounded-pill">@cartSectionIds.Count</span>
+                    }
+                </a>
+            </div>
+        }
+        else
+        {
+            <div>
+                <h2 class="fw-bold mb-1">
+                    <i class="bi bi-search text-primary me-2"></i>Tra Cứu & Đăng Ký Lớp Học Phần
+                </h2>
+                <p class="text-muted mb-0">Hệ thống đối chiếu thời gian thực điều kiện tiên quyết, trùng lịch & hạn mức tín chỉ</p>
+            </div>
+            <a href="/cart" class="btn btn-primary d-inline-flex align-items-center shadow-sm">
+                <i class="bi bi-cart-check me-2"></i>
+                <span>Vào Giỏ Đăng Ký</span>
+                @if (cartSectionIds.Count > 0)
+                {
+                    <span class="badge bg-white text-primary ms-2 rounded-pill">@cartSectionIds.Count</span>
+                }
+            </a>
+        }
     </div>
 </div>
 
-<!-- Dải thông tin Tiến độ & Trạng thái Đăng ký Gọn Gàng (Compact Status Ribbon) -->
-<RegistrationPhaseBannerComponent IsCompact="true" 
-                                  @bind-SelectedSemesterCode="currentSemesterCode" 
-                                  OnPhaseChanged="HandleSemesterOrPhaseChanged" />
+@if (currentTab == "plan")
+{
+    <!-- Khối 3 Giai đoạn Kế hoạch tương tác đầy đủ -->
+    <RegistrationPhaseBannerComponent IsCompact="false" 
+                                      @bind-SelectedSemesterCode="currentSemesterCode" 
+                                      OnPhaseChanged="HandleSemesterOrPhaseChanged" />
+
+    <!-- Khung Hướng dẫn Quy định & Quy trình Đăng ký -->
+    <div class="row g-4 mb-4">
+        <!-- Cột 1: Quy định Hạn mức Tín chỉ & Học vụ -->
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-4">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="p-2.5 rounded-3 bg-primary-subtle text-primary">
+                        <i class="bi bi-shield-check fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold text-dark mb-0">Quy Chế & Hạn Mức Tín Chỉ</h5>
+                        <div class="small text-muted">Quy định áp dụng cho sinh viên toàn trường</div>
+                    </div>
+                </div>
+
+                <ul class="list-group list-group-flush border-top border-light-subtle">
+                    <li class="list-group-item px-0 py-3 d-flex align-items-start gap-3 bg-transparent">
+                        <span class="badge bg-primary rounded-circle p-1.5 mt-0.5"><i class="bi bi-check2"></i></span>
+                        <div>
+                            <strong class="text-dark">Sinh viên bình thường (Tích lũy tốt):</strong>
+                            <div class="small text-secondary mt-0.5">
+                                Đăng ký tối đa <strong>24 tín chỉ</strong> và tối thiểu <strong>12 tín chỉ</strong> trong học kỳ chính để duy trì tư cách sinh viên chính quy.
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item px-0 py-3 d-flex align-items-start gap-3 bg-transparent">
+                        <span class="badge bg-warning text-dark rounded-circle p-1.5 mt-0.5"><i class="bi bi-exclamation"></i></span>
+                        <div>
+                            <strong class="text-dark">Sinh viên Cảnh báo học vụ:</strong>
+                            <div class="small text-secondary mt-0.5">
+                                Bị giới hạn tối đa <strong>14 tín chỉ/kỳ</strong> để tập trung cải thiện kết quả học tập (Ví dụ SV Trần Thị Mai - SV21002).
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item px-0 py-3 d-flex align-items-start gap-3 bg-transparent">
+                        <span class="badge bg-info text-white rounded-circle p-1.5 mt-0.5"><i class="bi bi-diagram-3"></i></span>
+                        <div>
+                            <strong class="text-dark">Điều kiện học phần Tiên quyết:</strong>
+                            <div class="small text-secondary mt-0.5">
+                                Phải có điểm học phần tiên quyết &ge; 4.0 (hoặc đạt) mới được đăng ký môn học tiếp theo trong lộ trình đào tạo.
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item px-0 py-3 d-flex align-items-start gap-3 bg-transparent">
+                        <span class="badge bg-success text-white rounded-circle p-1.5 mt-0.5"><i class="bi bi-clock-history"></i></span>
+                        <div>
+                            <strong class="text-dark">Rút môn học (Giai đoạn 3):</strong>
+                            <div class="small text-secondary mt-0.5">
+                                Nộp đơn rút học phần trong Giai đoạn 3 không bị ghi nhận điểm F trên bảng điểm tốt nghiệp.
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Cột 2: Quy trình 4 bước Đăng ký Chuẩn -->
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-4">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="p-2.5 rounded-3 bg-success-subtle text-success">
+                        <i class="bi bi-check2-all fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold text-dark mb-0">Quy Trình Đăng Ký 4 Bước</h5>
+                        <div class="small text-muted">Các bước hoàn tất học phần hợp lệ</div>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column gap-3">
+                    <div class="d-flex gap-3 p-2.5 rounded-3 bg-light-subtle border">
+                        <div class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 28px; height: 28px;">1</div>
+                        <div>
+                            <div class="fw-bold text-dark small">Tra cứu & Lọc lớp học phần</div>
+                            <div class="text-secondary" style="font-size: 0.8rem;">
+                                Vào tab <em>Tra cứu lớp học phần</em>, chọn môn học và kiểm tra đối chiếu điều kiện tiên quyết tự động.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 p-2.5 rounded-3 bg-light-subtle border">
+                        <div class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 28px; height: 28px;">2</div>
+                        <div>
+                            <div class="fw-bold text-dark small">Thêm vào giỏ & Kiểm tra trùng lịch</div>
+                            <div class="text-secondary" style="font-size: 0.8rem;">
+                                Bấm "Thêm vào giỏ", hệ thống tự động kiểm tra xung đột thời khóa biểu và hạn mức tín chỉ thời gian thực.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 p-2.5 rounded-3 bg-light-subtle border">
+                        <div class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 28px; height: 28px;">3</div>
+                        <div>
+                            <div class="fw-bold text-dark small">Gửi phiếu đăng ký học phần</div>
+                            <div class="text-secondary" style="font-size: 0.8rem;">
+                                Vào "Giỏ đăng ký", kiểm tra tổng số tín chỉ và bấm "Gửi phiếu đăng ký" để hệ thống ghi nhận chính thức.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 p-2.5 rounded-3 bg-light-subtle border">
+                        <div class="badge bg-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 28px; height: 28px;">4</div>
+                        <div>
+                            <div class="fw-bold text-dark small">Hoàn tất học phí (VietQR Napas247)</div>
+                            <div class="text-secondary" style="font-size: 0.8rem;">
+                                Quét mã VietQR tại cổng học phí để gạch nợ tự động 24/7 và đạt điều kiện dự thi học kỳ.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CTA chuyển sang Tra cứu -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 text-white text-center mb-4" 
+         style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #2563eb 100%);">
+        <h4 class="fw-bold mb-1 text-white">Bạn Đã Sẵn Sàng Chọn Môn Học?</h4>
+        <p class="text-white-50 small mb-3">Chuyển sang tab Tra cứu để tìm kiếm các lớp học phần và xếp lịch đăng ký ngay.</p>
+        <div>
+            <button type="button" class="btn btn-light px-4 py-2 fw-semibold text-primary rounded-pill shadow-sm" @onclick='() => SwitchTab("search")'>
+                <i class="bi bi-search me-1.5"></i> Chuyển Sang Tra Cứu Lớp Học Phần
+            </button>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Dải thông tin Tiến độ & Trạng thái Đăng ký Gọn Gàng (Compact Status Ribbon) -->
+    <RegistrationPhaseBannerComponent IsCompact="true" 
+                                      @bind-SelectedSemesterCode="currentSemesterCode" 
+                                      OnPhaseChanged="HandleSemesterOrPhaseChanged" />
 
 <!-- Thông báo thao tác giỏ hàng (Feedback Toast) -->
 @if (!string.IsNullOrEmpty(feedbackMessage))
@@ -266,8 +433,13 @@ else
         }
     </div>
 }
+}
 
 @code {
+    [SupplyParameterFromQuery]
+    public string? Tab { get; set; }
+
+    private string currentTab = "search";
     private List<Section> allSections = new List<Section>();
     private List<Section> filteredSections = new List<Section>();
     private List<Course> allCourses = new List<Course>();
@@ -286,6 +458,25 @@ else
     private bool isAuthenticated = false;
     private string currentRole = string.Empty;
     private string? feedbackMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (NavigationManager.Uri.Contains("/sections/plan", StringComparison.OrdinalIgnoreCase) ||
+            (!string.IsNullOrEmpty(Tab) && Tab.Equals("plan", StringComparison.OrdinalIgnoreCase)))
+        {
+            currentTab = "plan";
+        }
+        else
+        {
+            currentTab = "search";
+        }
+    }
+
+    private void SwitchTab(string tab)
+    {
+        currentTab = tab;
+        NavigationManager.NavigateTo($"/sections?tab={tab}");
+    }
 
     protected override async Task OnInitializedAsync()
     {

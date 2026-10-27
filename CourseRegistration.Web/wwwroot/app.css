@@ -41,6 +41,7 @@ h1, h2, h3, h4, h5, h6 {
 .custom-navbar .navbar-brand {
     font-size: 1.15rem;
     letter-spacing: -0.02em;
+    margin-right: 1.5rem;
 }
 
 .custom-navbar .nav-link {

@@ -76,7 +76,7 @@
                 <div class="student-badge-card text-white">
                     <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
                         <span class="badge bg-danger text-white px-2.5 py-1 fw-bold small shadow-xs">
-                            <i class="bi bi-shield-lock-fill me-1"></i>Phòng Đào Tạo
+                            <i class="bi bi-shield-lock-fill me-1"></i>Cán Bộ Đào Tạo
                         </span>
                         <span class="badge bg-white bg-opacity-25 text-white px-2 py-1 small">Quản trị viên</span>
                     </div>
@@ -88,8 +88,11 @@
                         </div>
                     </div>
 
-                    <!-- Hàng 1: Các nút chính trên 1 dòng duy nhất (flex-nowrap, không rớt dòng) -->
-                    <div class="d-flex gap-1.5 mb-2 flex-nowrap">
+                    <!-- Các nút chính trên 1 dòng duy nhất (flex-nowrap, không rớt dòng) -->
+                    <div class="d-flex gap-1 mb-2 flex-nowrap">
+                        <a href="/admin" class="btn btn-sm btn-danger fw-bold flex-fill text-nowrap px-1 py-1 small text-center shadow-xs">
+                            <i class="bi bi-speedometer2 me-1"></i>Tổng quan
+                        </a>
                         <a href="/admin/courses" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-1 py-1 small text-center">
                             <i class="bi bi-book me-1"></i>Môn học
                         </a>
@@ -101,15 +104,26 @@
                         </a>
                     </div>
 
-                    <!-- Hàng 2: Nút Trang Phòng Đào Tạo & Quản lý Học phí -->
-                    <div class="d-flex gap-1.5 mb-2 flex-nowrap">
-                        <a href="/admin" class="btn btn-sm btn-danger fw-bold flex-fill shadow-xs text-nowrap px-2 py-1 small text-center">
-                            <i class="bi bi-speedometer2 me-1"></i>Trang Phòng Đào Tạo
-                        </a>
-                        <a href="/admin/tuition" class="btn btn-sm btn-outline-light flex-fill text-nowrap px-2 py-1 small text-center">
-                            <i class="bi bi-wallet2 text-warning me-1"></i>Học phí
-                        </a>
-                    </div>
+                    <!-- Bấm để mở rộng toàn bộ thông tin đào tạo (khi kéo/mở có hết thông tin, rất gọn đẹp) -->
+                    <button type="button" 
+                            class="btn btn-sm btn-outline-light w-100 py-1 mb-2 d-flex align-items-center justify-content-between rounded-3 border-opacity-50"
+                            style="font-size: 0.78rem;"
+                            @onclick="() => isAdminInfoExpanded = !isAdminInfoExpanded">
+                        <span><i class="bi bi-info-circle me-1"></i> Thông tin tiếp nhận &amp; Giờ trực</span>
+                        <i class="bi @(isAdminInfoExpanded ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                    </button>
+                    @if (isAdminInfoExpanded)
+                    {
+                        <div class="p-2.5 bg-black bg-opacity-30 rounded-3 mb-2 small text-white-50" style="font-size: 0.75rem;">
+                            <div><i class="bi bi-building text-primary me-1"></i><strong class="text-white">Bộ phận:</strong> Tòa nhà Điều hành A1 (P. A1-102)</div>
+                            <div class="mt-1"><i class="bi bi-clock text-info me-1"></i><strong class="text-white">Giờ làm việc:</strong> 07h30-11h30 &bull; 13h30-17h00 (T2-T6)</div>
+                            <div class="mt-1"><i class="bi bi-telephone text-success me-1"></i><strong class="text-white">Hotline:</strong> 1900 6868 &bull; daotao@edu.vn</div>
+                            <div class="mt-2 pt-1 border-top border-white border-opacity-10 d-flex gap-2">
+                                <a href="/admin/tuition" class="btn btn-sm btn-outline-warning py-0 px-2 text-warning flex-fill text-center" style="font-size: 0.72rem;"><i class="bi bi-wallet2 me-1"></i>Học phí</a>
+                                <a href="/ai-advisor" class="btn btn-sm btn-outline-info py-0 px-2 text-info flex-fill text-center" style="font-size: 0.72rem;"><i class="bi bi-stars me-1"></i>Trợ lý AI</a>
+                            </div>
+                        </div>
+                    }
 
                     <div class="pt-2 border-top border-white border-opacity-25">
                         <div class="d-flex align-items-center justify-content-between">
@@ -522,6 +536,7 @@
     private bool isRulesOpen = false;
     private bool isGuideOpen = false;
     private bool isContactOpen = false;
+    private bool isAdminInfoExpanded = false;
 
     protected override async Task OnInitializedAsync()
     {

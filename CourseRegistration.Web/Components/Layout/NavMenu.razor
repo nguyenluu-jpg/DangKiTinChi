@@ -91,59 +91,9 @@
                         <i class="bi bi-wallet2 text-warning me-1"></i> Thanh toán học phí
                     </NavLink>
                 </li>
-                @if (isAuthenticated && currentRole == "Admin")
-                {
-                    <li class="nav-item dropdown position-relative">
-                        <button class="nav-link dropdown-toggle d-flex align-items-center bg-transparent border-0 text-danger fw-bold" 
-                                type="button" 
-                                @onclick="ToggleAdminDropdown">
-                            <i class="bi bi-shield-lock-fill me-1"></i> Phòng Đào Tạo
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-dark shadow border-0 rounded-3 p-2 @(isAdminDropdownOpen ? "show" : "")" style="min-width: 290px;">
-                            <li>
-                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-danger fw-bold" href="/admin" @onclick="CloseAllDropdowns">
-                                    <div class="bg-danger bg-opacity-25 text-danger p-2 rounded-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
-                                        <i class="bi bi-speedometer2"></i>
-                                    </div>
-                                    <div>
-                                        <div class="small fw-bold">Tổng quan Phòng Đào Tạo</div>
-                                        <div class="text-secondary fw-normal" style="font-size: 0.72rem;">Trung tâm điều hành &amp; thông tin học vụ</div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider border-secondary opacity-50 my-1"></li>
-                            <li>
-                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2 text-white" href="/admin/courses" @onclick="CloseAllDropdowns">
-                                    <i class="bi bi-book text-primary me-2"></i> Danh mục Môn học
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2 text-white" href="/admin/sections" @onclick="CloseAllDropdowns">
-                                    <i class="bi bi-collection text-info me-2"></i> Mở &amp; Quản lý Lớp HP
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2 text-white" href="/admin/enrollments" @onclick="CloseAllDropdowns">
-                                    <i class="bi bi-people text-success me-2"></i> Quản lý Đăng ký &amp; Rút môn SV
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2 text-white" href="/admin/tuition" @onclick="CloseAllDropdowns">
-                                    <i class="bi bi-wallet2 text-warning me-2"></i> Quản lý Học Phí &amp; Chế Tài Thi
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider border-secondary opacity-50 my-1"></li>
-                            <li>
-                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2 text-white" href="/ai-advisor" @onclick="CloseAllDropdowns">
-                                    <i class="bi bi-stars text-warning me-2"></i> Trợ Lý AI Phòng Đào Tạo
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                }
             </ul>
 
-            <div class="d-flex align-items-center flex-nowrap gap-2 pt-2 pt-lg-0 border-top border-secondary border-opacity-25 border-top-lg-0">
+            <div class="d-flex align-items-center flex-nowrap gap-2 pt-2 pt-lg-0 border-top border-secondary border-opacity-25 border-top-lg-0 ms-auto">
                 <!-- User Switcher & Auth Controls -->
                 @if (!isAuthenticated)
                 {
@@ -168,8 +118,8 @@
                                     <i class="bi bi-shield-lock-fill"></i>
                                 </div>
                                 <div class="text-start d-none d-sm-block">
-                                    <div class="fw-bold small lh-1 text-white">@(currentUser?.FullName ?? "Cán bộ Quản lý")</div>
-                                    <span class="badge bg-danger-subtle text-danger px-1 py-0" style="font-size: 0.68rem;">Quản trị viên</span>
+                                    <div class="fw-bold small lh-1 text-white">@(currentUser?.FullName ?? "Cán bộ Đào tạo")</div>
+                                    <span class="badge bg-danger text-white px-1 py-0" style="font-size: 0.68rem;">Cán bộ Quản trị</span>
                                 </div>
                             }
                             else if (currentStudent != null || currentUser != null)
@@ -196,9 +146,9 @@
                                         <i class="bi @(currentRole == "Admin" ? "bi-shield-lock-fill" : "bi-person-fill")"></i>
                                     </div>
                                     <div class="text-truncate">
-                                        <div class="fw-bold small text-dark text-truncate">@(currentUser?.FullName ?? currentStudent?.FullName ?? "Người dùng")</div>
+                                        <div class="fw-bold small text-dark text-truncate">@(currentUser?.FullName ?? currentStudent?.FullName ?? "Cán bộ Quản lý")</div>
                                         <div class="text-muted" style="font-size: 0.72rem;">
-                                            @(currentRole == "Admin" ? "Quản Trị Viên (Admin)" : $"MSSV: {currentStudent?.StudentCode ?? currentUser?.Username}")
+                                            @(currentRole == "Admin" ? "Cán bộ Quản trị & Điều hành Đào tạo" : $"MSSV: {currentStudent?.StudentCode ?? currentUser?.Username}")
                                         </div>
                                     </div>
                                 </div>
@@ -206,25 +156,49 @@
 
                             @if (currentRole == "Admin")
                             {
-                                <li class="dropdown-header small text-uppercase text-danger fw-bold pb-1">
-                                    <i class="bi bi-shield-lock-fill me-1"></i> Quản Trị Hệ Thống
+                                <li class="dropdown-header small text-uppercase text-danger fw-bold pb-1 d-flex align-items-center justify-content-between">
+                                    <span><i class="bi bi-shield-lock-fill me-1"></i> Nghiệp Vụ Cán Bộ Đào Tạo</span>
+                                    <span class="badge bg-danger-subtle text-danger" style="font-size: 0.65rem;">Phòng Đào Tạo</span>
                                 </li>
                                 <li>
-                                    <a class="dropdown-item rounded-2 py-2 d-flex align-items-center text-dark" href="/admin/courses" @onclick="CloseAllDropdowns">
+                                    <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-danger fw-bold bg-danger-subtle bg-opacity-25 mb-1" href="/admin" @onclick="CloseAllDropdowns">
+                                        <div class="bg-danger bg-opacity-25 text-danger p-1.5 rounded-2 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                            <i class="bi bi-speedometer2"></i>
+                                        </div>
+                                        <div>
+                                            <div class="small fw-bold">Tổng quan Phòng Đào Tạo</div>
+                                            <div class="text-secondary fw-normal" style="font-size: 0.7rem;">Trung tâm điều hành học vụ</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center text-dark" href="/admin/courses" @onclick="CloseAllDropdowns">
                                         <i class="bi bi-book text-primary me-2"></i>
                                         <span class="small fw-semibold">Quản lý Môn học</span>
                                     </a>
                                 </li>
                                 <li>
-                                    <a class="dropdown-item rounded-2 py-2 d-flex align-items-center text-dark" href="/admin/sections" @onclick="CloseAllDropdowns">
+                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center text-dark" href="/admin/sections" @onclick="CloseAllDropdowns">
                                         <i class="bi bi-collection text-info me-2"></i>
-                                        <span class="small fw-semibold">Mở & Quản lý Lớp HP</span>
+                                        <span class="small fw-semibold">Mở &amp; Quản lý Lớp HP</span>
                                     </a>
                                 </li>
                                 <li>
-                                    <a class="dropdown-item rounded-2 py-2 d-flex align-items-center text-dark" href="/admin/enrollments" @onclick="CloseAllDropdowns">
+                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center text-dark" href="/admin/enrollments" @onclick="CloseAllDropdowns">
                                         <i class="bi bi-people text-success me-2"></i>
-                                        <span class="small fw-semibold">Quản lý Đăng ký & Rút môn</span>
+                                        <span class="small fw-semibold">Quản lý Đăng ký &amp; Rút môn</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center text-dark" href="/admin/tuition" @onclick="CloseAllDropdowns">
+                                        <i class="bi bi-wallet2 text-warning me-2"></i>
+                                        <span class="small fw-semibold">Quản lý Học Phí &amp; Chế Tài</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center text-dark" href="/ai-advisor" @onclick="CloseAllDropdowns">
+                                        <i class="bi bi-stars text-warning me-2"></i>
+                                        <span class="small fw-semibold">Trợ Lý AI Phòng Đào Tạo</span>
                                     </a>
                                 </li>
                                 <li><hr class="dropdown-divider my-2"></li>

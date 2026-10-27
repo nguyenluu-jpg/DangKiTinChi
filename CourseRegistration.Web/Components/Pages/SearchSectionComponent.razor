@@ -15,17 +15,17 @@
 
 <!-- Thanh chuyển đổi nhóm Tra cứu (Pill Switcher) & Tiêu đề -->
 <div class="mb-3">
-    <!-- Nhóm nút chuyển tab Tra cứu / Kế hoạch cực kỳ trực quan -->
+    <!-- Nhóm nút chuyển tab: Kế hoạch đầu, Tra cứu sau -->
     <div class="d-inline-flex p-1 bg-white rounded-pill border shadow-xs mb-3">
-        <button type="button" 
-                class="btn btn-sm @(currentTab == "search" ? "btn-primary shadow-xs" : "btn-light text-secondary border-0") rounded-pill px-3 py-1.5 fw-semibold"
-                @onclick='() => SwitchTab("search")'>
-            <i class="bi bi-search me-1.5"></i> Tra Cứu Lớp Học Phần
-        </button>
         <button type="button" 
                 class="btn btn-sm @(currentTab == "plan" ? "btn-primary shadow-xs" : "btn-light text-secondary border-0") rounded-pill px-3 py-1.5 fw-semibold"
                 @onclick='() => SwitchTab("plan")'>
             <i class="bi bi-calendar3-range me-1.5"></i> Kế Hoạch Đăng Ký
+        </button>
+        <button type="button" 
+                class="btn btn-sm @(currentTab == "search" ? "btn-primary shadow-xs" : "btn-light text-secondary border-0") rounded-pill px-3 py-1.5 fw-semibold"
+                @onclick='() => SwitchTab("search")'>
+            <i class="bi bi-search me-1.5"></i> Tra Cứu Lớp Học Phần
         </button>
     </div>
 
@@ -439,7 +439,7 @@ else
     [SupplyParameterFromQuery]
     public string? Tab { get; set; }
 
-    private string currentTab = "search";
+    private string currentTab = "plan";
     private List<Section> allSections = new List<Section>();
     private List<Section> filteredSections = new List<Section>();
     private List<Course> allCourses = new List<Course>();
@@ -461,14 +461,13 @@ else
 
     protected override void OnParametersSet()
     {
-        if (NavigationManager.Uri.Contains("/sections/plan", StringComparison.OrdinalIgnoreCase) ||
-            (!string.IsNullOrEmpty(Tab) && Tab.Equals("plan", StringComparison.OrdinalIgnoreCase)))
+        if (!string.IsNullOrEmpty(Tab) && Tab.Equals("search", StringComparison.OrdinalIgnoreCase))
         {
-            currentTab = "plan";
+            currentTab = "search";
         }
         else
         {
-            currentTab = "search";
+            currentTab = "plan";
         }
     }
 

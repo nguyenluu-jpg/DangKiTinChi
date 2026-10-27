@@ -708,10 +708,20 @@ html, body {
         padding: 1rem !important;
     }
 
-    /* Thẻ lớp học phần trong danh sách tra cứu */
+    /* Thẻ lớp học phần trong danh sách tra cứu & thời khóa biểu */
     .section-card {
         padding: 1rem !important;
         border-radius: 16px !important;
+    }
+
+    .agenda-card {
+        padding: 0.85rem 0.95rem !important;
+        border-radius: 14px !important;
+    }
+
+    .period-pill {
+        font-size: 0.74rem !important;
+        padding: 0.2rem 0.45rem !important;
     }
 
     /* Hộp thoại Popup (Đăng nhập / Thanh toán VietQR) */

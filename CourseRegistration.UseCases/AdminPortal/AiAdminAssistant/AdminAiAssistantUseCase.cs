@@ -273,6 +273,68 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                 qNorm.Contains("ban la ai") ||
                 qNorm.Contains("tro giup");
 
+            bool isTuitionIntent =
+                qNorm.Contains("hoc phi") ||
+                qNorm.Contains("bao nhieu tien") ||
+                qNorm.Contains("dong tien") ||
+                qNorm.Contains("nop tien") ||
+                qNorm.Contains("ngan hang") ||
+                qNorm.Contains("stk") ||
+                qNorm.Contains("so tai khoan") ||
+                qNorm.Contains("vietqr") ||
+                qNorm.Contains("mb bank") ||
+                qNorm.Contains("chuyen khoan");
+
+            bool isRegistrationPeriodIntent =
+                qNorm.Contains("thoi gian mo cong") ||
+                qNorm.Contains("khi nao mo cong") ||
+                qNorm.Contains("lich mo cong") ||
+                qNorm.Contains("han nop") ||
+                qNorm.Contains("dot dang ky") ||
+                qNorm.Contains("khi nao dang ky") ||
+                qNorm.Contains("thoi han dang ky") ||
+                qNorm.Contains("dong cong");
+
+            bool isRegistrationGuideIntent =
+                qNorm.Contains("huong dan dang ky") ||
+                qNorm.Contains("cach dang ky") ||
+                qNorm.Contains("lam sao dang ky") ||
+                qNorm.Contains("cac buoc dang ky") ||
+                qNorm.Contains("quy trinh dang ky");
+
+            bool isGradingIntent =
+                qNorm.Contains("thang diem") ||
+                qNorm.Contains("gpa") ||
+                qNorm.Contains("diem f") ||
+                qNorm.Contains("diem d") ||
+                qNorm.Contains("hoc lai") ||
+                qNorm.Contains("cai thien") ||
+                qNorm.Contains("qua mon") ||
+                qNorm.Contains("canh bao hoc vu") ||
+                qNorm.Contains("buoc thoi hoc") ||
+                qNorm.Contains("duoi hoc");
+
+            bool isUniversityInfoIntent =
+                qNorm.Contains("truong dai hoc kinh te") ||
+                qNorm.Contains("dai hoc hue") ||
+                qNorm.Contains("dia chi truong") ||
+                qNorm.Contains("cac nganh") ||
+                qNorm.Contains("chuyen nganh") ||
+                qNorm.Contains("khoa he thong") ||
+                qNorm.Contains("khoa cong nghe");
+
+            bool isStudentAffairsIntent =
+                qNorm.Contains("giay xac nhan") ||
+                qNorm.Contains("nghia vu quan su") ||
+                qNorm.Contains("hoan nghia vu") ||
+                qNorm.Contains("the sinh vien") ||
+                qNorm.Contains("vay von") ||
+                qNorm.Contains("bao luu");
+
+            bool isScholarshipIntent =
+                qNorm.Contains("hoc bong") ||
+                qNorm.Contains("khen thuong");
+
             // =========================================================================
             // BƯỚC 3: XỬ LÝ THEO TỪNG NHÁNH TƯ DUY RÕ RÀNG
             // =========================================================================
@@ -602,7 +664,134 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                 result.ActionableSuggestions.Add("Cán bộ có thể điều chỉnh phòng học trực tiếp tại mục Quản lý Lớp học phần.");
             }
             // -------------------------------------------------------------------------
-            // NHÁNH 11: CHÀO HỎI & HƯỚNG DẪN HỆ THỐNG
+            // NHÁNH 11: HỌC PHÍ & THANH TOÁN VIETQR
+            // -------------------------------------------------------------------------
+            else if (isTuitionIntent)
+            {
+                result.Category = "Quy Định Mức Thu Học Phí & Thanh Toán";
+                result.AnswerSummary = "Thông tin về học phí và thanh toán học kỳ " + semester + " tại Trường Đại học Kinh tế Huế:\n\n" +
+                    "- **Mức thu chuẩn:** **450.000 VNĐ / tín chỉ**.\n" +
+                    "- **Ví dụ cụ thể:**\n" +
+                    "  + Môn học 3 tín chỉ: **1.350.000 VNĐ**\n" +
+                    "  + Môn học 4 tín chỉ: **1.800.000 VNĐ**\n" +
+                    "  + Kỳ học tiêu chuẩn (14 tín chỉ): **6.300.000 VNĐ**\n\n" +
+                    "- **Thông tin tài khoản thu học phí nhà trường:**\n" +
+                    "  + Số tài khoản: **101705201967**\n" +
+                    "  + Ngân hàng: **MB Bank (Ngân hàng TMCP Quân Đội)**\n" +
+                    "  + Đơn vị thụ hưởng: **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**\n" +
+                    "- **Cơ chế thanh toán VietQR Napas247:** Sinh viên có thể vào mục 'Học phí' quét mã VietQR tự động điền đúng số tiền và cú pháp `[MSSV] HP 2026_HK1`, gạch nợ tức thì 24/7.\n" +
+                    "- **Thời hạn nộp học phí:** Trong vòng 15 ngày kể từ ngày gửi phiếu đăng ký học phần.";
+
+                result.ActionableSuggestions.Add("Cán bộ có thể theo dõi danh sách sinh viên đã nộp và chưa nộp học phí tại menu 'Quản lý Học phí'.");
+                result.ActionableSuggestions.Add("Sinh viên có thể tra cứu và gạch nợ trực tiếp bằng quét mã VietQR.");
+            }
+            // -------------------------------------------------------------------------
+            // NHÁNH 12: KẾ HOẠCH & THỜI GIAN MỞ CỔNG ĐĂNG KÝ HỌC PHẦN
+            // -------------------------------------------------------------------------
+            else if (isRegistrationPeriodIntent)
+            {
+                result.Category = "Kế Hoạch & Thời Gian Mở Cổng Đăng Ký";
+                result.AnswerSummary = "Kế hoạch tổ chức đăng ký học phần học kỳ **" + semester + "** (Năm học 2026 - 2027):\n\n" +
+                    "1. **Đợt đăng ký chính thức:** Từ **15/01/2026 đến hết 28/01/2026** (Cổng mở 24/24 cho toàn thể sinh viên).\n" +
+                    "2. **Đợt đăng ký bổ sung & Rút môn trực tuyến:** Từ **05/02/2026 đến 12/02/2026**.\n" +
+                    "3. **Thời hạn nộp học phí:** Đến hết ngày **28/02/2026**.\n" +
+                    "4. **Ngày bắt đầu học kỳ mới:** Ngày **01/03/2026**.";
+
+                result.ActionableSuggestions.Add("Sinh viên cần chủ động hoàn tất đăng ký đúng thời hạn để tránh tình trạng lớp học phần bị hết chỗ.");
+                result.ActionableSuggestions.Add("Cán bộ có thể điều chỉnh thời gian mở/đóng từng lớp học phần tại trang 'Quản lý Lớp học phần'.");
+            }
+            // -------------------------------------------------------------------------
+            // NHÁNH 13: HƯỚNG DẪN CÁC BƯỚC ĐĂNG KÝ HỌC PHẦN
+            // -------------------------------------------------------------------------
+            else if (isRegistrationGuideIntent)
+            {
+                result.Category = "Hướng Dẫn Quy Trình Đăng Ký Học Phần";
+                result.AnswerSummary = "Quy trình 5 bước đăng ký học phần trên Cổng thông tin trực tuyến:\n\n" +
+                    "1. **Bước 1 - Đăng nhập tài khoản:** Bấm nút **'Đăng nhập'** góc phải, dùng mã sinh viên (VD: `sv21001`) và mật khẩu.\n" +
+                    "2. **Bước 2 - Tìm kiếm & Lựa chọn môn học:** Vào menu **'Tra cứu học phần'** hoặc nhờ **'Cố vấn AI'** tư vấn môn phù hợp.\n" +
+                    "3. **Bước 3 - Thêm vào giỏ đăng ký:** Chọn lớp học phần phù hợp và bấm **'Thêm vào giỏ'** (Hệ thống tự động kiểm tra tiên quyết và trùng lịch).\n" +
+                    "4. **Bước 4 - Xác nhận đăng ký:** Vào **'Giỏ đăng ký'**, kiểm tra tổng số tín chỉ (từ 10 - 24 TC) và bấm **'Gửi phiếu đăng ký'**.\n" +
+                    "5. **Bước 5 - Xem thời khóa biểu & Nộp học phí:** Kiểm tra lịch học tại mục **'Thời khóa biểu'** và quét mã VietQR để hoàn tất học phí.";
+
+                result.ActionableSuggestions.Add("Tài khoản thử nghiệm demo: Sinh viên `sv21001` (mk: `123456`), Quản trị `admin` (mk: `admin123`).");
+            }
+            // -------------------------------------------------------------------------
+            // NHÁNH 14: THANG ĐIỂM, GPA, HỌC LỰC, HỌC LẠI & CẢI THIỆN
+            // -------------------------------------------------------------------------
+            else if (isGradingIntent)
+            {
+                result.Category = "Quy Chế Thang Điểm & Học Vụ";
+                result.AnswerSummary = "Quy chế đánh giá kết quả học tập & thang điểm tín chỉ:\n\n" +
+                    "- **Thang điểm 10 quy đổi sang Thang điểm 4 & Điểm chữ:**\n" +
+                    "  + Điểm A (8.5 - 10.0): **4.0** (Xuất sắc)\n" +
+                    "  + Điểm B+ (8.0 - 8.4): **3.5** (Giỏi)\n" +
+                    "  + Điểm B (7.0 - 7.9): **3.0** (Khá)\n" +
+                    "  + Điểm C+ (6.5 - 6.9): **2.5** (Trung bình khá)\n" +
+                    "  + Điểm C (5.5 - 6.4): **2.0** (Trung bình)\n" +
+                    "  + Điểm D+ (5.0 - 5.4): **1.5** (Trung bình yếu)\n" +
+                    "  + Điểm D (4.0 - 4.9): **1.0** (Đạt)\n" +
+                    "  + Điểm F (< 4.0): **0.0** (Không đạt - Bắt buộc học lại)\n\n" +
+                    "- **Học lại:** Áp dụng khi bị điểm F (điểm < 4.0). Bắt buộc học lại môn đó hoặc môn tương đương.\n" +
+                    "- **Học cải thiện:** Sinh viên có điểm D, D+ được phép đăng ký học lại để cải thiện điểm. Điểm cao hơn sẽ được lấy tính GPA.\n" +
+                    "- **Cảnh báo học vụ:** Sinh viên có ĐTB tích lũy < 1.2 (năm 1), < 1.4 (năm 2), < 1.6 (năm 3), < 1.8 (năm 4) sẽ bị cảnh báo học vụ. Bị cảnh báo 2 lần liên tiếp có thể bị buộc thôi học.";
+
+                result.ActionableSuggestions.Add("Sinh viên có thể tra cứu lịch sử môn đã học và điểm số tại trang Cố vấn AI sau khi đăng nhập.");
+            }
+            // -------------------------------------------------------------------------
+            // NHÁNH 15: THÔNG TIN TRƯỜNG & CÁC KHOA / CHUYÊN NGÀNH
+            // -------------------------------------------------------------------------
+            else if (isUniversityInfoIntent)
+            {
+                result.Category = "Thông Tin Trường & Các Ngành Đào Tạo";
+                result.AnswerSummary = "Thông tin chung về **Trường Đại học Kinh tế - Đại học Huế (HCE)**:\n\n" +
+                    "- **Địa chỉ:** Số 99 Hồ Đắc Di, Phường An Cựu, TP. Huế, Tỉnh Thừa Thiên Huế.\n" +
+                    "- **Website:** https://hce.edu.vn\n" +
+                    "- **Các khoa đào tạo chuyên môn:**\n" +
+                    "  + Khoa Hệ thống Thông tin Kinh tế & Thương mại điện tử\n" +
+                    "  + Khoa Quản trị Kinh doanh\n" +
+                    "  + Khoa Kinh tế & Phát triển\n" +
+                    "  + Khoa Kế toán - Kiểm toán\n" +
+                    "  + Khoa Tài chính - Ngân hàng\n" +
+                    "- **Các ngành đào tạo tiêu biểu:** Hệ thống thông tin quản lý, Thương mại điện tử, Công nghệ thông tin, Quản trị kinh doanh, Kinh tế số, Kế toán, Tài chính ngân hàng...";
+
+                result.ActionableSuggestions.Add("Hệ thống Đăng ký Tín chỉ phục vụ trực tuyến cho toàn thể sinh viên các khoa viện của nhà trường.");
+            }
+            // -------------------------------------------------------------------------
+            // NHÁNH 16: THỦ TỤC SINH VIÊN (XÁC NHẬN, NGHĨA VỤ QUÂN SỰ, BẢO LƯU)
+            // -------------------------------------------------------------------------
+            else if (isStudentAffairsIntent)
+            {
+                result.Category = "Thủ Tục Hành Chính Sinh Viên";
+                result.AnswerSummary = "Hướng dẫn thực hiện các thủ tục hành chính sinh viên:\n\n" +
+                    "1. **Giấy xác nhận sinh viên (tạm hoãn nghĩa vụ quân sự, vay vốn NHCSXH, làm vé xe buýt):**\n" +
+                    "   - Sinh viên nộp yêu cầu tại **Bộ phận Một Cửa (Phòng Đào Tạo)** hoặc đăng ký trên Cổng Dịch vụ công sinh viên.\n" +
+                    "   - Thời gian cấp: Trong vòng 24 - 48 giờ làm việc.\n" +
+                    "2. **Cấp lại thẻ sinh viên / Bảng điểm tạm thời:** Liên hệ trực tiếp Văn phòng Khoa hoặc Phòng Đào Tạo.\n" +
+                    "3. **Bảo lưu kết quả học tập:** Sinh viên làm đơn (kèm minh chứng lý do ốm đau, hoàn cảnh gia đình hoặc thi hành nghĩa vụ quân sự) và nộp trước khi học kỳ bắt đầu ít nhất 2 tuần.";
+
+                result.ActionableSuggestions.Add("Liên hệ Bộ phận Một cửa - Phòng Đào Tạo (Tầng 1 Nhà Hiệu Bộ) để được hỗ trợ thủ tục trực tiếp.");
+            }
+            // -------------------------------------------------------------------------
+            // NHÁNH 17: HỌC BỔNG KHUYẾN KHÍCH HỌC TẬP
+            // -------------------------------------------------------------------------
+            else if (isScholarshipIntent)
+            {
+                result.Category = "Chính Sách Học Bổng Khuyến Khích";
+                result.AnswerSummary = "Chính sách xét cấp học bổng khuyến khích học tập tại Trường Đại học Kinh tế Huế:\n\n" +
+                    "- **Điều kiện xét:**\n" +
+                    "  + Đăng ký tối thiểu 14 tín chỉ trong học kỳ chính.\n" +
+                    "  + Không có học phần nào bị điểm F (rớt môn) trong kỳ xét tuyển.\n" +
+                    "  + Điểm rèn luyện từ loại Tốt trở lên (>= 80 điểm).\n" +
+                    "- **Các mức học bổng:**\n" +
+                    "  + **Xuất sắc:** GPA >= 3.6 & Điểm rèn luyện Xuất sắc (>= 90 điểm).\n" +
+                    "  + **Giỏi:** GPA từ 3.2 - 3.59 & Điểm rèn luyện Tốt (>= 80 điểm).\n" +
+                    "  + **Khá:** GPA từ 2.5 - 3.19 & Điểm rèn luyện Khá trở lên.\n" +
+                    "- Học bổng được chuyển khoản trực tiếp vào tài khoản ngân hàng của sinh viên.";
+
+                result.ActionableSuggestions.Add("Sinh viên cần duy trì tiến độ học tập và tích cực tham gia hoạt động phong trào để đạt học bổng.");
+            }
+            // -------------------------------------------------------------------------
+            // NHÁNH 18: CHÀO HỎI & HƯỚNG DẪN HỆ THỐNG
             // -------------------------------------------------------------------------
             else if (isGreetingIntent)
             {
@@ -706,12 +895,16 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
             var aliases = new Dictionary<string, string[]>
             {
                 ["WEB301"] = new[] { "lap trinh ung dung web", "lap trinh web", "ung dung web", "ltw", "web301", "web" },
-                ["CSDL201"] = new[] { "co so du lieu", "csdl201", "csdl", "database", "du lieu" },
-                ["TIN101"] = new[] { "nhap mon lap trinh", "nmlt", "tin101", "nhap mon" },
+                ["WEB302"] = new[] { "web nang cao", "microservices", "web302" },
+                ["CSDL201"] = new[] { "co so du lieu", "csdl201", "csdl", "database", "du lieu", "sql" },
+                ["CSDL202"] = new[] { "csdl phan tan", "nosql", "csdl202", "mongodb", "phan tan" },
+                ["TIN101"] = new[] { "nhap mon lap trinh", "nmlt", "tin101", "nhap mon", "c#" },
                 ["TIN102"] = new[] { "lap trinh huong doi tuong", "huong doi tuong", "oop", "tin102" },
-                ["TIN201"] = new[] { "cau truc du lieu", "giai thuat", "ctdl", "tin201" },
-                ["KTPM302"] = new[] { "ky thuat phan mem", "ktpm302", "ktpm", "phan mem" },
+                ["TIN201"] = new[] { "cau truc du lieu", "giai thuat", "ctdl", "tin201", "thuat toan" },
+                ["KTPM302"] = new[] { "ky thuat phan mem", "ktpm302", "ktpm", "phan mem", "scrum", "agile" },
                 ["ATTT401"] = new[] { "an toan thong tin", "attt401", "attt", "bao mat", "an toan mang" },
+                ["ATTT402"] = new[] { "an ninh mang", "attt402", "phong chong tan cong" },
+                ["AI401"] = new[] { "tri tue nhan tao", "ai401", "hoc may", "machine learning", "tri tue" },
                 ["TOEIC"] = new[] { "tieng anh", "anh van", "toeic", "ngoai ngu" }
             };
 

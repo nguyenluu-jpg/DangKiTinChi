@@ -343,29 +343,16 @@ else
                     </table>
                 </div>
             </div>
-        </div>
-    </div>
 }
 
 @code {
     private bool isAuthorized = false;
-    private bool isInfoCardExpanded = false;
     private string currentRole = string.Empty;
     private UserAccount? currentUser;
     private List<Student> students = new();
     private List<Course> courses = new();
     private List<Section> sections = new();
     private List<Enrollment> enrollments = new();
-    private int selectedStudentId = 0;
-    private Student? currentStudent;
-
-    // Dữ liệu tổng quan của sinh viên đang chọn (nhảy ngay khi chọn bất kỳ sinh viên nào)
-    private List<Enrollment> selectedStudentEnrollments = new();
-    private List<Section> selectedStudentSections = new();
-    private int selectedStudentTotalCredits = 0;
-    private decimal selectedStudentTuitionFee = 0;
-    private bool selectedStudentIsPaid = false;
-    private string selectedStudentPaymentStatus = "Chưa nộp";
 
     protected override async Task OnInitializedAsync()
     {
@@ -392,89 +379,16 @@ else
 
             var enrollmentList = await EnrollmentRepository.GetEnrollmentsBySemesterAsync("HK1 (2026 - 2027)");
             enrollments = enrollmentList.ToList();
-
-            selectedStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
-            if (selectedStudentId <= 0 && students.Any())
-            {
-                selectedStudentId = students.First().StudentId;
-                await CurrentUserStateStore.SetCurrentStudentIdAsync(selectedStudentId);
-            }
-
-            await LoadSelectedStudentDataAsync(selectedStudentId);
         }
-    }
-
-    private async Task LoadSelectedStudentDataAsync(int studentId)
-    {
-        selectedStudentId = studentId;
-        currentStudent = students.FirstOrDefault(s => s.StudentId == studentId);
-        if (currentStudent != null)
-        {
-            var enrolls = (await EnrollmentRepository.GetEnrollmentsByStudentIdAsync(studentId)).ToList();
-            selectedStudentEnrollments = enrolls;
-
-            var activeEnroll = enrolls.FirstOrDefault(e => e.Semester == "HK1 (2026 - 2027)" || e.Semester == "2026_HK1" || e.Semester == "2025_HK1") ?? enrolls.FirstOrDefault();
-            if (activeEnroll != null && activeEnroll.EnrollmentLines.Any())
-            {
-                selectedStudentSections = activeEnroll.EnrollmentLines
-                    .Where(l => l.Section != null)
-                    .Select(l => l.Section!)
-                    .ToList();
-                selectedStudentTotalCredits = activeEnroll.TotalCredits;
-                selectedStudentTuitionFee = activeEnroll.TuitionFee;
-                selectedStudentIsPaid = activeEnroll.IsPaid;
-                selectedStudentPaymentStatus = activeEnroll.IsPaid ? "Đã nộp" : "Chưa nộp";
-            }
-            else
-            {
-                var registered = (await EnrollmentRepository.GetRegisteredSectionsByStudentAsync(studentId, "HK1 (2026 - 2027)")).ToList();
-                selectedStudentSections = registered;
-                selectedStudentTotalCredits = registered.Where(s => s.Course != null).Sum(s => s.Course!.Credits);
-                selectedStudentTuitionFee = selectedStudentTotalCredits * 450000m;
-                selectedStudentIsPaid = false;
-                selectedStudentPaymentStatus = selectedStudentSections.Any() ? "Chưa nộp" : "Chưa đăng ký";
-            }
-        }
-        else
-        {
-            selectedStudentSections.Clear();
-            selectedStudentEnrollments.Clear();
-            selectedStudentTotalCredits = 0;
-            selectedStudentTuitionFee = 0;
-            selectedStudentIsPaid = false;
-            selectedStudentPaymentStatus = "Chưa chọn";
-        }
-    }
-
-    private async Task SelectStudentAsync(int studentId)
-    {
-        await LoadSelectedStudentDataAsync(studentId);
-        await CurrentUserStateStore.SetCurrentStudentIdAsync(studentId);
-        StateHasChanged();
     }
 
     private async void HandleUserStateChanged()
     {
         await InvokeAsync(async () =>
         {
-            currentRole = await CurrentUserStateStore.GetCurrentRoleAsync();
-            isAuthorized = (currentRole == "Admin");
-            currentUser = await CurrentUserStateStore.GetCurrentUserAsync();
-            int storeStudentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
-            if (storeStudentId != selectedStudentId && storeStudentId > 0)
-            {
-                await LoadSelectedStudentDataAsync(storeStudentId);
-            }
+            await RefreshDataAsync();
             StateHasChanged();
         });
-    }
-
-    private async Task OnStudentChange(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out int newId))
-        {
-            await SelectStudentAsync(newId);
-        }
     }
 
     public void Dispose()

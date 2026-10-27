@@ -16,25 +16,24 @@
         <p class="text-muted mb-0">Học kỳ 1 (Năm học 2026 - 2027) &bull; Lịch học theo tuần và từng ngày trực quan</p>
     </div>
     
-    <div class="d-flex align-items-center gap-2 flex-wrap">
+    <div class="d-flex align-items-center gap-1.5 gap-sm-2 flex-nowrap overflow-x-auto py-1" style="scrollbar-width: none;">
         @if (currentEnrollmentId.HasValue && currentEnrollmentId.Value > 0)
         {
-            <a href="/api/reports/student-enrollment/excel?enrollmentId=@currentEnrollmentId.Value" class="btn btn-outline-success fw-bold shadow-sm" target="_blank" download>
-                <i class="bi bi-file-earmark-excel me-1"></i> Xuất Excel TKB
+            <a href="/api/reports/student-enrollment/excel?enrollmentId=@currentEnrollmentId.Value" class="btn btn-sm btn-outline-success fw-bold shadow-sm text-nowrap" target="_blank" download>
+                <i class="bi bi-file-earmark-excel me-1"></i> Xuất Excel
             </a>
-            <a href="/api/reports/student-enrollment/pdf?enrollmentId=@currentEnrollmentId.Value" class="btn btn-outline-danger fw-bold shadow-sm" target="_blank">
-                <i class="bi bi-file-earmark-pdf me-1"></i> Xuất Phiếu ĐK (PDF)
+            <a href="/api/reports/student-enrollment/pdf?enrollmentId=@currentEnrollmentId.Value" class="btn btn-sm btn-outline-danger fw-bold shadow-sm text-nowrap" target="_blank">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Xuất PDF
             </a>
         }
-        <button class="btn btn-outline-secondary" onclick="window.print()">
-            <i class="bi bi-printer me-1"></i> In Nhanh
+        <button class="btn btn-sm btn-outline-secondary text-nowrap shadow-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> In TKB
         </button>
         @if (currentRole == "Admin")
         {
-            <div class="d-flex align-items-center gap-1">
+            <div class="d-flex align-items-center gap-1 flex-nowrap text-nowrap">
                 <span class="badge bg-danger text-white">Admin</span>
-                <label class="small text-muted fw-bold d-none d-sm-inline">Xem lịch SV:</label>
-                <select class="form-select form-select-sm" style="min-width: 220px;" @onchange="OnStudentChanged">
+                <select class="form-select form-select-sm" style="min-width: 190px;" @onchange="OnStudentChanged">
                     @foreach (var s in students)
                     {
                         <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
@@ -90,25 +89,23 @@ else
 {
     int totalCredits = registeredSections.Where(s => s.Course != null).Sum(s => s.Course!.Credits);
 
-    <!-- Card Thống kê Lịch Học -->
-    <div class="card border-0 shadow-sm p-3 mb-4 bg-white rounded-4">
-        <div class="row g-3 align-items-center">
-            <div class="col-sm-6">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="user-avatar @(selectedStudentId == 1 ? "bg-primary text-white" : "bg-warning text-dark")">
-                        <i class="bi bi-person-fill"></i>
-                    </div>
-                    <div>
-                        <div class="fw-bold text-dark">@currentStudent?.FullName (@currentStudent?.StudentCode)</div>
-                        <div class="text-muted small">@currentStudent?.Major &bull; @currentStudent?.AcademicYear</div>
-                    </div>
+    <!-- Card Thống kê Lịch Học (Không bị tràn/rớt dòng trên điện thoại) -->
+    <div class="card border-0 shadow-sm p-3 mb-3 bg-white rounded-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <div class="user-avatar @(selectedStudentId == 1 ? "bg-primary text-white" : "bg-warning text-dark")">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-dark">@currentStudent?.FullName <span class="text-muted small fw-normal">(@currentStudent?.StudentCode)</span></div>
+                    <div class="text-muted small">@currentStudent?.Major &bull; @currentStudent?.AcademicYear</div>
                 </div>
             </div>
-            <div class="col-sm-6 text-sm-end">
-                <span class="badge bg-primary-subtle text-primary fs-6 px-3 py-2 me-2">
-                    <i class="bi bi-collection me-1"></i>@registeredSections.Count() Lớp Học Phần
+            <div class="d-flex align-items-center gap-1.5 gap-sm-2 flex-nowrap ms-auto ms-sm-0">
+                <span class="badge bg-primary-subtle text-primary px-2.5 py-1.5 text-nowrap">
+                    <i class="bi bi-collection me-1"></i>@registeredSections.Count() Lớp HP
                 </span>
-                <span class="badge bg-success-subtle text-success fs-6 px-3 py-2">
+                <span class="badge bg-success-subtle text-success px-2.5 py-1.5 text-nowrap">
                     <i class="bi bi-journal-check me-1"></i>Tổng @totalCredits Tín Chỉ
                 </span>
             </div>

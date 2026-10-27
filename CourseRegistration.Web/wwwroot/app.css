@@ -431,11 +431,12 @@ h1, h2, h3, h4, h5, h6 {
     background: #eff6ff;
     color: #1d4ed8;
     border-radius: 8px;
-    padding: 0.3rem 0.65rem;
+    padding: 0.25rem 0.55rem;
     font-weight: 700;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     display: inline-flex;
     align-items: center;
+    white-space: nowrap;
 }
 
 /* Touch targets & responsive buttons */

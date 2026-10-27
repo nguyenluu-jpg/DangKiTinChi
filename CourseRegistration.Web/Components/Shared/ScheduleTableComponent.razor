@@ -1,19 +1,19 @@
 @namespace CourseRegistration.Web.Components.Shared
 
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-nowrap gap-2">
     <!-- View Mode Switcher -->
-    <div class="btn-group btn-group-sm shadow-sm" role="group">
-        <button type="button" class="btn @(viewMode == "Agenda" ? "btn-primary" : "btn-outline-primary")" 
+    <div class="btn-group btn-group-sm shadow-sm flex-nowrap" role="group">
+        <button type="button" class="btn text-nowrap @(viewMode == "Agenda" ? "btn-primary" : "btn-outline-primary")" 
                 @onclick="@(() => viewMode = "Agenda")">
             <i class="bi bi-view-list me-1"></i> Lịch học theo ngày
         </button>
-        <button type="button" class="btn @(viewMode == "Grid" ? "btn-primary" : "btn-outline-primary")" 
+        <button type="button" class="btn text-nowrap @(viewMode == "Grid" ? "btn-primary" : "btn-outline-primary")" 
                 @onclick="@(() => viewMode = "Grid")">
             <i class="bi bi-grid-3x3 me-1"></i> Lịch học theo tuần
         </button>
     </div>
 
-    <div class="text-muted small">
+    <div class="text-muted small text-nowrap d-none d-md-block">
         <i class="bi bi-info-circle me-1"></i>
         <span>@(viewMode == "Agenda" ? "Xem chi tiết giờ học từng ngày" : "Bảng lưới tổng quan toàn tuần")</span>
     </div>
@@ -24,7 +24,7 @@
     <!-- Mobile-First / Agenda View -->
     <div class="card border-0 shadow-sm bg-white p-3 mb-4 rounded-4">
         <!-- Day Selector Pills (Scrollable horizontally on mobile) -->
-        <div class="d-flex gap-2 overflow-x-auto pb-2 mb-3">
+        <div class="d-flex gap-2 overflow-x-auto pb-2 mb-3 flex-nowrap" style="scrollbar-width: thin;">
             @for (int day = 2; day <= 8; day++)
             {
                 int currentDay = day;
@@ -48,11 +48,11 @@
             var dayItems = GetItemsForDay(selectedDay).ToList();
         }
 
-        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-            <h5 class="fw-bold mb-0 text-dark">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-nowrap gap-2">
+            <h5 class="fw-bold mb-0 text-dark text-nowrap">
                 <i class="bi bi-calendar2-day text-primary me-2"></i>Lịch học: @GetDayName(selectedDay)
             </h5>
-            <span class="badge bg-light text-dark border">
+            <span class="badge bg-light text-dark border text-nowrap">
                 @dayItems.Count buổi học
             </span>
         </div>
@@ -71,27 +71,30 @@
                 @foreach (var item in dayItems.OrderBy(i => i.Schedule.StartPeriod))
                 {
                     <div class="agenda-card">
-                        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
-                            <div>
-                                <span class="badge bg-primary-subtle text-primary fw-bold me-2 fs-6">
+                        <!-- Hàng trên: Mã lớp & Tín chỉ (trái) + Tiết học (phải) luôn trên 1 dòng, không tràn rớt dòng -->
+                        <div class="d-flex justify-content-between align-items-center mb-2 flex-nowrap gap-2">
+                            <div class="d-flex align-items-center gap-1.5 flex-nowrap overflow-hidden">
+                                <span class="badge bg-primary-subtle text-primary fw-bold text-nowrap">
                                     @item.Section.SectionCode
                                 </span>
-                                <span class="badge bg-secondary">@(item.Section.Course?.Credits ?? 0) Tín chỉ</span>
+                                <span class="badge bg-secondary text-nowrap">@(item.Section.Course?.Credits ?? 0) TC</span>
                             </div>
-                            <div class="period-pill">
+                            <div class="period-pill text-nowrap flex-shrink-0 ms-auto">
                                 <i class="bi bi-clock me-1"></i>
-                                <span>Tiết @item.Schedule.StartPeriod - @item.Schedule.EndPeriod (@GetPeriodTime(item.Schedule.StartPeriod, item.Schedule.EndPeriod))</span>
+                                <span>Tiết @item.Schedule.StartPeriod-@item.Schedule.EndPeriod</span>
+                                <span class="d-none d-sm-inline ms-1 fw-normal text-muted">(@GetPeriodTime(item.Schedule.StartPeriod, item.Schedule.EndPeriod))</span>
                             </div>
                         </div>
 
-                        <h5 class="fw-bold mb-2 text-dark">@(item.Section.Course?.CourseName)</h5>
+                        <h6 class="fw-bold mb-2 text-dark text-truncate">@(item.Section.Course?.CourseName)</h6>
 
-                        <div class="row g-2 text-muted small">
-                            <div class="col-sm-6">
-                                <i class="bi bi-person-badge text-primary me-1"></i> Giảng viên: <strong>@item.Section.Instructor</strong>
+                        <!-- Hàng dưới: Giảng viên (trái) + Phòng học (phải) luôn trên 1 dòng, không tràn rớt dòng -->
+                        <div class="d-flex justify-content-between align-items-center text-muted small flex-nowrap gap-2 pt-1 border-top border-light-subtle">
+                            <div class="text-truncate">
+                                <i class="bi bi-person-badge text-primary me-1"></i><span class="d-none d-sm-inline">Giảng viên: </span><strong>@item.Section.Instructor</strong>
                             </div>
-                            <div class="col-sm-6">
-                                <i class="bi bi-geo-alt-fill text-danger me-1"></i> Phòng học: <strong>@(string.IsNullOrEmpty(item.Schedule.Room) ? item.Section.Room : item.Schedule.Room)</strong>
+                            <div class="text-nowrap flex-shrink-0 ms-auto">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i>Phòng: <strong class="text-dark">@(string.IsNullOrEmpty(item.Schedule.Room) ? item.Section.Room : item.Schedule.Room)</strong>
                             </div>
                         </div>
                     </div>

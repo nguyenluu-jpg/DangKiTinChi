@@ -31,87 +31,137 @@
 
                 <!-- Body (Form HTML chuẩn để trình duyệt/máy tính tự động bật thông báo lưu mật khẩu) -->
                 <div class="card-body p-4 p-md-4 bg-white">
-                    @if (!string.IsNullOrEmpty(errorMessage))
+                    @if (showWeakPasswordAlert)
                     {
-                        <div class="alert alert-danger d-flex align-items-center rounded-3 mb-3 py-2 px-3" role="alert">
-                            <i class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2 fs-5"></i>
-                            <div class="small fw-semibold">
-                                @errorMessage
+                        <!-- THÔNG BÁO ĐỔI MẬT KHẨU TỰ ĐỘNG XUẤT HIỆN NGAY SAU KHI ĐĂNG NHẬP THÀNH CÔNG -->
+                        <div class="weak-password-notice text-center py-2 px-1" style="animation: fadeIn 0.25s ease-out;">
+                            <div class="mb-3">
+                                <span class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-15 text-warning rounded-circle shadow-xs" style="width: 72px; height: 72px;">
+                                    <i class="bi bi-shield-exclamation fs-1"></i>
+                                </span>
+                            </div>
+
+                            <h5 class="fw-bold text-dark mb-2">Thông Báo Đổi Mật Khẩu</h5>
+                            
+                            <div class="alert alert-warning border-0 bg-warning bg-opacity-10 text-dark small text-start py-3 px-3 rounded-3 mb-3 shadow-none">
+                                <div class="d-flex align-items-start gap-2">
+                                    <i class="bi bi-exclamation-triangle-fill text-warning flex-shrink-0 fs-5 mt-0.5"></i>
+                                    <div>
+                                        <div class="fw-bold text-dark mb-1">Mật khẩu hiện tại quá yếu!</div>
+                                        <div class="text-secondary" style="font-size: 0.82rem; line-height: 1.4;">
+                                            Tài khoản của bạn đang sử dụng mật khẩu mặc định hoặc mật khẩu có độ bảo mật thấp. Để đảm bảo an toàn cho tài khoản và dữ liệu học tập, vui lòng đổi mật khẩu sau khi đăng nhập.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <form method="post" action="" @onsubmit="ConfirmWeakPasswordAndProceed" @onsubmit:preventDefault="true">
+                                <button type="submit" 
+                                        class="btn btn-primary w-100 py-2.5 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-2"
+                                        disabled="@isLoading"
+                                        autofocus>
+                                    @if (isLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                        <span>Đang xử lý...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-check-lg fs-5"></i>
+                                        <span>OK, Tôi Đã Hiểu</span>
+                                    }
+                                </button>
+                            </form>
+
+                            <div class="text-muted small mt-2" style="font-size: 0.74rem;">
+                                Bấm <strong class="text-dark">OK</strong> hoặc nhấn <kbd class="bg-light text-dark border">Enter</kbd> để tiếp tục. Trình duyệt sẽ hỏi bạn có muốn lưu mật khẩu này hay không.
                             </div>
                         </div>
                     }
+                    else
+                    {
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger d-flex align-items-center rounded-3 mb-3 py-2 px-3" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2 fs-5"></i>
+                                <div class="small fw-semibold">
+                                    @errorMessage
+                                </div>
+                            </div>
+                        }
 
-                    <form method="post" action="javascript:void(0);" @onsubmit="HandleLogin" autocomplete="on">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-dark small mb-1" for="username">Tài khoản / MSSV <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0 text-muted">
-                                    <i class="bi bi-person"></i>
-                                </span>
-                                <input type="text"
-                                       class="form-control border-start-0 ps-0 bg-light" 
-                                       placeholder="Nhập mã sinh viên hoặc tên đăng nhập" 
-                                       id="username"
-                                       name="username"
-                                       autocomplete="username"
-                                       autocorrect="off"
-                                       autocapitalize="off"
-                                       spellcheck="false"
-                                       @bind="loginModel.Username" 
-                                       @bind:event="oninput" />
+                        <form method="post" action="" @onsubmit="HandleLogin" @onsubmit:preventDefault="true" autocomplete="on">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark small mb-1" for="username">Tài khoản / MSSV <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted">
+                                        <i class="bi bi-person"></i>
+                                    </span>
+                                    <input type="text"
+                                           class="form-control border-start-0 ps-0 bg-light" 
+                                           placeholder="Nhập mã sinh viên hoặc tên đăng nhập" 
+                                           id="username"
+                                           name="username"
+                                           autocomplete="username"
+                                           autocorrect="off"
+                                           autocapitalize="off"
+                                           spellcheck="false"
+                                           @bind="loginModel.Username" 
+                                           @bind:event="oninput" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark small mb-1" for="password">Mã truy cập (Mật khẩu) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted">
+                                        <i class="bi bi-shield-lock"></i>
+                                    </span>
+                                    <input type="@(showPassword ? "text" : "password")" 
+                                           class="form-control border-start-0 border-end-0 ps-0 bg-light" 
+                                           placeholder="Nhập mã truy cập của bạn" 
+                                           id="password"
+                                           name="password"
+                                           autocomplete="current-password"
+                                           autocorrect="off"
+                                           autocapitalize="off"
+                                           spellcheck="false"
+                                           @bind="loginModel.Password" 
+                                           @bind:event="oninput" />
+                                    <button type="button" 
+                                             class="input-group-text bg-light border-start-0 text-muted cursor-pointer"
+                                             @onclick="() => showPassword = !showPassword"
+                                             title="@(showPassword ? "Ẩn mã truy cập" : "Hiện mã truy cập")">
+                                        <i class="bi @(showPassword ? "bi-eye-slash-fill" : "bi-eye-fill")"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Nút Đăng Nhập nguyên bản duy nhất -->
+                            <button type="submit" 
+                                    class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-3"
+                                    disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <span>Đang xác thực...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-box-arrow-in-right fs-5"></i>
+                                    <span>Đăng Nhập</span>
+                                }
+                            </button>
+                        </form>
+
+                        <div class="mt-3 pt-3 border-top text-center text-secondary small" style="font-size: 0.78rem;">
+                            <i class="bi bi-shield-check text-success me-1"></i>
+                            Hệ thống xác thực tài khoản sinh viên &amp; cán bộ quản trị.
+                            <div class="mt-1 text-muted" style="font-size: 0.74rem;">
+                                Quên mật khẩu hoặc cần cấp lại tài khoản? Vui lòng liên hệ <span class="fw-semibold text-dark">Phòng Đào Tạo</span>.
                             </div>
                         </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-dark small mb-1" for="password">Mã truy cập (Mật khẩu) <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0 text-muted">
-                                    <i class="bi bi-shield-lock"></i>
-                                </span>
-                                <input type="@(showPassword ? "text" : "password")" 
-                                       class="form-control border-start-0 border-end-0 ps-0 bg-light" 
-                                       placeholder="Nhập mã truy cập của bạn" 
-                                       id="password"
-                                       name="password"
-                                       autocomplete="current-password"
-                                       autocorrect="off"
-                                       autocapitalize="off"
-                                       spellcheck="false"
-                                       @bind="loginModel.Password" 
-                                       @bind:event="oninput" />
-                                <button type="button" 
-                                         class="input-group-text bg-light border-start-0 text-muted cursor-pointer"
-                                         @onclick="() => showPassword = !showPassword"
-                                         title="@(showPassword ? "Ẩn mã truy cập" : "Hiện mã truy cập")">
-                                    <i class="bi @(showPassword ? "bi-eye-slash-fill" : "bi-eye-fill")"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Nút Đăng Nhập nguyên bản duy nhất -->
-                        <button type="submit" 
-                                class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-3"
-                                disabled="@isLoading">
-                            @if (isLoading)
-                            {
-                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                <span>Đang xác thực...</span>
-                            }
-                            else
-                            {
-                                <i class="bi bi-box-arrow-in-right fs-5"></i>
-                                <span>Đăng Nhập</span>
-                            }
-                        </button>
-                    </form>
-
-                    <div class="mt-3 pt-3 border-top text-center text-secondary small" style="font-size: 0.78rem;">
-                        <i class="bi bi-shield-check text-success me-1"></i>
-                        Hệ thống xác thực tài khoản sinh viên &amp; cán bộ quản trị.
-                        <div class="mt-1 text-muted" style="font-size: 0.74rem;">
-                            Quên mật khẩu hoặc cần cấp lại tài khoản? Vui lòng liên hệ <span class="fw-semibold text-dark">Phòng Đào Tạo</span>.
-                        </div>
-                    </div>
+                    }
                 </div>
             </div>
         </div>
@@ -123,6 +173,8 @@
     private string errorMessage = string.Empty;
     private bool isLoading = false;
     private bool showPassword = false;
+    private bool showWeakPasswordAlert = false;
+    private UserAccount? pendingAccount;
 
     protected override void OnInitialized()
     {
@@ -136,12 +188,16 @@
             errorMessage = string.Empty;
             loginModel = new LoginViewModel();
             showPassword = false;
+            showWeakPasswordAlert = false;
+            pendingAccount = null;
         }
         InvokeAsync(StateHasChanged);
     }
 
     private void CloseModal()
     {
+        showWeakPasswordAlert = false;
+        pendingAccount = null;
         LoginModalService.Close();
     }
 
@@ -162,34 +218,20 @@
             if (account != null)
             {
                 bool isWeak = IsWeakPassword(loginModel.Password);
-
-                // Quy trình chuẩn:
-                // 1. Tự động thông báo đổi mật khẩu do mật khẩu quá yếu (hộp thoại cảnh báo)
-                // 2. Khi người dùng bấm OK -> Trình duyệt lập tức kích hoạt thông báo hỏi lưu mật khẩu
-                try
+                if (isWeak)
                 {
-                    await JSRuntime.InvokeVoidAsync("notifyWeakPasswordAndSave", 
-                        loginModel.Username.Trim(), 
-                        loginModel.Password, 
-                        isWeak);
-                    await Task.Delay(100);
-                }
-                catch { }
-
-                await CurrentUserStateStore.SetCurrentUserAsync(account);
-                
-                // Đóng modal để trở lại giao diện
-                LoginModalService.Close();
-
-                // Giữ nguyên trang đang đứng, chỉ điều hướng nếu đang ở route /login riêng lẻ
-                var uri = new Uri(NavigationManager.Uri);
-                if (uri.AbsolutePath.Equals("/login", StringComparison.OrdinalIgnoreCase))
-                {
-                    NavigationManager.NavigateTo("/");
+                    // Tự động xuất hiện thông báo đổi mật khẩu ngay lập tức sau khi đăng nhập thành công
+                    // Giữ form mở, không đóng modal và không chuyển trang cho đến khi bấm OK
+                    pendingAccount = account;
+                    showWeakPasswordAlert = true;
+                    isLoading = false;
+                    StateHasChanged();
+                    return;
                 }
                 else
                 {
-                    NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: false);
+                    // Mật khẩu an toàn: Hoàn tất đăng nhập và kích hoạt lưu mật khẩu
+                    await FinalizeLoginAsync(account);
                 }
             }
             else
@@ -203,7 +245,56 @@
         }
         finally
         {
-            isLoading = false;
+            if (!showWeakPasswordAlert)
+            {
+                isLoading = false;
+            }
+        }
+    }
+
+    private async Task ConfirmWeakPasswordAndProceed()
+    {
+        if (pendingAccount != null)
+        {
+            isLoading = true;
+            try
+            {
+                await FinalizeLoginAsync(pendingAccount);
+            }
+            finally
+            {
+                isLoading = false;
+                showWeakPasswordAlert = false;
+                pendingAccount = null;
+            }
+        }
+    }
+
+    private async Task FinalizeLoginAsync(UserAccount account)
+    {
+        // Kích hoạt trình duyệt hỏi lưu mật khẩu theo cơ chế native
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", 
+                loginModel.Username.Trim(), 
+                loginModel.Password);
+        }
+        catch { }
+
+        await CurrentUserStateStore.SetCurrentUserAsync(account);
+        
+        // Đóng modal để trở lại giao diện
+        LoginModalService.Close();
+
+        // Giữ nguyên trang đang đứng, chỉ điều hướng nếu đang ở route /login riêng lẻ
+        var uri = new Uri(NavigationManager.Uri);
+        if (uri.AbsolutePath.Equals("/login", StringComparison.OrdinalIgnoreCase))
+        {
+            NavigationManager.NavigateTo("/");
+        }
+        else
+        {
+            NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: false);
         }
     }
 

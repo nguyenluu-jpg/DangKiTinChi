@@ -55,16 +55,11 @@ window.authStorage = {
     }
 };
 
-// Thông báo mật khẩu quá yếu và kích hoạt hỏi lưu mật khẩu trên máy tính đúng quy trình
-window.notifyWeakPasswordAndSave = async function (username, password, isWeak) {
+// Kích hoạt hỏi lưu mật khẩu trên trình duyệt/máy tính đúng cơ chế
+window.triggerBrowserSavePassword = async function (username, password) {
     if (!username || !password) return;
 
-    // Bước 1: Khi mật khẩu yếu (hoặc mặc định), tự động hiện thông báo yêu cầu đổi mật khẩu
-    if (isWeak) {
-        alert("Cảnh báo bảo mật: Mật khẩu của bạn quá yếu! Vui lòng đổi mật khẩu để bảo vệ an toàn tài khoản.");
-    }
-
-    // Bước 2: Ngay khi bấm OK, kích hoạt trình duyệt hỏi lưu mật khẩu
+    // 1. Lưu qua Credential Management API nếu trình duyệt hỗ trợ
     if (window.PasswordCredential && navigator.credentials && navigator.credentials.store) {
         try {
             var cred = new PasswordCredential({
@@ -73,9 +68,12 @@ window.notifyWeakPasswordAndSave = async function (username, password, isWeak) {
                 name: username
             });
             await navigator.credentials.store(cred);
-        } catch (e) {}
+        } catch (e) {
+            console.debug('Credential store status:', e);
+        }
     }
 
+    // 2. Kích hoạt form submission ngầm để Chrome/Edge Password Manager tự động ghi nhận
     try {
         var iframeName = 'chrome_auth_sink_frame';
         var iframe = document.getElementById(iframeName);
@@ -99,7 +97,7 @@ window.notifyWeakPasswordAndSave = async function (username, password, isWeak) {
             form = document.createElement('form');
             form.id = formId;
             form.method = 'POST';
-            form.action = window.location.href;
+            form.action = window.location.pathname || '/';
             form.target = iframeName;
             form.style.position = 'fixed';
             form.style.top = '-9999px';
@@ -128,13 +126,14 @@ window.notifyWeakPasswordAndSave = async function (username, password, isWeak) {
         form.elements['password'].value = password;
         form.submit();
     } catch (err) {
-        console.warn('Chrome save password trigger notice:', err);
+        console.debug('Browser save trigger notice:', err);
     }
 };
 
-window.triggerBrowserSavePassword = function (username, password) {
-    return window.notifyWeakPasswordAndSave(username, password, false);
+window.notifyWeakPasswordAndSave = function (username, password, isWeak) {
+    return window.triggerBrowserSavePassword(username, password);
 };
+
 
 
 

@@ -41,18 +41,19 @@ namespace CourseRegistration.UseCases.AdminPortal.AiAdminAssistant
 
             // 1. Trích xuất toàn bộ dữ liệu CSDL thời gian thực
             var allSections = (await _sectionRepository.GetSectionsBySemesterAsync(semester)).ToList();
+            var allSectionsAcrossSemesters = (await _sectionRepository.GetAllSectionsAsync()).ToList();
             var allStudents = (await _studentRepository.GetAllStudentsAsync()).ToList();
             var allCourses = (await _courseRepository.GetAllCoursesAsync()).ToList();
             var allPrerequisites = (await _courseRepository.GetAllPrerequisitesAsync()).ToList();
 
             // 2. Thử nghiệm qua LLM nếu IChatClient sẵn sàng
             bool aiSuccess = false;
-            if (_chatClient != null && allSections.Any())
+            if (_chatClient != null && (allSections.Any() || allSectionsAcrossSemesters.Any()))
             {
                 try
                 {
-                    var sectionsBrief = string.Join("\n", allSections.Select(s =>
-                        $"- {s.SectionCode}: {s.Course?.CourseCode} - {s.Course?.CourseName} ({s.Course?.Credits}TC) | GV: {s.Instructor} | Sĩ số: {s.CurrentEnrollment}/{s.MaxCapacity} ({Math.Round((double)s.CurrentEnrollment / Math.Max(1, s.MaxCapacity) * 100, 1)}%) | Phòng: {s.Room}"));
+                    var sectionsBrief = string.Join("\n", allSectionsAcrossSemesters.Select(s =>
+                        $"- {s.SectionCode}: {s.Course?.CourseCode} - {s.Course?.CourseName} ({s.Course?.Credits}TC) | GV: {s.Instructor} | Sĩ số: {s.CurrentEnrollment}/{s.MaxCapacity} ({Math.Round((double)s.CurrentEnrollment / Math.Max(1, s.MaxCapacity) * 100, 1)}%) | Phòng: {s.Room} | Học kỳ: {s.Semester}"));
 
                     var coursesBrief = string.Join(", ", allCourses.Select(c => $"{c.CourseCode}: {c.CourseName} ({c.Credits}TC)"));
 
@@ -113,7 +114,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                             aiSuccess = true;
 
                             // Trích xuất các lớp học phần liên quan để hiển thị bảng nếu LLM chưa thêm
-                            PopulateRelatedSectionsForAi(result, query, allSections, allCourses);
+                            PopulateRelatedSectionsForAi(result, query, allSectionsAcrossSemesters.Any() ? allSectionsAcrossSemesters : allSections, allCourses);
                         }
                     }
                 }
@@ -130,7 +131,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                 result.ModelUsed = "Động Cơ Tri Thức & Phân Tích Dữ Liệu SQL Thời Gian Thực";
                 result.WarningMessage = "💡 Trợ lý AI đang chạy ở chế độ Động cơ Tri Thức & Tra cứu Học vụ Trực tiếp từ CSDL thời gian thực.";
 
-                await ExecuteUniversalKnowledgeQueryAsync(result, query, allSections, allStudents, allCourses, allPrerequisites, semester);
+                await ExecuteUniversalKnowledgeQueryAsync(result, query, allSections, allStudents, allCourses, allPrerequisites, semester, allSectionsAcrossSemesters);
             }
 
             return result;
@@ -143,18 +144,21 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
             List<Student> allStudents,
             List<Course> allCourses,
             List<Prerequisite> allPrerequisites,
-            string semester)
+            string semester,
+            List<Section>? allSectionsAcrossSemesters = null)
         {
             string qRaw = query.Trim();
             string qLower = qRaw.ToLowerInvariant();
             string qNorm = RemoveDiacritics(qLower);
 
+            var sectionsPool = allSectionsAcrossSemesters != null && allSectionsAcrossSemesters.Any() ? allSectionsAcrossSemesters : allSections;
+
             // =========================================================================
             // BƯỚC 1: NHẬN DIỆN THỰC THỂ (ENTITY RECOGNITION) TỪ CÂU HỎI
             // =========================================================================
             var matchedCourse = FindMatchingCourse(qNorm, allCourses);
-            var matchedSection = FindMatchingSection(qNorm, allSections);
-            var matchedInstructor = FindMatchingInstructor(qNorm, allSections);
+            var matchedSection = FindMatchingSection(qNorm, sectionsPool);
+            var matchedInstructor = FindMatchingInstructor(qNorm, sectionsPool);
             var matchedStudent = FindMatchingStudent(qNorm, allStudents);
 
             // =========================================================================
@@ -948,6 +952,43 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
             return null;
         }
 
+        private static string CleanAcademicTitle(string instructorName)
+        {
+            if (string.IsNullOrWhiteSpace(instructorName)) return string.Empty;
+            var name = instructorName.Trim();
+            string[] titles = new[]
+            {
+                "pgs.ts.", "pgs. ts.", "gs.ts.", "gs. ts.", "pgs.", "gs.",
+                "ts.", "ths.", "cn.", "pgs.ts", "gs.ts", "pgs", "gs", "ts", "ths",
+                "tiến sĩ", "tien si", "thạc sĩ", "thac si", "giáo sư", "giao su", "phó giáo sư", "pho giao su",
+                "thầy", "thay", "cô", "co", "giảng viên", "giang vien", "gv", "gv."
+            };
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                var lower = name.Trim().ToLowerInvariant();
+                var norm = RemoveDiacritics(lower);
+                foreach (var t in titles)
+                {
+                    if (norm.StartsWith(t + " "))
+                    {
+                        int len = t.Length + 1;
+                        name = name.Trim().Substring(Math.Min(name.Trim().Length, len)).Trim();
+                        changed = true;
+                        break;
+                    }
+                    else if (norm == t)
+                    {
+                        name = string.Empty;
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+            return name.Trim();
+        }
+
         private static (string InstructorName, List<Section> Sections)? FindMatchingInstructor(string qNorm, List<Section> allSections)
         {
             var instructors = allSections
@@ -956,30 +997,76 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                 .Distinct()
                 .ToList();
 
+            var matches = new List<(int Score, string Name, List<Section> Sections)>();
+
+            bool hasInstructorKeywords =
+                qNorm.Contains("thay") || qNorm.Contains("co") ||
+                qNorm.Contains("giang vien") || qNorm.Contains("gv") ||
+                qNorm.Contains("day") || qNorm.Contains("phu trach") ||
+                qNorm.Contains("lop cua") || qNorm.Contains("mon cua");
+
             foreach (var inst in instructors)
             {
-                var instNorm = RemoveDiacritics(inst);
-                var parts = instNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                var lastName = parts.LastOrDefault(); // "hung", "truc", "son", "tuan", "tung", "chau", "cuong", "dung", "hanh"
+                string rawNorm = RemoveDiacritics(inst);
+                string cleanName = CleanAcademicTitle(inst);
+                string cleanNorm = RemoveDiacritics(cleanName);
 
-                bool isMatched = qNorm.Contains(instNorm);
-                if (!isMatched && !string.IsNullOrEmpty(lastName) && lastName.Length >= 3)
+                int score = 0;
+
+                // 1. Khớp nguyên họ tên đầy đủ đã lược bỏ học vị (ví dụ: "ha ngoc long", "ngo bao chau", "le hoang son")
+                if (!string.IsNullOrEmpty(cleanNorm) && qNorm.Contains(cleanNorm))
                 {
-                    if (qNorm.Contains("thay " + lastName) ||
-                        qNorm.Contains("co " + lastName) ||
-                        qNorm.Contains("giang vien " + lastName) ||
-                        qNorm.Contains("gv " + lastName) ||
-                        Regex.IsMatch(qNorm, $@"\b{Regex.Escape(lastName)}\b"))
+                    score = 100;
+                }
+                // 2. Khớp nguyên chuỗi gốc cả học vị (ví dụ: "ts ha ngoc long", "ts. ha ngoc long")
+                else if (qNorm.Contains(rawNorm))
+                {
+                    score = 100;
+                }
+                else
+                {
+                    var words = cleanNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    var lastName = words.LastOrDefault(); // "long", "truc", "son", "tuan", "tung", "chau", "cuong", "dung", "hanh"
+                    var middleAndLast = words.Length >= 2 ? $"{words[words.Length - 2]} {lastName}" : string.Empty; // "ngoc long", "thanh truc", "hoang son"
+
+                    // 3. Khớp tên đệm + tên chính (ví dụ: "ngoc long", "thanh truc")
+                    if (!string.IsNullOrEmpty(middleAndLast) && qNorm.Contains(middleAndLast))
                     {
-                        isMatched = true;
+                        score = 80;
+                    }
+                    // 4. Khớp tên chính kèm kính ngữ / chức danh
+                    else if (!string.IsNullOrEmpty(lastName) && lastName.Length >= 2)
+                    {
+                        if (qNorm.Contains("thay " + lastName) ||
+                            qNorm.Contains("co " + lastName) ||
+                            qNorm.Contains("gv " + lastName) ||
+                            qNorm.Contains("giang vien " + lastName) ||
+                            qNorm.Contains("lop cua " + lastName) ||
+                            qNorm.Contains("mon cua " + lastName) ||
+                            qNorm.Contains(lastName + " day") ||
+                            qNorm.Contains(lastName + " phu trach") ||
+                            qNorm.Contains(lastName + " giang day"))
+                        {
+                            score = 70;
+                        }
+                        else if (hasInstructorKeywords && Regex.IsMatch(qNorm, $@"\b{Regex.Escape(lastName)}\b"))
+                        {
+                            score = 50;
+                        }
                     }
                 }
 
-                if (isMatched)
+                if (score > 0)
                 {
                     var matchedSecs = allSections.Where(s => s.Instructor.Equals(inst, StringComparison.OrdinalIgnoreCase)).ToList();
-                    return (inst, matchedSecs);
+                    matches.Add((score, inst, matchedSecs));
                 }
+            }
+
+            if (matches.Any())
+            {
+                var best = matches.OrderByDescending(m => m.Score).First();
+                return (best.Name, best.Sections);
             }
 
             return null;

@@ -54,6 +54,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             // 1. Trích xuất toàn bộ dữ liệu CSDL SQL Server thời gian thực
             var allCourses = (await _courseRepository.GetAllCoursesAsync()).ToList();
             var allSections = (await _sectionRepository.GetSectionsBySemesterAsync(semester)).ToList();
+            var allSectionsAcrossSemesters = (await _sectionRepository.GetAllSectionsAsync()).ToList();
             var allPrerequisites = (await _courseRepository.GetAllPrerequisitesAsync()).ToList();
 
             Student? student = null;
@@ -111,8 +112,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             {
                 try
                 {
-                    var sectionsDbDump = string.Join("\n", allSections.Select(s =>
-                        $"- Lớp: {s.SectionCode} | Môn: {s.Course?.CourseCode} - {s.Course?.CourseName} ({s.Course?.Credits}TC) | GV: {s.Instructor} | Phòng: {s.Room} | Lịch: {FormatSchedule(s)} | Sĩ số: {s.CurrentEnrollment}/{s.MaxCapacity}"));
+                    var sectionsDbDump = string.Join("\n", allSectionsAcrossSemesters.Select(s =>
+                        $"- Lớp: {s.SectionCode} | Môn: {s.Course?.CourseCode} - {s.Course?.CourseName} ({s.Course?.Credits}TC) | GV: {s.Instructor} | Phòng: {s.Room} | Lịch: {FormatSchedule(s)} | Sĩ số: {s.CurrentEnrollment}/{s.MaxCapacity} | Học kỳ: {s.Semester}"));
 
                     var coursesDbDump = string.Join(", ", allCourses.Select(c => $"{c.CourseCode}: {c.CourseName} ({c.Credits}TC)"));
 
@@ -129,11 +130,11 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     var systemPrompt = $@"Bạn là Cố vấn Học thuật AI của Trường Đại học Kinh tế Huế.
 Nhiệm vụ của bạn là trả lời sinh viên bằng tiếng Việt, đúng trọng tâm, văn phong sư phạm, lịch sự và súc tích.
 
-[DỮ LIỆU THỰC TẾ TỪ CSDL SQL SERVER HỌC KỲ {semester}]
-Danh sách lớp học phần:
+[DỮ LIỆU THỰC TẾ TỪ CSDL SQL SERVER]
+Danh sách lớp học phần toàn trường:
 {sectionsDbDump}
 
-Danh sách môn học toàn trường:
+Danh sách môn học:
 {coursesDbDump}
 
 Điều kiện tiên quyết:
@@ -144,14 +145,18 @@ Hồ sơ sinh viên đang hỏi:
 
 [NGUYÊN TẮC CỐT LÕI]
 1. DỰA HOÀN TOÀN VÀO DỮ LIỆU SQL SERVER Ở TRÊN. Tuyệt đối không tự bịa thông tin, phòng học, giảng viên hay mã lớp.
-2. PHÂN BIỆT RÕ: Lớp học phần sinh viên đã đăng ký (trong hồ sơ) vs Danh sách học phần toàn trường.
+2. TRA CỨU GIẢNG VIÊN: Khi người dùng hỏi về môn học hoặc lớp của một giảng viên (ví dụ: 'Môn của thầy Hà Ngọc Long là môn nào?', 'Thầy Long dạy môn gì?', 'Lịch học lớp thầy Long'):
+   - Tra cứu tất cả các môn và lớp học phần do giảng viên đó phụ trách (lưu ý học vị như TS., ThS., PGS.TS.).
+   - Trả lời rõ ràng tên các môn học, mã môn, mã lớp học phần, học kỳ mở lớp, lịch học chi tiết (thứ, tiết) và phòng học.
+   - Nếu giảng viên không có trong dữ liệu CSDL, thông báo rõ ràng là không tìm thấy giảng viên đó và gợi ý các giảng viên đang có trong CSDL, TUYỆT ĐỐI KHÔNG liệt kê danh sách môn học không liên quan.
+3. PHÂN BIỆT RÕ: Lớp học phần sinh viên đã đăng ký (trong hồ sơ) vs Danh sách học phần toàn trường.
    - Khi sinh viên hỏi về lịch học của cá nhân (ví dụ: 'thứ 2 tôi học gì', 'hôm nay tôi có học không', 'thời khóa biểu của em'), CHỈ tra cứu trong các lớp sinh viên ĐÃ ĐĂNG KÝ. Nếu sinh viên chưa đăng ký hoặc không có lớp vào ngày đó, hãy thông báo rõ ràng là không có lịch học.
    - Chỉ khi sinh viên hỏi chung về trường (ví dụ: 'thứ 2 trường có những lớp nào', 'toàn trường mở môn gì') mới liệt kê các lớp trong danh sách toàn trường.
-3. KHÔNG TỰ ĐỀ XUẤT MÔN KHI CHƯA ĐƯỢC YÊU CẦU: Nếu sinh viên chỉ hỏi thông tin (giảng viên, phòng học, lịch học, học phí, quy chế), trả lời đúng thông tin được hỏi, KHÔNG tự động gợi ý danh sách môn đăng ký. Chỉ khi sinh viên yêu cầu gợi ý/tư vấn môn học mới đề xuất môn.
-4. Khi có nhiều lớp học phần phù hợp, hãy liệt kê đầy đủ thông tin từng lớp.
-5. Duy trì ngữ cảnh cuộc trò chuyện nếu người dùng hỏi tiếp các câu hỏi nối tiếp.
-6. Nếu sinh viên hỏi về học phí: Đơn giá là 450.000 VNĐ / tín chỉ, MB Bank 101705201967 (Napas 24/7).
-7. Nếu sinh viên hỏi về quy chế rút môn: Trong hạn trực tuyến tự rút trong giỏ/phiếu; sau hạn nộp đơn về Phòng Đào Tạo. Hạn mức tối thiểu 10 TC, tối đa 24 TC.";
+4. KHÔNG TỰ ĐỀ XUẤT MÔN KHI CHƯA ĐƯỢC YÊU CẦU: Nếu sinh viên chỉ hỏi thông tin (giảng viên, phòng học, lịch học, học phí, quy chế), trả lời đúng thông tin được hỏi, KHÔNG tự động gợi ý danh sách môn đăng ký. Chỉ khi sinh viên yêu cầu gợi ý/tư vấn môn học mới đề xuất môn.
+5. Khi có nhiều lớp học phần phù hợp, hãy liệt kê đầy đủ thông tin từng lớp.
+6. Duy trì ngữ cảnh cuộc trò chuyện nếu người dùng hỏi tiếp các câu hỏi nối tiếp.
+7. Nếu sinh viên hỏi về học phí: Đơn giá là 450.000 VNĐ / tín chỉ, MB Bank 101705201967 (Napas 24/7).
+8. Nếu sinh viên hỏi về quy chế rút môn: Trong hạn trực tuyến tự rút trong giỏ/phiếu; sau hạn nộp đơn về Phòng Đào Tạo. Hạn mức tối thiểu 10 TC, tối đa 24 TC.";
 
                     var messages = new List<ChatMessage>
                     {
@@ -236,7 +241,8 @@ Hồ sơ sinh viên đang hỏi:
                     registeredSections,
                     remainingCreditsAllowed,
                     semester,
-                    conversationHistory);
+                    conversationHistory,
+                    allSectionsAcrossSemesters);
             }
 
             return advice;
@@ -258,7 +264,8 @@ Hồ sơ sinh viên đang hỏi:
             List<Section> registeredSections,
             int remainingCreditsAllowed,
             string semester,
-            List<AiConversationMessage>? conversationHistory)
+            List<AiConversationMessage>? conversationHistory,
+            List<Section>? allSectionsAcrossSemesters = null)
         {
             if (string.IsNullOrWhiteSpace(userPrompt))
             {
@@ -635,7 +642,8 @@ Hồ sơ sinh viên đang hỏi:
             // =========================================================================
             // TRƯỜNG HỢP 8: TRA CỨU GIẢNG VIÊN (Instructor)
             // =========================================================================
-            var matchedInstructor = FindMatchingInstructor(effectiveSearchText, allSections);
+            var sectionsPool = allSectionsAcrossSemesters != null && allSectionsAcrossSemesters.Any() ? allSectionsAcrossSemesters : allSections;
+            var matchedInstructor = FindMatchingInstructor(effectiveSearchText, sectionsPool);
             if (matchedInstructor != null && matchedInstructor.Value.Sections.Any())
             {
                 var (instName, instSections) = matchedInstructor.Value;
@@ -643,22 +651,72 @@ Hồ sơ sinh viên đang hỏi:
                 int totalCap = instSections.Sum(s => s.MaxCapacity);
 
                 var sb = new StringBuilder();
-                sb.AppendLine($"### 👨‍🏫 Thông Tin Giảng Viên: {instName}");
+                sb.AppendLine($"### 👨‍🏫 Thông Tin Giảng Viên & Môn Học Phụ Trách: **{instName}**");
                 sb.AppendLine();
-                sb.AppendLine($"Trong học kỳ **{semester}**, giảng viên phụ trách **{instSections.Count} lớp học phần** với tổng số **{totalEnrolled}/{totalCap} sinh viên**:");
+                sb.AppendLine($"Cố vấn AI đã truy vấn CSDL SQL Server thời gian thực. Giảng viên **{instName}** hiện phụ trách **{instSections.Count} lớp học phần** (Tổng sĩ số: **{totalEnrolled}/{totalCap} sinh viên**):");
                 sb.AppendLine();
 
-                foreach (var s in instSections)
+                // Nhóm theo từng môn học để trả lời rõ ràng: TÊN MÔN, MÃ LỚP, HỌC KỲ và LỊCH HỌC
+                var courseGroups = instSections.GroupBy(s => s.CourseId);
+                foreach (var cg in courseGroups)
                 {
-                    int remain = Math.Max(0, s.MaxCapacity - s.CurrentEnrollment);
-                    sb.AppendLine($"- **Lớp `{s.SectionCode}`** — **{s.Course?.CourseName}** (`{s.Course?.CourseCode}` - {s.Course?.Credits}TC):");
-                    sb.AppendLine($"  + Thời khóa biểu: **{FormatScheduleDetailed(s)}**");
-                    sb.AppendLine($"  + Phòng học: **{s.Room}**");
-                    sb.AppendLine($"  + Sĩ số: **{s.CurrentEnrollment}/{s.MaxCapacity} sinh viên** (Còn trống: **{remain} chỗ**)");
+                    var course = cg.First().Course;
+                    string courseName = course?.CourseName ?? "Chưa rõ tên môn";
+                    string courseCode = course?.CourseCode ?? "";
+                    int credits = course?.Credits ?? 0;
+
+                    sb.AppendLine($"📘 **Môn học: {courseName}** (Mã môn: `{courseCode}` — **{credits} Tín chỉ**)");
+                    foreach (var s in cg)
+                    {
+                        int remain = Math.Max(0, s.MaxCapacity - s.CurrentEnrollment);
+                        string scheduleStr = FormatScheduleDetailed(s);
+                        sb.AppendLine($"- **Mã lớp học phần:** `{s.SectionCode}` (Học kỳ: **{s.Semester}**)");
+                        sb.AppendLine($"  + **Lịch học:** **{scheduleStr}**");
+                        sb.AppendLine($"  + **Phòng học:** **{s.Room ?? "Chưa xếp phòng"}**");
+                        sb.AppendLine($"  + **Sĩ số hiện tại:** **{s.CurrentEnrollment}/{s.MaxCapacity} sinh viên** (Còn trống **{remain} chỗ**)");
+                    }
+                    sb.AppendLine();
                 }
 
                 advice.AiMessage = sb.ToString();
                 return; // KHÔNG tự ý đề xuất môn
+            }
+
+            // =========================================================================
+            // TRƯỜNG HỢP 8.1: HỎI VỀ GIẢNG VIÊN NHƯNG KHÔNG TÌM THẤY TRONG CSDL SQL SERVER
+            // =========================================================================
+            bool isInstructorInquiry =
+                qNorm.Contains("thay ") || qNorm.Contains("co ") ||
+                qNorm.Contains("giang vien") || qNorm.Contains("gv ") ||
+                qNorm.Contains("mon cua thay") || qNorm.Contains("mon cua co") ||
+                qNorm.Contains("lop cua thay") || qNorm.Contains("lop cua co") ||
+                qNorm.Contains("ai day") || qNorm.Contains("ai giang day") ||
+                qNorm.Contains("ai phu trach");
+
+            if (isInstructorInquiry && matchedInstructor == null)
+            {
+                var activeInstructors = sectionsPool
+                    .Where(s => !string.IsNullOrEmpty(s.Instructor))
+                    .GroupBy(s => s.Instructor)
+                    .OrderBy(g => g.Key)
+                    .ToList();
+
+                var sb = new StringBuilder();
+                sb.AppendLine("### 🔍 Thông Báo Tra Cứu Giảng Viên:");
+                sb.AppendLine();
+                sb.AppendLine($"Cố vấn AI đã tra cứu trực tiếp trong CSDL SQL Server nhưng **không tìm thấy giảng viên** nào khớp với nội dung câu hỏi: *\"{qRaw}\"*.");
+                sb.AppendLine();
+                sb.AppendLine("👨‍🏫 **Danh sách các giảng viên hiện đang có phân công giảng dạy trong hệ thống CSDL nhà trường:**");
+                foreach (var g in activeInstructors)
+                {
+                    var coursesTaught = string.Join(", ", g.Select(s => s.Course?.CourseName).Where(n => !string.IsNullOrEmpty(n)).Distinct());
+                    sb.AppendLine($"- **{g.Key}**: phụ trách môn *{coursesTaught}*");
+                }
+                sb.AppendLine();
+                sb.AppendLine("💡 *Bạn vui lòng kiểm tra lại họ tên hoặc học hàm/học vị của giảng viên nhé!*");
+
+                advice.AiMessage = sb.ToString();
+                return;
             }
 
             // =========================================================================
@@ -765,12 +823,9 @@ Hồ sơ sinh viên đang hỏi:
             // =========================================================================
             if (qNorm.Contains("mon ") || qNorm.Contains("hoc phan "))
             {
-                var availableCourseNames = string.Join(", ", allCourses.Select(c => $"**{c.CourseName}** (`{c.CourseCode}`)"));
                 advice.AiMessage = $"### 🔍 Thông Báo Tra Cứu Học Phần:\n\n" +
-                                   $"Cố vấn AI đã tra cứu CSDL nhưng không tìm thấy môn học nào khớp với nội dung: *\"{qRaw}\"*.\n\n" +
-                                   $"📚 **Danh sách các học phần hiện có trong chương trình đào tạo ({semester}):**\n" +
-                                   $"{availableCourseNames}.\n\n" +
-                                   $"💡 Bạn vui lòng kiểm tra lại tên môn học hoặc mã môn học nhé!";
+                                   $"Cố vấn AI đã tra cứu trực tiếp trong CSDL SQL Server nhưng **không tìm thấy môn học nào** khớp với nội dung: *\"{qRaw}\"*.\n\n" +
+                                   $"💡 Bạn vui lòng kiểm tra lại tên môn học hoặc mã môn học (ví dụ: *Lập trình Ứng dụng Web (WEB301)*, *Cơ sở Dữ liệu (CSDL201)*, *Kỹ thuật Phần mềm (KTPM302)*...).";
                 return;
             }
 
@@ -973,6 +1028,43 @@ Hồ sơ sinh viên đang hỏi:
             return null;
         }
 
+        private static string CleanAcademicTitle(string instructorName)
+        {
+            if (string.IsNullOrWhiteSpace(instructorName)) return string.Empty;
+            var name = instructorName.Trim();
+            string[] titles = new[]
+            {
+                "pgs.ts.", "pgs. ts.", "gs.ts.", "gs. ts.", "pgs.", "gs.",
+                "ts.", "ths.", "cn.", "pgs.ts", "gs.ts", "pgs", "gs", "ts", "ths",
+                "tiến sĩ", "tien si", "thạc sĩ", "thac si", "giáo sư", "giao su", "phó giáo sư", "pho giao su",
+                "thầy", "thay", "cô", "co", "giảng viên", "giang vien", "gv", "gv."
+            };
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                var lower = name.Trim().ToLowerInvariant();
+                var norm = RemoveDiacritics(lower);
+                foreach (var t in titles)
+                {
+                    if (norm.StartsWith(t + " "))
+                    {
+                        int len = t.Length + 1;
+                        name = name.Trim().Substring(Math.Min(name.Trim().Length, len)).Trim();
+                        changed = true;
+                        break;
+                    }
+                    else if (norm == t)
+                    {
+                        name = string.Empty;
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+            return name.Trim();
+        }
+
         private static (string Name, List<Section> Sections)? FindMatchingInstructor(string qNorm, List<Section> allSections)
         {
             var instructors = allSections
@@ -981,32 +1073,76 @@ Hồ sơ sinh viên đang hỏi:
                 .Distinct()
                 .ToList();
 
+            var matches = new List<(int Score, string Name, List<Section> Sections)>();
+
+            bool hasInstructorKeywords =
+                qNorm.Contains("thay") || qNorm.Contains("co") ||
+                qNorm.Contains("giang vien") || qNorm.Contains("gv") ||
+                qNorm.Contains("day") || qNorm.Contains("phu trach") ||
+                qNorm.Contains("lop cua") || qNorm.Contains("mon cua");
+
             foreach (var inst in instructors)
             {
-                string instNorm = RemoveDiacritics(inst.ToLowerInvariant());
+                string rawNorm = RemoveDiacritics(inst.ToLowerInvariant());
+                string cleanName = CleanAcademicTitle(inst);
+                string cleanNorm = RemoveDiacritics(cleanName.ToLowerInvariant());
 
-                // 1. Khớp nguyên họ tên không dấu (ví dụ: "ha ngoc long", "ngo bao chau", "le hoang son")
-                if (qNorm.Contains(instNorm))
+                int score = 0;
+
+                // 1. Khớp nguyên họ tên đầy đủ đã lược bỏ học vị (ví dụ: "ha ngoc long", "ngo bao chau", "le hoang son")
+                if (!string.IsNullOrEmpty(cleanNorm) && qNorm.Contains(cleanNorm))
                 {
-                    return (inst, allSections.Where(s => s.Instructor == inst).ToList());
+                    score = 100;
                 }
-
-                // 2. Khớp tên kèm chức danh / kính ngữ (ví dụ: "thầy Long", "thầy Sơn", "thầy Châu", "cô Trúc", "thầy Tùng")
-                var words = instNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                var lastName = words.LastOrDefault();
-                if (!string.IsNullOrEmpty(lastName) && lastName.Length >= 2)
+                // 2. Khớp nguyên chuỗi gốc cả học vị (ví dụ: "ts ha ngoc long", "ts. ha ngoc long")
+                else if (qNorm.Contains(rawNorm))
                 {
-                    if (qNorm.Contains("thay " + lastName) ||
-                        qNorm.Contains("co " + lastName) ||
-                        qNorm.Contains("gv " + lastName) ||
-                        qNorm.Contains("giang vien " + lastName) ||
-                        qNorm.Contains(lastName + " day") ||
-                        qNorm.Contains("lop cua " + lastName) ||
-                        qNorm.Contains("lop " + lastName))
+                    score = 100;
+                }
+                else
+                {
+                    var words = cleanNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    var lastName = words.LastOrDefault(); // "long", "truc", "son", "tuan", "tung", "chau", "cuong", "dung", "hanh"
+                    var middleAndLast = words.Length >= 2 ? $"{words[words.Length - 2]} {lastName}" : string.Empty; // "ngoc long", "thanh truc", "hoang son"
+
+                    // 3. Khớp tên đệm + tên chính (ví dụ: "ngoc long", "thanh truc")
+                    if (!string.IsNullOrEmpty(middleAndLast) && qNorm.Contains(middleAndLast))
                     {
-                        return (inst, allSections.Where(s => s.Instructor == inst).ToList());
+                        score = 80;
+                    }
+                    // 4. Khớp tên chính kèm kính ngữ / chức danh
+                    else if (!string.IsNullOrEmpty(lastName) && lastName.Length >= 2)
+                    {
+                        if (qNorm.Contains("thay " + lastName) ||
+                            qNorm.Contains("co " + lastName) ||
+                            qNorm.Contains("gv " + lastName) ||
+                            qNorm.Contains("giang vien " + lastName) ||
+                            qNorm.Contains("lop cua " + lastName) ||
+                            qNorm.Contains("mon cua " + lastName) ||
+                            qNorm.Contains(lastName + " day") ||
+                            qNorm.Contains(lastName + " phu trach") ||
+                            qNorm.Contains(lastName + " giang day"))
+                        {
+                            score = 70;
+                        }
+                        else if (hasInstructorKeywords && Regex.IsMatch(qNorm, $@"\b{Regex.Escape(lastName)}\b"))
+                        {
+                            score = 50;
+                        }
                     }
                 }
+
+                if (score > 0)
+                {
+                    var matchedSecs = allSections.Where(s => s.Instructor == inst).ToList();
+                    matches.Add((score, inst, matchedSecs));
+                }
+            }
+
+            if (matches.Any())
+            {
+                var best = matches.OrderByDescending(m => m.Score).First();
+                return (best.Name, best.Sections);
             }
 
             return null;

@@ -595,7 +595,7 @@ Hồ sơ sinh viên đang hỏi:
                     foreach (var c in completedCourses)
                     {
                         string status = c.Grade >= 5.0 ? "✅ Đạt" : "❌ Chưa đạt";
-                        sb.AppendLine($"- **{c.Course?.CourseCode}** — {c.Course?.CourseName} ({c.Course?.Credits}TC): **{c.Grade:0.0} điểm** ({status} - Kỳ {c.SemesterCompleted})");
+                        sb.AppendLine($"- **{c.Course?.CourseCode}** — {c.Course?.CourseName} ({c.Course?.Credits}TC): **{c.Grade:0.0} điểm** ({status} - Kỳ {c.Semester})");
                     }
                 }
                 else

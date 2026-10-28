@@ -161,10 +161,17 @@
             var account = await LoginUseCase.ExecuteAsync(loginModel.Username.Trim(), loginModel.Password);
             if (account != null)
             {
-                // Kích hoạt trình quản lý mật khẩu của trình duyệt/máy tính tự động bật popup hỏi lưu mật khẩu
+                bool isWeak = IsWeakPassword(loginModel.Password);
+
+                // Quy trình chuẩn:
+                // 1. Tự động thông báo đổi mật khẩu do mật khẩu quá yếu (hộp thoại cảnh báo)
+                // 2. Khi người dùng bấm OK -> Trình duyệt lập tức kích hoạt thông báo hỏi lưu mật khẩu
                 try
                 {
-                    await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", loginModel.Username.Trim(), loginModel.Password);
+                    await JSRuntime.InvokeVoidAsync("notifyWeakPasswordAndSave", 
+                        loginModel.Username.Trim(), 
+                        loginModel.Password, 
+                        isWeak);
                     await Task.Delay(100);
                 }
                 catch { }
@@ -198,6 +205,19 @@
         {
             isLoading = false;
         }
+    }
+
+    private bool IsWeakPassword(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password)) return true;
+        var p = password.Trim().ToLower();
+        if (p == "123456" || p == "admin123" || p == "12345" || p == "12345678" || p == "password" || p == "admin")
+            return true;
+        if (p.Length < 8)
+            return true;
+        if (p.All(char.IsDigit) || p.All(char.IsLetter))
+            return true;
+        return false;
     }
 
     public void Dispose()

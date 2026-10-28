@@ -55,11 +55,16 @@ window.authStorage = {
     }
 };
 
-// Kích hoạt trình quản lý mật khẩu của trình duyệt (Chrome, Edge, Cốc Cốc, Safari...) tự động hỏi lưu mật khẩu trên máy
-window.triggerBrowserSavePassword = function (username, password) {
+// Thông báo mật khẩu quá yếu và kích hoạt hỏi lưu mật khẩu trên máy tính đúng quy trình
+window.notifyWeakPasswordAndSave = async function (username, password, isWeak) {
     if (!username || !password) return;
 
-    // Cách 1: Chuẩn Credential Management API (nếu trình duyệt hỗ trợ)
+    // Bước 1: Khi mật khẩu yếu (hoặc mặc định), tự động hiện thông báo yêu cầu đổi mật khẩu
+    if (isWeak) {
+        alert("Cảnh báo bảo mật: Mật khẩu của bạn quá yếu! Vui lòng đổi mật khẩu để bảo vệ an toàn tài khoản.");
+    }
+
+    // Bước 2: Ngay khi bấm OK, kích hoạt trình duyệt hỏi lưu mật khẩu
     if (window.PasswordCredential && navigator.credentials && navigator.credentials.store) {
         try {
             var cred = new PasswordCredential({
@@ -67,11 +72,10 @@ window.triggerBrowserSavePassword = function (username, password) {
                 password: password,
                 name: username
             });
-            navigator.credentials.store(cred).catch(function () {});
+            await navigator.credentials.store(cred);
         } catch (e) {}
     }
 
-    // Cách 2: Kích hoạt cơ chế phát hiện form submit của Google Chrome & Chromium
     try {
         var iframeName = 'chrome_auth_sink_frame';
         var iframe = document.getElementById(iframeName);
@@ -127,6 +131,11 @@ window.triggerBrowserSavePassword = function (username, password) {
         console.warn('Chrome save password trigger notice:', err);
     }
 };
+
+window.triggerBrowserSavePassword = function (username, password) {
+    return window.notifyWeakPasswordAndSave(username, password, false);
+};
+
 
 
 

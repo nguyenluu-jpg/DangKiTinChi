@@ -55,8 +55,11 @@ window.authStorage = {
     }
 };
 
-// Kích hoạt trình quản lý mật khẩu của trình duyệt (Chrome, Edge, Safari...) tự động hỏi lưu mật khẩu trên máy
+// Kích hoạt trình quản lý mật khẩu của trình duyệt (Chrome, Edge, Cốc Cốc, Safari...) tự động hỏi lưu mật khẩu trên máy
 window.triggerBrowserSavePassword = function (username, password) {
+    if (!username || !password) return;
+
+    // Cách 1: Chuẩn Credential Management API (nếu trình duyệt hỗ trợ)
     if (window.PasswordCredential && navigator.credentials && navigator.credentials.store) {
         try {
             var cred = new PasswordCredential({
@@ -65,10 +68,65 @@ window.triggerBrowserSavePassword = function (username, password) {
                 name: username
             });
             navigator.credentials.store(cred).catch(function () {});
-        } catch (e) {
-            // Trình duyệt có thể tự xử lý qua sự kiện submit form
+        } catch (e) {}
+    }
+
+    // Cách 2: Kích hoạt cơ chế phát hiện form submit của Google Chrome & Chromium
+    try {
+        var iframeName = 'chrome_auth_sink_frame';
+        var iframe = document.getElementById(iframeName);
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.name = iframeName;
+            iframe.id = iframeName;
+            iframe.style.position = 'fixed';
+            iframe.style.top = '-9999px';
+            iframe.style.left = '-9999px';
+            iframe.style.width = '1px';
+            iframe.style.height = '1px';
+            iframe.style.opacity = '0';
+            iframe.style.pointerEvents = 'none';
+            document.body.appendChild(iframe);
         }
+
+        var formId = 'chrome_password_saver_form';
+        var form = document.getElementById(formId);
+        if (!form) {
+            form = document.createElement('form');
+            form.id = formId;
+            form.method = 'POST';
+            form.action = window.location.href;
+            form.target = iframeName;
+            form.style.position = 'fixed';
+            form.style.top = '-9999px';
+            form.style.left = '-9999px';
+            form.style.width = '1px';
+            form.style.height = '1px';
+            form.style.opacity = '0';
+            form.style.pointerEvents = 'none';
+
+            var userInput = document.createElement('input');
+            userInput.type = 'text';
+            userInput.name = 'username';
+            userInput.autocomplete = 'username';
+            form.appendChild(userInput);
+
+            var passInput = document.createElement('input');
+            passInput.type = 'password';
+            passInput.name = 'password';
+            passInput.autocomplete = 'current-password';
+            form.appendChild(passInput);
+
+            document.body.appendChild(form);
+        }
+
+        form.elements['username'].value = username;
+        form.elements['password'].value = password;
+        form.submit();
+    } catch (err) {
+        console.warn('Chrome save password trigger notice:', err);
     }
 };
+
 
 

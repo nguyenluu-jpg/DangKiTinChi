@@ -165,6 +165,7 @@
                 try
                 {
                     await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", loginModel.Username.Trim(), loginModel.Password);
+                    await Task.Delay(100);
                 }
                 catch { }
 

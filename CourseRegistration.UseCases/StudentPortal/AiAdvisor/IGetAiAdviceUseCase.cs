@@ -9,6 +9,10 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
     /// </summary>
     public interface IGetAiAdviceUseCase
     {
-        Task<AiCourseAdvice> ExecuteAsync(int studentId, string semester, string? studentGoalPrompt = null);
+        Task<AiCourseAdvice> ExecuteAsync(
+            int studentId, 
+            string semester, 
+            string? studentGoalPrompt = null,
+            List<AiConversationMessage>? conversationHistory = null);
     }
 }

@@ -26,6 +26,9 @@ namespace CourseRegistration.CoreBusiness.Models
         // Cảnh báo thân thiện nếu API lỗi/hết hạn mức (để ứng dụng không bao giờ bị dừng)
         public string? WarningMessage { get; set; }
 
+        // Gợi ý đăng nhập nếu là khách hỏi thông tin cá nhân
+        public bool SuggestLogin { get; set; } = false;
+
         public DateTime GeneratedAt { get; set; } = DateTime.Now;
     }
 
@@ -47,5 +50,13 @@ namespace CourseRegistration.CoreBusiness.Models
 
         // Trạng thái được chọn trước khi người dùng xác nhận ghi vào CSDL (Mặc định chọn)
         public bool IsSelected { get; set; } = true;
+    }
+
+    // Lịch sử tin nhắn ngữ cảnh hội thoại giữa người dùng và AI
+    public class AiConversationMessage
+    {
+        public bool IsUser { get; set; }
+        public string Content { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
     }
 }

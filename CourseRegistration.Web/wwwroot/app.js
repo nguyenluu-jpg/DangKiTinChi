@@ -56,12 +56,18 @@ window.authStorage = {
 };
 
 // Kích hoạt hỏi lưu mật khẩu trên trình duyệt/máy tính đúng cơ chế
-window.triggerBrowserSavePassword = async function (username, password, targetUrl) {
+window.triggerBrowserSavePassword = async function (username, password) {
     if (!username || !password) return;
 
-    var actionUrl = targetUrl || window.location.pathname || '/';
+    // 1. Đồng bộ giá trị vào input trên form đang mở (nếu có)
+    try {
+        var uInput = document.getElementById('username');
+        var pInput = document.getElementById('password');
+        if (uInput) uInput.value = username;
+        if (pInput) pInput.value = password;
+    } catch (e) { }
 
-    // 1. Lưu qua Credential Management API nếu trình duyệt hỗ trợ
+    // 2. Lưu qua Credential Management API nếu trình duyệt hỗ trợ
     if (window.PasswordCredential && navigator.credentials && navigator.credentials.store) {
         try {
             var cred = new PasswordCredential({
@@ -75,8 +81,9 @@ window.triggerBrowserSavePassword = async function (username, password, targetUr
         }
     }
 
-    // 2. Kích hoạt form submission ngầm để Chrome/Edge Password Manager tự động ghi nhận
+    // 3. Kích hoạt form submission ngầm để Chrome/Edge Password Manager tự động ghi nhận
     try {
+        var currentUrl = window.location.href;
         var iframeName = 'chrome_auth_sink_frame';
         var iframe = document.getElementById(iframeName);
         if (!iframe) {
@@ -99,7 +106,7 @@ window.triggerBrowserSavePassword = async function (username, password, targetUr
             form = document.createElement('form');
             form.id = formId;
             form.method = 'POST';
-            form.action = actionUrl;
+            form.action = currentUrl;
             form.target = iframeName;
             form.style.position = 'fixed';
             form.style.top = '-9999px';
@@ -121,14 +128,22 @@ window.triggerBrowserSavePassword = async function (username, password, targetUr
             passInput.autocomplete = 'current-password';
             form.appendChild(passInput);
 
+            var submitBtn = document.createElement('button');
+            submitBtn.type = 'submit';
+            form.appendChild(submitBtn);
+
             document.body.appendChild(form);
         } else {
-            form.action = actionUrl;
+            form.action = currentUrl;
         }
 
         form.elements['username'].value = username;
         form.elements['password'].value = password;
-        form.submit();
+        if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+        } else {
+            form.submit();
+        }
     } catch (err) {
         console.debug('Browser save trigger notice:', err);
     }

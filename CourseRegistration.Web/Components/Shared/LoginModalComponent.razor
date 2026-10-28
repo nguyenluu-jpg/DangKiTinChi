@@ -164,41 +164,30 @@
             var account = await LoginUseCase.ExecuteAsync(username, password);
             if (account != null)
             {
-                // 1. Cập nhật phiên đăng nhập của người dùng
+                // 1. Kích hoạt trình duyệt Chrome xử lý lưu mật khẩu / cảnh báo rò rỉ mật khẩu TRƯỚC TIÊN
+                try
+                {
+                    await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", username, password);
+                    await Task.Delay(120);
+                }
+                catch { }
+
+                // 2. Cập nhật trạng thái người dùng
                 await CurrentUserStateStore.SetCurrentUserAsync(account);
 
-                // 2. Đóng modal đăng nhập ngay
+                // 3. Đóng modal đăng nhập
                 LoginModalService.Close();
 
-                // 3. Chuyển ngay đến trang Admin hoặc Sinh viên
-                string targetUrl;
-                if (string.Equals(account.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+                // 4. Giữ nguyên trang đang đứng (ở Trang chủ thì ở lại Trang chủ, KHÔNG nhảy sang Tổng quan!)
+                var uri = new Uri(NavigationManager.Uri);
+                if (uri.AbsolutePath.Equals("/login", StringComparison.OrdinalIgnoreCase))
                 {
-                    targetUrl = "/admin";
+                    NavigationManager.NavigateTo("/");
                 }
                 else
                 {
-                    var uri = new Uri(NavigationManager.Uri);
-                    if (uri.AbsolutePath.StartsWith("/admin", StringComparison.OrdinalIgnoreCase) ||
-                        uri.AbsolutePath.Equals("/login", StringComparison.OrdinalIgnoreCase))
-                    {
-                        targetUrl = "/";
-                    }
-                    else
-                    {
-                        targetUrl = uri.PathAndQuery;
-                    }
+                    NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: false);
                 }
-
-                NavigationManager.NavigateTo(targetUrl);
-
-                // 4. Kích hoạt Chrome xử lý cảnh báo rò rỉ mật khẩu (Screenshot 151815)
-                // và hộp thoại lưu mật khẩu Chrome (Screenshot 162716), không cần bấm thêm button nào
-                try
-                {
-                    await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", username, password, targetUrl);
-                }
-                catch { }
             }
             else
             {

@@ -306,7 +306,15 @@
         isAuthenticated = await CurrentUserStateStore.IsAuthenticatedAsync();
         currentRole = await CurrentUserStateStore.GetCurrentRoleAsync();
         int studentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
-        currentStudent = allStudents.FirstOrDefault(s => s.StudentId == studentId);
+        if (studentId > 0)
+        {
+            currentStudent = allStudents.FirstOrDefault(s => s.StudentId == studentId)
+                             ?? await StudentRepository.GetStudentByIdAsync(studentId);
+        }
+        else
+        {
+            currentStudent = null;
+        }
     }
 
     private void InitDefaultMessage()
@@ -416,7 +424,11 @@
             else
             {
                 // Chuyển toàn bộ hội thoại cho UseCase riêng GetAiAdviceUseCase (Clean Architecture)
-                int studentId = (isAuthenticated && currentStudent != null) ? currentStudent.StudentId : 0;
+                int studentId = 0;
+                if (isAuthenticated)
+                {
+                    studentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
+                }
                 var history = chatMessages
                     .Select(m => new AiConversationMessage
                     {

@@ -83,8 +83,9 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             }
 
             string userPrompt = string.IsNullOrWhiteSpace(studentGoalPrompt) ? string.Empty : studentGoalPrompt.Trim();
+            bool isExplicitRec = IsExplicitRecommendationRequest(userPrompt);
 
-            // 2. Lọc danh sách lớp ứng viên hợp lệ cho đề xuất học phần (chưa học, chưa đăng ký, đủ tiên quyết, còn chỗ)
+            // 2. Lọc danh sách lớp ứng viên hợp lệ cho đề xuất học phần (chỉ dùng khi có yêu cầu gợi ý rõ ràng)
             var candidateSections = new List<Section>();
             foreach (var sec in allSections)
             {
@@ -122,7 +123,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                         ? $"- Sinh viên: {student.FullName} (MSSV: {student.StudentCode}) | Ngành: {student.Major}\n" +
                           $"- Số tín chỉ tối đa được đăng ký thêm trong kỳ {semester}: {remainingCreditsAllowed} TC\n" +
                           $"- Các môn đã hoàn thành: {(completedCourses.Any() ? string.Join(", ", completedCourses.Select(c => $"{c.Course?.CourseCode} ({c.Grade}đ)")) : "Chưa hoàn thành môn nào")}\n" +
-                          $"- Các môn đã đăng ký trong kỳ: {(registeredSections.Any() ? string.Join(", ", registeredSections.Select(r => $"{r.SectionCode} ({r.Course?.CourseName})")) : "Chưa đăng ký môn nào")}"
+                          $"- Các lớp đã đăng ký trong kỳ: {(registeredSections.Any() ? string.Join(", ", registeredSections.Select(r => $"{r.SectionCode} ({r.Course?.CourseName} - {FormatSchedule(r)})")) : "Chưa đăng ký lớp nào")}"
                         : "- Người dùng hiện đang ở chế độ Khách (chưa đăng nhập tài khoản cá nhân).";
 
                     var systemPrompt = $@"Bạn là Cố vấn Học thuật AI của Trường Đại học Kinh tế Huế.
@@ -143,10 +144,12 @@ Hồ sơ sinh viên đang hỏi:
 
 [NGUYÊN TẮC CỐT LÕI]
 1. DỰA HOÀN TOÀN VÀO DỮ LIỆU SQL SERVER Ở TRÊN. Tuyệt đối không tự bịa thông tin, phòng học, giảng viên hay mã lớp.
-2. Khi người dùng hỏi về Môn học, Giảng viên, Mã lớp học phần, Thứ, Tiết, Ngày học, Phòng học, Sĩ số: Trả lời chính xác, rõ ràng số liệu thực tế.
-3. Khi có nhiều lớp học phần phù hợp, hãy liệt kê đầy đủ thông tin từng lớp.
-4. Duy trì ngữ cảnh cuộc trò chuyện nếu người dùng hỏi tiếp các câu hỏi nối tiếp.
-5. Nếu câu hỏi chưa rõ hoặc thiếu dữ liệu, hãy hỏi lại hoặc thông báo rõ ràng cho sinh viên.
+2. PHÂN BIỆT RÕ: Lớp học phần sinh viên đã đăng ký (trong hồ sơ) vs Danh sách học phần toàn trường.
+   - Khi sinh viên hỏi về lịch học của cá nhân (ví dụ: 'thứ 2 tôi học gì', 'hôm nay tôi có học không', 'thời khóa biểu của em'), CHỈ tra cứu trong các lớp sinh viên ĐÃ ĐĂNG KÝ. Nếu sinh viên chưa đăng ký hoặc không có lớp vào ngày đó, hãy thông báo rõ ràng là không có lịch học.
+   - Chỉ khi sinh viên hỏi chung về trường (ví dụ: 'thứ 2 trường có những lớp nào', 'toàn trường mở môn gì') mới liệt kê các lớp trong danh sách toàn trường.
+3. KHÔNG TỰ ĐỀ XUẤT MÔN KHI CHƯA ĐƯỢC YÊU CẦU: Nếu sinh viên chỉ hỏi thông tin (giảng viên, phòng học, lịch học, học phí, quy chế), trả lời đúng thông tin được hỏi, KHÔNG tự động gợi ý danh sách môn đăng ký. Chỉ khi sinh viên yêu cầu gợi ý/tư vấn môn học mới đề xuất môn.
+4. Khi có nhiều lớp học phần phù hợp, hãy liệt kê đầy đủ thông tin từng lớp.
+5. Duy trì ngữ cảnh cuộc trò chuyện nếu người dùng hỏi tiếp các câu hỏi nối tiếp.
 6. Nếu sinh viên hỏi về học phí: Đơn giá là 450.000 VNĐ / tín chỉ, MB Bank 101705201967 (Napas 24/7).
 7. Nếu sinh viên hỏi về quy chế rút môn: Trong hạn trực tuyến tự rút trong giỏ/phiếu; sau hạn nộp đơn về Phòng Đào Tạo. Hạn mức tối thiểu 10 TC, tối đa 24 TC.";
 
@@ -155,7 +158,6 @@ Hồ sơ sinh viên đang hỏi:
                         new ChatMessage(ChatRole.System, systemPrompt)
                     };
 
-                    // Bổ sung lịch sử hội thoại gần nhất (Conversation Context)
                     if (conversationHistory != null && conversationHistory.Any())
                     {
                         foreach (var hist in conversationHistory.TakeLast(6))
@@ -177,27 +179,30 @@ Hồ sơ sinh viên đang hỏi:
                         advice.ModelUsed = "Trí Tuệ Nhân Tạo AI (IChatClient - LLM)";
                         aiSuccess = true;
 
-                        // Rà soát xem LLM có đề cập đến lớp học phần nào để bổ sung vào RecommendedSections cho sinh viên xác nhận
-                        foreach (var sec in candidateSections)
+                        // CHỈ bổ sung vào RecommendedSections khi người dùng YÊU CẦU GỢI Ý MÔN RÕ RÀNG
+                        if (isExplicitRec && student != null)
                         {
-                            if (responseText.Contains(sec.SectionCode, StringComparison.OrdinalIgnoreCase))
+                            foreach (var sec in candidateSections)
                             {
-                                if (!advice.RecommendedSections.Any(r => r.SectionId == sec.SectionId))
+                                if (responseText.Contains(sec.SectionCode, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    advice.RecommendedSections.Add(new AiRecommendedSection
+                                    if (!advice.RecommendedSections.Any(r => r.SectionId == sec.SectionId))
                                     {
-                                        SectionId = sec.SectionId,
-                                        SectionCode = sec.SectionCode,
-                                        CourseId = sec.CourseId,
-                                        CourseCode = sec.Course?.CourseCode ?? string.Empty,
-                                        CourseName = sec.Course?.CourseName ?? string.Empty,
-                                        Credits = sec.Course?.Credits ?? 0,
-                                        Instructor = sec.Instructor,
-                                        Room = sec.Room,
-                                        ScheduleSummary = FormatSchedule(sec),
-                                        RecommendationReason = $"Được AI đề xuất dựa trên nguyện vọng '{userPrompt}'.",
-                                        IsSelected = true
-                                    });
+                                        advice.RecommendedSections.Add(new AiRecommendedSection
+                                        {
+                                            SectionId = sec.SectionId,
+                                            SectionCode = sec.SectionCode,
+                                            CourseId = sec.CourseId,
+                                            CourseCode = sec.Course?.CourseCode ?? string.Empty,
+                                            CourseName = sec.Course?.CourseName ?? string.Empty,
+                                            Credits = sec.Course?.Credits ?? 0,
+                                            Instructor = sec.Instructor,
+                                            Room = sec.Room,
+                                            ScheduleSummary = FormatSchedule(sec),
+                                            RecommendationReason = $"Được AI đề xuất dựa trên nguyện vọng '{userPrompt}'.",
+                                            IsSelected = true
+                                        });
+                                    }
                                 }
                             }
                         }
@@ -239,7 +244,7 @@ Hồ sơ sinh viên đang hỏi:
 
         /// <summary>
         /// Động cơ Phân tích Tri thức SQL Server Chuyên Sâu:
-        /// Hiểu tiếng Việt, duy trì ngữ cảnh hội thoại, tra cứu chính xác Môn học, Giảng viên, Mã lớp, Thứ, Tiết, Phòng học.
+        /// Hiểu tiếng Việt, phân biệt lịch cá nhân vs toàn trường, không tự đề xuất môn khi chưa được yêu cầu.
         /// </summary>
         private static void ExecuteDeterministicKnowledgeEngine(
             AiCourseAdvice advice,
@@ -259,17 +264,18 @@ Hồ sơ sinh viên đang hỏi:
             {
                 if (student != null)
                 {
-                    advice.AiMessage = $"### 👋 Chào bạn {student.FullName} (MSSV: {student.StudentCode})!\n\n" +
-                                       $"Tôi là **Cố vấn Học thuật AI** của bạn trong học kỳ **{semester}**. Bạn có thể hỏi tôi bất kỳ điều gì:\n" +
-                                       $"- *Tra cứu môn học, giảng viên, mã lớp học phần, thứ, tiết, phòng học.*\n" +
-                                       $"- *Kiểm tra điểm số, học bạ, các môn đã đăng ký và môn tiên quyết.*\n" +
-                                       $"- *Quy chế rút môn, hạn mức số tín chỉ, mức học phí và thanh toán VietQR.*\n" +
-                                       $"- *Hoặc yêu cầu tôi lên thời khóa biểu theo nguyện vọng cá nhân (cân bằng, học nhẹ, tránh sáng thứ 2, v.v.).*";
+                    advice.AiMessage = $"### 👋 Chào bạn {student.FullName} (MSSV: `{student.StudentCode}`)!\n\n" +
+                                       $"Tôi là **Cố vấn Học thuật AI** của bạn trong học kỳ **{semester}**. Bạn có thể hỏi tôi:\n" +
+                                       $"- *Lịch học cá nhân:* 'Thứ 2 tôi học gì?', 'Hôm nay tôi có học không?', 'Thời khóa biểu của tôi'.\n" +
+                                       $"- *Tra cứu toàn trường:* Môn học, giảng viên, mã lớp học phần, phòng học, sĩ số lớp.\n" +
+                                       $"- *Học bạ & Tiên quyết:* Điểm số tích lũy, các môn đã hoàn thành, điều kiện tiên quyết.\n" +
+                                       $"- *Quy chế & Học phí:* Rút môn học, hạn mức tín chỉ 10-24, đơn giá 450.000 đ/TC và VietQR.\n" +
+                                       $"- *Tư vấn lộ trình:* 'Gợi ý môn học kỳ này cho tôi', 'Nên đăng ký môn nào', 'Học nhẹ', 'Tránh sáng thứ 2'...";
                 }
                 else
                 {
                     advice.AiMessage = $"### 👋 Chào bạn! Tôi là Cố Vấn Học Thuật AI.\n\n" +
-                                       $"Bạn có thể hỏi tôi về bất kỳ thông tin nào trong CSDL nhà trường (môn học, giảng viên, phòng học, lịch học, học phí, quy chế tín chỉ) hoặc đăng nhập để tôi tư vấn kế hoạch học tập riêng cho bạn nhé!";
+                                       $"Bạn có thể hỏi tôi về bất kỳ thông tin nào trong CSDL nhà trường (môn học, giảng viên, phòng học, lịch học toàn trường, học phí, quy chế tín chỉ) hoặc **Đăng nhập** để tra cứu thời khóa biểu và lộ trình riêng của bạn!";
                 }
                 return;
             }
@@ -278,51 +284,185 @@ Hồ sơ sinh viên đang hỏi:
             string qLower = qRaw.ToLowerInvariant();
             string qNorm = RemoveDiacritics(qLower);
 
-            // Duy trì ngữ cảnh hội thoại (Context resolution) từ câu hỏi trước nếu câu này có đại từ thay thế
+            // Duy trì ngữ cảnh hội thoại từ câu hỏi trước
             string contextSubject = ExtractContextSubject(qNorm, conversationHistory, allCourses, allSections);
             string effectiveSearchText = !string.IsNullOrEmpty(contextSubject) ? $"{qNorm} {contextSubject}" : qNorm;
 
-            // =========================================================================
-            // TRƯỜNG HỢP 1: CÂU HỎI VỀ MÃ LỚP HỌC PHẦN CỤ THỂ (SectionCode)
-            // =========================================================================
-            var matchedSectionByCode = allSections.FirstOrDefault(s =>
-                qLower.Contains(s.SectionCode.ToLowerInvariant()) ||
-                effectiveSearchText.Contains(RemoveDiacritics(s.SectionCode.ToLowerInvariant())));
+            // Xác định thời gian (Hôm nay / Ngày mai / Thứ 2 - CN)
+            int? queriedDay = DetectTargetDay(qNorm);
 
-            if (matchedSectionByCode != null)
+            // Kiểm tra xem câu hỏi có hướng tới cá nhân sinh viên hay không
+            bool isPersonalQuery =
+                qNorm.Contains("cua toi") || qNorm.Contains("cua em") || qNorm.Contains("cua minh") ||
+                qNorm.Contains("toi hoc") || qNorm.Contains("em hoc") || qNorm.Contains("minh hoc") ||
+                qNorm.Contains("toi co hoc") || qNorm.Contains("em co hoc") || qNorm.Contains("minh co hoc") ||
+                qNorm.Contains("thoi khoa bieu") || qNorm.Contains("lich hoc cua") ||
+                qNorm.Contains("mon da dang ky") || qNorm.Contains("mon em da") || qNorm.Contains("mon toi da") ||
+                qNorm.Contains("phieu dang ky") || qNorm.Contains("ket qua dang ky") ||
+                qNorm.Contains("hom nay toi") || qNorm.Contains("hom nay em") ||
+                qNorm.Contains("hom nay co hoc khong") || qNorm.Contains("hom nay hoc gi") ||
+                qNorm.Contains("lich hoc hom nay") ||
+                Regex.IsMatch(qNorm, @"\b(thu [2-8]|chu nhat)\s+(toi|em|minh)\s+(co|hoc)");
+
+            // =========================================================================
+            // TRƯỜNG HỢP 1: LỊCH HỌC / THỜI KHÓA BIỂU CÁ NHÂN CỦA SINH VIÊN
+            // Phân biệt rõ ràng với học phần toàn trường!
+            // =========================================================================
+            if (isPersonalQuery && !qNorm.Contains("diem") && !qNorm.Contains("hoc ba") && !qNorm.Contains("goi y") && !qNorm.Contains("tu van") && !qNorm.Contains("nen hoc"))
             {
-                var sec = matchedSectionByCode;
-                int remainingSlots = Math.Max(0, sec.MaxCapacity - sec.CurrentEnrollment);
-                string scheduleText = FormatScheduleDetailed(sec);
-
-                advice.AiMessage = $"### 📋 Thông Tin Chi Tiết Lớp Học Phần: `{sec.SectionCode}`\n\n" +
-                                   $"- **Học phần:** **{sec.Course?.CourseName}** (Mã môn: `{sec.Course?.CourseCode}` - **{sec.Course?.Credits} Tín chỉ**)\n" +
-                                   $"- **Giảng viên phụ trách:** **{sec.Instructor}**\n" +
-                                   $"- **Phòng học:** **{sec.Room}**\n" +
-                                   $"- **Thời khóa biểu:** **{scheduleText}**\n" +
-                                   $"- **Học kỳ:** **{sec.Semester}**\n" +
-                                   $"- **Tình trạng sĩ số:** **{sec.CurrentEnrollment}/{sec.MaxCapacity} sinh viên** (Còn trống **{remainingSlots} chỗ**).\n\n" +
-                                   $"💡 *Lưu ý: Bạn có thể chọn lớp này vào Giỏ đăng ký học phần nếu còn thời hạn đăng ký trực tuyến.*";
-
-                advice.RecommendedSections.Add(new AiRecommendedSection
+                if (student == null)
                 {
-                    SectionId = sec.SectionId,
-                    SectionCode = sec.SectionCode,
-                    CourseId = sec.CourseId,
-                    CourseCode = sec.Course?.CourseCode ?? string.Empty,
-                    CourseName = sec.Course?.CourseName ?? string.Empty,
-                    Credits = sec.Course?.Credits ?? 0,
-                    Instructor = sec.Instructor,
-                    Room = sec.Room,
-                    ScheduleSummary = FormatSchedule(sec),
-                    RecommendationReason = $"Thông tin lớp {sec.SectionCode} tra cứu trực tiếp theo yêu cầu của bạn.",
-                    IsSelected = true
-                });
+                    advice.AiMessage = "👋 **Chào bạn! Bạn hiện đang ở chế độ Khách (chưa đăng nhập).**\n\n" +
+                                       "Để Cố vấn AI tra cứu thời khóa biểu cá nhân và các môn bạn đã đăng ký, vui lòng bấm nút **Đăng nhập** bên dưới nhé!\n\n" +
+                                       "🔑 **Tài khoản sinh viên thử nghiệm:**\n" +
+                                       "- Sinh viên 1: `sv21001` / Mật khẩu: `123456`\n" +
+                                       "- Sinh viên 2: `sv21002` / Mật khẩu: `123456`";
+                    advice.SuggestLogin = true;
+                    return;
+                }
+
+                // Sub-case 1.1: Hỏi về một ngày cụ thể (ví dụ: "Thứ 2 tôi học gì?", "Thứ 4 em có học không?", "Hôm nay tôi học gì?")
+                if (queriedDay.HasValue)
+                {
+                    int day = queriedDay.Value;
+                    string dayName = day == 8 ? "Chủ Nhật" : $"Thứ {day}";
+
+                    var daySections = registeredSections.Where(s =>
+                        s.Schedules != null && s.Schedules.Any(sch => sch.DayOfWeek == day)).ToList();
+
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"### 🗓️ Lịch Học Cá Nhân Vào {dayName} (Học kỳ {semester}):");
+                    sb.AppendLine($"Sinh viên: **{student.FullName}** (MSSV: `{student.StudentCode}`)");
+                    sb.AppendLine();
+
+                    if (daySections.Any())
+                    {
+                        sb.AppendLine($"Vào **{dayName}**, bạn có **{daySections.Count} lớp học phần** đã đăng ký:");
+                        sb.AppendLine();
+
+                        foreach (var s in daySections)
+                        {
+                            var schs = s.Schedules!.Where(sch => sch.DayOfWeek == day).ToList();
+                            string periods = string.Join(", ", schs.Select(sch => $"Tiết {sch.StartPeriod} - {sch.EndPeriod} (Phòng: {sch.Room})"));
+
+                            sb.AppendLine($"- **{s.Course?.CourseName}** (Mã lớp: `{s.SectionCode}` - **{s.Course?.Credits} Tín chỉ**):");
+                            sb.AppendLine($"  + Ca học: **{periods}**");
+                            sb.AppendLine($"  + Giảng viên: **{s.Instructor}**");
+                            sb.AppendLine($"  + Phòng học: **{s.Room}**");
+                        }
+                    }
+                    else
+                    {
+                        sb.AppendLine($"✅ Vào **{dayName}**, bạn **không có lịch học nào** trong số các lớp học phần đã đăng ký.");
+                        sb.AppendLine($"💡 Bạn có thể dùng thời gian này để tự học, ôn bài hoặc nghỉ ngơi!");
+                    }
+
+                    advice.AiMessage = sb.ToString();
+                    return; // KHÔNG đề xuất môn
+                }
+
+                // Sub-case 1.2: Hỏi toàn bộ thời khóa biểu / danh sách môn đã đăng ký
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"### 📋 Danh Sách Học Phần Đã Đăng Ký Học Kỳ {semester}:");
+                    sb.AppendLine($"Sinh viên: **{student.FullName}** (MSSV: `{student.StudentCode}`)");
+                    sb.AppendLine();
+
+                    if (registeredSections.Any())
+                    {
+                        int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
+                        sb.AppendLine($"Bạn đã đăng ký thành công **{registeredSections.Count} lớp học phần** (Tổng số: **{totalRegCredits} Tín chỉ**):");
+                        sb.AppendLine();
+
+                        foreach (var s in registeredSections)
+                        {
+                            sb.AppendLine($"- **Lớp `{s.SectionCode}`** — **{s.Course?.CourseName}** (`{s.Course?.CourseCode}` - **{s.Course?.Credits} TC**):");
+                            sb.AppendLine($"  + Giảng viên: **{s.Instructor}** | Phòng: **{s.Room}**");
+                            sb.AppendLine($"  + Thời khóa biểu: **{FormatScheduleDetailed(s)}**");
+                        }
+                    }
+                    else
+                    {
+                        sb.AppendLine($"⚠️ Bạn **chưa đăng ký lớp học phần nào** trong học kỳ **{semester}**.");
+                        sb.AppendLine($"💡 Bạn có thể vào mục **Đăng Ký Học Phần** hoặc hỏi tôi: *\"Gợi ý môn học kỳ này\"* để nhận đề xuất lộ trình tối ưu.");
+                    }
+
+                    advice.AiMessage = sb.ToString();
+                    return; // KHÔNG đề xuất môn
+                }
+            }
+
+            // =========================================================================
+            // TRƯỜNG HỢP 2: HỌC BẠ / ĐIỂM SỐ CÁ NHÂN CỦA SINH VIÊN
+            // =========================================================================
+            bool asksGrades = qNorm.Contains("diem cua em") || qNorm.Contains("diem cua toi") || qNorm.Contains("hoc ba") ||
+                              qNorm.Contains("mon da hoc") || qNorm.Contains("mon da qua") || qNorm.Contains("mon tich luy") ||
+                              qNorm.Contains("ket qua hoc tap") || qNorm.Contains("diem f") || qNorm.Contains("mon rot");
+
+            if (asksGrades)
+            {
+                if (student == null)
+                {
+                    advice.AiMessage = "👋 **Chào bạn! Bạn hiện đang ở chế độ Khách (chưa đăng nhập).**\n\n" +
+                                       "Để xem học bạ, điểm số tích lũy cá nhân, vui lòng bấm nút **Đăng nhập** nhé!";
+                    advice.SuggestLogin = true;
+                    return;
+                }
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"### 📊 Kết Quả Tích Lũy & Học Bạ Của Sinh Viên: {student.FullName} (`{student.StudentCode}`)");
+                sb.AppendLine($"- **Chuyên ngành:** {student.Major} | **Khóa học:** {student.AcademicYear}");
+                sb.AppendLine($"- **Hạn mức số tín chỉ tối đa:** **{student.MaxCreditsPerSemester} Tín chỉ / kỳ**");
+                sb.AppendLine();
+
+                if (completedCourses.Any())
+                {
+                    sb.AppendLine($"Bạn đã hoàn thành **{completedCourses.Count} học phần** nền tảng:");
+                    sb.AppendLine();
+
+                    foreach (var c in completedCourses)
+                    {
+                        string status = c.Grade >= 5.0 ? "✅ Đạt" : "❌ Chưa đạt";
+                        sb.AppendLine($"- **{c.Course?.CourseCode}** — {c.Course?.CourseName} ({c.Course?.Credits}TC): **{c.Grade:0.0} điểm** ({status} - Kỳ {c.Semester})");
+                    }
+                }
+                else
+                {
+                    sb.AppendLine("- *Bạn chưa có dữ liệu môn học đã hoàn thành trong hệ thống.*");
+                }
+
+                advice.AiMessage = sb.ToString();
+                return; // KHÔNG đề xuất môn
+            }
+
+            // =========================================================================
+            // TRƯỜNG HỢP 3: YÊU CẦU GỢI Ý / TƯ VẤN LỘ TRÌNH ĐĂNG KÝ HỌC PHẦN (CHỈ KHI YÊU CẦU)
+            // Tuyệt đối tuân thủ: Chỉ đề xuất môn khi sinh viên có yêu cầu rõ ràng!
+            // =========================================================================
+            bool isAdvisoryRequest = IsExplicitRecommendationRequest(qNorm);
+
+            if (isAdvisoryRequest)
+            {
+                if (student == null)
+                {
+                    advice.AiMessage = "👋 **Chào bạn! Bạn hiện đang ở chế độ Khách (chưa đăng nhập).**\n\n" +
+                                       "Để Cố vấn AI có thể phân tích học bạ, kiểm tra điều kiện tiên quyết và đề xuất lộ trình môn học chính xác cho riêng bạn, vui lòng bấm nút **Đăng nhập** nhé!";
+                    advice.SuggestLogin = true;
+                    return;
+                }
+
+                GenerateCourseRecommendations(
+                    advice,
+                    student,
+                    candidateSections,
+                    remainingCreditsAllowed,
+                    qNorm,
+                    semester);
                 return;
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 2: CÂU HỎI VỀ HỌC PHÍ & THANH TOÁN VIETQR
+            // TRƯỜNG HỢP 4: HỌC PHÍ & VIETQR
             // =========================================================================
             bool isTuition = qNorm.Contains("hoc phi") || qNorm.Contains("bao nhieu tien") || qNorm.Contains("dong tien") ||
                              qNorm.Contains("nop tien") || qNorm.Contains("ngan hang") || qNorm.Contains("stk") ||
@@ -361,32 +501,55 @@ Hồ sơ sinh viên đang hỏi:
                 sb.AppendLine("- **Hạn nộp học phí:** Trong vòng 15 ngày kể từ ngày gửi phiếu đăng ký học phần.");
 
                 advice.AiMessage = sb.ToString();
-                return;
+                return; // KHÔNG đề xuất môn
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 3: CHÀO HỎI & GIỚI THIỆU TRỢ LÝ
+            // TRƯỜNG HỢP 5: QUY CHẾ RÚT MÔN & HỌC VỤ
             // =========================================================================
-            bool isGreeting = qNorm == "chao" || qNorm.StartsWith("chao ") || qNorm.Contains("xin chao") ||
-                              qNorm == "hello" || qNorm == "hi" || qNorm.StartsWith("hi ") ||
-                              qNorm.Contains("ban la ai") || qNorm == "alo" || qNorm.StartsWith("alo ") ||
-                              qNorm.Contains("tro giup");
+            bool isWithdraw = qNorm.Contains("rut mon") || qNorm.Contains("huy mon") || qNorm.Contains("bo mon") ||
+                              qNorm.Contains("xin rut") || qNorm.Contains("huy hoc phan") ||
+                              qNorm.Contains("han muc tin chi") || qNorm.Contains("toi da bao nhieu") ||
+                              qNorm.Contains("toi thieu bao nhieu");
 
-            if (isGreeting && !qNorm.Contains("mon") && !qNorm.Contains("lop") && !qNorm.Contains("thay") && !qNorm.Contains("co") && !qNorm.Contains("phong") && !qNorm.Contains("diem"))
+            if (isWithdraw)
             {
-                advice.AiMessage = $"### 👋 Chào bạn! Tôi là Cố Vấn Học Thuật AI của Trường Đại học Kinh tế Huế.\n\n" +
-                                   $"Tôi có thể hỗ trợ bạn tra cứu toàn bộ thông tin học vụ theo thời gian thực từ SQL Server:\n" +
-                                   $"- 📘 **Môn học & Học phần:** Hỏi về *Lập trình Web*, *Cơ sở dữ liệu*, *Kỹ thuật phần mềm*, số tín chỉ, môn tiên quyết...\n" +
-                                   $"- 👨‍🏫 **Giảng viên:** Tra cứu giảng dạy của *TS. Hà Ngọc Long*, *PGS.TS. Lê Hoàng Sơn*, *TS. Phạm Thanh Tùng*...\n" +
-                                   $"- 🏫 **Phòng học & Lịch:** Phòng *Lab 402*, *A101*, học vào *Thứ 2*, *Thứ 4*, tiết mấy...\n" +
-                                   $"- 💰 **Học phí & VietQR:** 450.000 đ/tín chỉ, tài khoản MB Bank, mã QR Napas 24/7 gạch nợ tự động.\n" +
-                                   $"- ⚖️ **Quy chế tín chỉ:** Hạn mức 10-24 tín chỉ, quy định rút môn, điều kiện tiên quyết.\n\n" +
-                                   $"👉 Hãy đặt bất kỳ câu hỏi nào hoặc **Đăng nhập** để tôi phân tích thời khóa biểu cá nhân cho bạn nhé!";
-                return;
+                advice.AiMessage = "### 📋 Quy Chế Rút Môn & Hủy Học Phần Dành Cho Sinh Viên:\n\n" +
+                                   "- **Trong thời gian đăng ký trực tuyến:** Bạn hoàn toàn có thể vào mục **'Giỏ đăng ký'** hoặc **'Xem kết quả đăng ký'** để xóa hoặc đổi sang lớp khác mà không bị tính phí hay ghi điểm F vào bảng điểm.\n" +
+                                   "- **Sau khi kết thúc thời hạn trực tuyến:** Cổng trực tuyến sẽ đóng. Để rút học phần, bạn cần làm đơn xin rút môn (có ý kiến của Cố vấn học tập) và nộp về **Phòng Đào Tạo** để Cán bộ duyệt rút môn trên hệ thống.\n" +
+                                   "- **Hạn mức số tín chỉ trong kỳ:**\n" +
+                                   "  + Tối thiểu: **10 Tín chỉ** (sinh viên không được rút xuống dưới 10 TC).\n" +
+                                   "  + Tối đa: **24 Tín chỉ** (tùy theo xếp loại học lực kỳ trước).\n" +
+                                   "- **Xử lý điểm F:** Nếu môn học bị điểm F (dưới 5.0), điểm F sẽ lưu vào học bạ và sinh viên phải đăng ký học lại môn đó ở các học kỳ tiếp theo.";
+                return; // KHÔNG đề xuất môn
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 4: CÂU HỎI VỀ MÔN HỌC (Course: WEB301, Lập trình Web, Cơ sở dữ liệu...)
+            // TRƯỜNG HỢP 6: TRA CỨU MÃ LỚP HỌC PHẦN CỤ THỂ TOÀN TRƯỜNG (SectionCode)
+            // =========================================================================
+            var matchedSectionByCode = allSections.FirstOrDefault(s =>
+                qLower.Contains(s.SectionCode.ToLowerInvariant()) ||
+                effectiveSearchText.Contains(RemoveDiacritics(s.SectionCode.ToLowerInvariant())));
+
+            if (matchedSectionByCode != null)
+            {
+                var sec = matchedSectionByCode;
+                int remainingSlots = Math.Max(0, sec.MaxCapacity - sec.CurrentEnrollment);
+                string scheduleText = FormatScheduleDetailed(sec);
+
+                advice.AiMessage = $"### 📋 Thông Tin Chi Tiết Lớp Học Phần: `{sec.SectionCode}`\n\n" +
+                                   $"- **Học phần:** **{sec.Course?.CourseName}** (Mã môn: `{sec.Course?.CourseCode}` - **{sec.Course?.Credits} Tín chỉ**)\n" +
+                                   $"- **Giảng viên phụ trách:** **{sec.Instructor}**\n" +
+                                   $"- **Phòng học:** **{sec.Room}**\n" +
+                                   $"- **Thời khóa biểu:** **{scheduleText}**\n" +
+                                   $"- **Học kỳ:** **{sec.Semester}**\n" +
+                                   $"- **Tình trạng sĩ số:** **{sec.CurrentEnrollment}/{sec.MaxCapacity} sinh viên** (Còn trống **{remainingSlots} chỗ**).\n\n" +
+                                   $"💡 *Lưu ý: Nếu có nhu cầu đăng ký, bạn có thể tìm mã lớp này tại mục 'Đăng Ký Học Phần' để thêm vào giỏ.*";
+                return; // KHÔNG tự ý đề xuất môn
+            }
+
+            // =========================================================================
+            // TRƯỜNG HỢP 7: TRA CỨU MÔN HỌC TOÀN TRƯỜNG (Course)
             // =========================================================================
             var matchedCourse = FindMatchingCourse(effectiveSearchText, allCourses);
             if (matchedCourse != null)
@@ -399,12 +562,7 @@ Hồ sơ sinh viên đang hỏi:
                     ? string.Join(", ", prereqCourses.Select(c => $"**{c.CourseName} ({c.CourseCode})**"))
                     : "Không yêu cầu (sinh viên có thể đăng ký tự do)";
 
-                // Phân tích ý định cụ thể của câu hỏi:
-                bool asksInstructor = qNorm.Contains("ai day") || qNorm.Contains("giang vien") || qNorm.Contains("thay") || qNorm.Contains("co");
-                bool asksRoom = qNorm.Contains("phong nao") || qNorm.Contains("o dau") || qNorm.Contains("dia diem");
-                bool asksSchedule = qNorm.Contains("thu may") || qNorm.Contains("tiet may") || qNorm.Contains("khi nao") || qNorm.Contains("lich hoc") || qNorm.Contains("gio hoc");
                 bool asksPrereq = qNorm.Contains("tien quyet") || qNorm.Contains("dieu kien") || qNorm.Contains("hoc truoc");
-                bool asksCapacity = qNorm.Contains("si so") || qNorm.Contains("con cho") || qNorm.Contains("bao nhieu nguoi") || qNorm.Contains("bao nhieu sv");
 
                 var sb = new StringBuilder();
                 sb.AppendLine($"### 📘 Thông Tin Học Phần: {matchedCourse.CourseName} (`{matchedCourse.CourseCode}`)");
@@ -414,27 +572,24 @@ Hồ sơ sinh viên đang hỏi:
                 sb.AppendLine($"- **Học phần tiên quyết:** {prereqText}");
                 sb.AppendLine();
 
-                if (asksPrereq && !asksSchedule && !asksInstructor)
+                if (student != null)
                 {
-                    if (student != null)
+                    var studentPassedPrereq = prereqCourses.All(p => completedCourses.Any(c => c.CourseId == p.CourseId && c.Grade >= 5.0));
+                    if (prereqCourses.Any())
                     {
-                        var studentPassedPrereq = prereqCourses.All(p => completedCourses.Any(c => c.CourseId == p.CourseId && c.Grade >= 5.0));
-                        if (prereqCourses.Any())
+                        if (studentPassedPrereq)
                         {
-                            if (studentPassedPrereq)
-                            {
-                                sb.AppendLine($"✅ **Kiểm tra học bạ:** Bạn ({student.FullName}) **ĐÃ HOÀN THÀNH** học phần tiên quyết cho môn này. Bạn hoàn toàn đủ điều kiện ghi danh!");
-                            }
-                            else
-                            {
-                                sb.AppendLine($"⚠️ **Cảnh báo học vụ:** Bạn ({student.FullName}) **CHƯA TÍCH LŨY ĐỦ** học phần tiên quyết ({prereqText}). Nếu đưa vào giỏ đăng ký, hệ thống sẽ chặn giao dịch theo Luật tiên quyết.");
-                            }
-                            sb.AppendLine();
+                            sb.AppendLine($"✅ **Kiểm tra học bạ ({student.FullName}):** Bạn **ĐÃ HOÀN THÀNH** học phần tiên quyết cho môn này. Bạn hoàn toàn đủ điều kiện ghi danh!");
                         }
+                        else
+                        {
+                            sb.AppendLine($"⚠️ **Cảnh báo học bạ ({student.FullName}):** Bạn **CHƯA TÍCH LŨY ĐỦ** học phần tiên quyết ({prereqText}). Hệ thống sẽ chặn nếu cố tình ghi danh.");
+                        }
+                        sb.AppendLine();
                     }
                 }
 
-                // Nếu câu hỏi có chỉ định đích danh giảng viên cụ thể của môn này (ví dụ: "lớp thầy Long"):
+                // Nếu có chỉ định đích danh giảng viên của môn:
                 var specificInstructorMatch = FindMatchingInstructor(qNorm, courseSections);
                 var targetSections = (specificInstructorMatch.HasValue && specificInstructorMatch.Value.Sections.Any())
                     ? specificInstructorMatch.Value.Sections
@@ -457,23 +612,8 @@ Hồ sơ sinh viên đang hỏi:
                         int remain = Math.Max(0, s.MaxCapacity - s.CurrentEnrollment);
                         sb.AppendLine($"- **Mã lớp:** `{s.SectionCode}`");
                         sb.AppendLine($"  + Giảng viên phụ trách: **{s.Instructor}**");
-                        sb.AppendLine($"  + Lịch học & Phòng học: **{FormatScheduleDetailed(s)}** | Phòng: **{s.Room}**");
+                        sb.AppendLine($"  + Lịch học & Phòng: **{FormatScheduleDetailed(s)}** | Phòng: **{s.Room}**");
                         sb.AppendLine($"  + Sĩ số hiện tại: **{s.CurrentEnrollment}/{s.MaxCapacity}** (Còn trống: **{remain} chỗ**)");
-
-                        advice.RecommendedSections.Add(new AiRecommendedSection
-                        {
-                            SectionId = s.SectionId,
-                            SectionCode = s.SectionCode,
-                            CourseId = s.CourseId,
-                            CourseCode = matchedCourse.CourseCode,
-                            CourseName = matchedCourse.CourseName,
-                            Credits = matchedCourse.Credits,
-                            Instructor = s.Instructor,
-                            Room = s.Room,
-                            ScheduleSummary = FormatSchedule(s),
-                            RecommendationReason = $"Lớp {s.SectionCode} thuộc môn {matchedCourse.CourseName} theo câu hỏi của bạn.",
-                            IsSelected = true
-                        });
                     }
 
                     if (targetSections.Count < courseSections.Count)
@@ -489,11 +629,11 @@ Hồ sơ sinh viên đang hỏi:
                 }
 
                 advice.AiMessage = sb.ToString();
-                return;
+                return; // KHÔNG tự ý đề xuất môn
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 3: CÂU HỎI VỀ GIẢNG VIÊN (Instructor)
+            // TRƯỜNG HỢP 8: TRA CỨU GIẢNG VIÊN (Instructor)
             // =========================================================================
             var matchedInstructor = FindMatchingInstructor(effectiveSearchText, allSections);
             if (matchedInstructor != null && matchedInstructor.Value.Sections.Any())
@@ -515,41 +655,26 @@ Hồ sơ sinh viên đang hỏi:
                     sb.AppendLine($"  + Thời khóa biểu: **{FormatScheduleDetailed(s)}**");
                     sb.AppendLine($"  + Phòng học: **{s.Room}**");
                     sb.AppendLine($"  + Sĩ số: **{s.CurrentEnrollment}/{s.MaxCapacity} sinh viên** (Còn trống: **{remain} chỗ**)");
-
-                    advice.RecommendedSections.Add(new AiRecommendedSection
-                    {
-                        SectionId = s.SectionId,
-                        SectionCode = s.SectionCode,
-                        CourseId = s.CourseId,
-                        CourseCode = s.Course?.CourseCode ?? string.Empty,
-                        CourseName = s.Course?.CourseName ?? string.Empty,
-                        Credits = s.Course?.Credits ?? 0,
-                        Instructor = s.Instructor,
-                        Room = s.Room,
-                        ScheduleSummary = FormatSchedule(s),
-                        RecommendationReason = $"Lớp do giảng viên {instName} trực tiếp giảng dạy.",
-                        IsSelected = true
-                    });
                 }
 
                 advice.AiMessage = sb.ToString();
-                return;
+                return; // KHÔNG tự ý đề xuất môn
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 4: CÂU HỎI VỀ THỨ / NGÀY TRONG TUẦN (DayOfWeek)
+            // TRƯỜNG HỢP 9: TRA CỨU LỊCH HỌC TOÀN TRƯỜNG THEO THỨ / NGÀY
+            // (Chỉ chạy khi không phải câu hỏi cá nhân của sinh viên)
             // =========================================================================
-            int? queriedDayOfWeek = DetectDayOfWeek(qNorm);
-            if (queriedDayOfWeek.HasValue)
+            if (queriedDay.HasValue)
             {
-                int day = queriedDayOfWeek.Value;
+                int day = queriedDay.Value;
                 string dayName = day == 8 ? "Chủ Nhật" : $"Thứ {day}";
 
                 var sectionsOnDay = allSections.Where(s =>
                     s.Schedules != null && s.Schedules.Any(sch => sch.DayOfWeek == day)).ToList();
 
                 var sb = new StringBuilder();
-                sb.AppendLine($"### 🗓️ Danh Sách Lớp Học Phần Học Vào {dayName} ({semester}):");
+                sb.AppendLine($"### 🗓️ Danh Sách Lớp Học Phần Toàn Trường Diễn Ra Vào {dayName} ({semester}):");
                 sb.AppendLine();
 
                 if (sectionsOnDay.Any())
@@ -567,21 +692,6 @@ Hồ sơ sinh viên đang hỏi:
                         sb.AppendLine($"  + Giảng viên: **{sec.Instructor}**");
                         sb.AppendLine($"  + Ca học: **{periods}**");
                         sb.AppendLine($"  + Sĩ số: **{sec.CurrentEnrollment}/{sec.MaxCapacity}** (Còn trống: **{remain} chỗ**)");
-
-                        advice.RecommendedSections.Add(new AiRecommendedSection
-                        {
-                            SectionId = sec.SectionId,
-                            SectionCode = sec.SectionCode,
-                            CourseId = sec.CourseId,
-                            CourseCode = sec.Course?.CourseCode ?? string.Empty,
-                            CourseName = sec.Course?.CourseName ?? string.Empty,
-                            Credits = sec.Course?.Credits ?? 0,
-                            Instructor = sec.Instructor,
-                            Room = sec.Room,
-                            ScheduleSummary = FormatSchedule(sec),
-                            RecommendationReason = $"Lịch học diễn ra vào {dayName} theo yêu cầu của bạn.",
-                            IsSelected = true
-                        });
                     }
                 }
                 else
@@ -590,11 +700,11 @@ Hồ sơ sinh viên đang hỏi:
                 }
 
                 advice.AiMessage = sb.ToString();
-                return;
+                return; // KHÔNG tự ý đề xuất môn
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 5: CÂU HỎI VỀ PHÒNG HỌC (Room: Lab 402, A101, B204...)
+            // TRƯỜNG HỢP 10: TRA CỨU PHÒNG HỌC (Room)
             // =========================================================================
             var matchedRoom = FindMatchingRoom(effectiveSearchText, allSections);
             if (!string.IsNullOrEmpty(matchedRoom))
@@ -619,21 +729,6 @@ Hồ sơ sinh viên đang hỏi:
                         sb.AppendLine($"  + Giảng viên: **{s.Instructor}**");
                         sb.AppendLine($"  + Thời khóa biểu: **{FormatScheduleDetailed(s)}**");
                         sb.AppendLine($"  + Sĩ số: **{s.CurrentEnrollment}/{s.MaxCapacity} sinh viên**");
-
-                        advice.RecommendedSections.Add(new AiRecommendedSection
-                        {
-                            SectionId = s.SectionId,
-                            SectionCode = s.SectionCode,
-                            CourseId = s.CourseId,
-                            CourseCode = s.Course?.CourseCode ?? string.Empty,
-                            CourseName = s.Course?.CourseName ?? string.Empty,
-                            Credits = s.Course?.Credits ?? 0,
-                            Instructor = s.Instructor,
-                            Room = s.Room,
-                            ScheduleSummary = FormatSchedule(s),
-                            RecommendationReason = $"Lớp học được tổ chức tại phòng {matchedRoom}.",
-                            IsSelected = true
-                        });
                     }
                 }
                 else
@@ -642,136 +737,31 @@ Hồ sơ sinh viên đang hỏi:
                 }
 
                 advice.AiMessage = sb.ToString();
-                return;
+                return; // KHÔNG tự ý đề xuất môn
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 6: CÂU HỎI VỀ HỌC BẠ / ĐIỂM SỐ / MÔN ĐÃ HỌC CỦA SINH VIÊN
+            // TRƯỜNG HỢP 11: CHÀO HỎI & GIỚI THIỆU TRỢ LÝ
             // =========================================================================
-            bool asksGrades = qNorm.Contains("diem cua em") || qNorm.Contains("diem cua toi") || qNorm.Contains("hoc ba") ||
-                              qNorm.Contains("mon da hoc") || qNorm.Contains("mon da qua") || qNorm.Contains("mon tich luy") ||
-                              qNorm.Contains("ket qua hoc tap") || qNorm.Contains("diem f") || qNorm.Contains("mon rot");
+            bool isGreeting = qNorm == "chao" || qNorm.StartsWith("chao ") || qNorm.Contains("xin chao") ||
+                              qNorm == "hello" || qNorm == "hi" || qNorm.StartsWith("hi ") ||
+                              qNorm.Contains("ban la ai") || qNorm == "alo" || qNorm.StartsWith("alo ") ||
+                              qNorm.Contains("tro giup");
 
-            if (asksGrades)
+            if (isGreeting && !qNorm.Contains("mon") && !qNorm.Contains("lop") && !qNorm.Contains("thay") && !qNorm.Contains("co") && !qNorm.Contains("phong") && !qNorm.Contains("diem"))
             {
-                if (student == null)
-                {
-                    advice.AiMessage = "👋 **Chào bạn! Bạn hiện đang ở chế độ Khách (chưa đăng nhập).**\n\n" +
-                                       "Để Cố vấn AI có thể đọc học bạ, điểm số tích lũy cá nhân và phân tích điều kiện tiên quyết riêng cho bạn, vui lòng bấm nút **Đăng nhập** nhé!\n\n" +
-                                       "🔑 **Tài khoản thử nghiệm demo:**\n" +
-                                       "- Sinh viên 1 (Đã qua TIN102): `sv21001` / Mật khẩu: `123456`\n" +
-                                       "- Sinh viên 2 (Chưa học TIN102): `sv21002` / Mật khẩu: `123456`";
-                    advice.SuggestLogin = true;
-                    return;
-                }
-
-                var sb = new StringBuilder();
-                sb.AppendLine($"### 📊 Kết Quả Tích Lũy & Học Bạ Của Sinh Viên: {student.FullName} (`{student.StudentCode}`)");
-                sb.AppendLine($"- **Chuyên ngành:** {student.Major} | **Khóa học:** {student.AcademicYear}");
-                sb.AppendLine($"- **Hạn mức số tín chỉ tối đa:** **{student.MaxCreditsPerSemester} Tín chỉ / kỳ**");
-                sb.AppendLine();
-
-                if (completedCourses.Any())
-                {
-                    sb.AppendLine($"Bạn đã hoàn thành **{completedCourses.Count} học phần** nền tảng:");
-                    sb.AppendLine();
-
-                    foreach (var c in completedCourses)
-                    {
-                        string status = c.Grade >= 5.0 ? "✅ Đạt" : "❌ Chưa đạt";
-                        sb.AppendLine($"- **{c.Course?.CourseCode}** — {c.Course?.CourseName} ({c.Course?.Credits}TC): **{c.Grade:0.0} điểm** ({status} - Kỳ {c.Semester})");
-                    }
-                }
-                else
-                {
-                    sb.AppendLine("- *Bạn chưa có dữ liệu môn học đã hoàn thành trong hệ thống.*");
-                }
-
-                advice.AiMessage = sb.ToString();
+                advice.AiMessage = $"### 👋 Chào bạn! Tôi là Cố Vấn Học Thuật AI của Trường Đại học Kinh tế Huế.\n\n" +
+                                   $"Tôi có thể hỗ trợ bạn tra cứu toàn bộ thông tin học vụ theo thời gian thực từ SQL Server:\n" +
+                                   $"- 📘 **Môn học & Lớp:** Tra cứu *Lập trình Web*, *Cơ sở dữ liệu*, mã lớp, phòng học, giảng viên, sĩ số.\n" +
+                                   $"- 🗓️ **Thời khóa biểu:** Phân biệt chính xác giữa *Lịch học cá nhân đã đăng ký* và *Lịch học toàn trường*.\n" +
+                                   $"- 💰 **Học phí & VietQR:** 450.000 đ/tín chỉ, tài khoản MB Bank, thanh toán VietQR Napas 24/7.\n" +
+                                   $"- ⚖️ **Quy chế tín chỉ:** Hạn mức 10-24 tín chỉ, quy định rút môn học, điều kiện tiên quyết.\n\n" +
+                                   $"👉 Bạn có thể đặt câu hỏi hoặc yêu cầu: *\"Gợi ý môn cho tôi kỳ này\"* khi muốn lên kế hoạch học tập!";
                 return;
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 7: CÂU HỎI VỀ MÔN ĐÃ ĐĂNG KÝ / LỊCH HỌC KỲ NÀY CỦA SINH VIÊN
-            // =========================================================================
-            bool asksRegistered = qNorm.Contains("mon da dang ky") || qNorm.Contains("mon em da dk") ||
-                                  qNorm.Contains("thoi khoa bieu cua em") || qNorm.Contains("lich hoc cua em") ||
-                                  qNorm.Contains("phieu dang ky cua em");
-
-            if (asksRegistered)
-            {
-                if (student == null)
-                {
-                    advice.AiMessage = "👋 **Chào bạn! Bạn hiện đang ở chế độ Khách (chưa đăng nhập).**\n\n" +
-                                       "Vui lòng bấm **Đăng nhập** bằng tài khoản sinh viên (ví dụ: `sv21001` / `123456`) để tra cứu phiếu đăng ký và thời khóa biểu cá nhân của bạn nhé!";
-                    advice.SuggestLogin = true;
-                    return;
-                }
-
-                var sb = new StringBuilder();
-                sb.AppendLine($"### 📋 Danh Sách Học Phần Đã Đăng Ký Kỳ {semester}:");
-                sb.AppendLine($"Sinh viên: **{student.FullName}** (`{student.StudentCode}`)");
-                sb.AppendLine();
-
-                if (registeredSections.Any())
-                {
-                    int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
-                    sb.AppendLine($"Bạn đã đăng ký thành công **{registeredSections.Count} học phần** (Tổng: **{totalRegCredits} Tín chỉ**):");
-                    sb.AppendLine();
-
-                    foreach (var s in registeredSections)
-                    {
-                        sb.AppendLine($"- **Lớp `{s.SectionCode}`** — **{s.Course?.CourseName}** (`{s.Course?.CourseCode}` - {s.Course?.Credits}TC):");
-                        sb.AppendLine($"  + Giảng viên: **{s.Instructor}** | Phòng: **{s.Room}**");
-                        sb.AppendLine($"  + Lịch học: **{FormatScheduleDetailed(s)}**");
-                    }
-                }
-                else
-                {
-                    sb.AppendLine($"- Bạn chưa đăng ký học phần nào trong học kỳ {semester}. Hãy vào mục **Tra Cứu Học Phần** hoặc hỏi tôi để được gợi ý lộ trình phù hợp!");
-                }
-
-                advice.AiMessage = sb.ToString();
-                return;
-            }
-
-            // =========================================================================
-            // TRƯỜNG HỢP 9: CÂU HỎI VỀ QUY CHẾ, RÚT MÔN, HỦY HỌC PHẦN
-            // =========================================================================
-            bool isWithdraw = qNorm.Contains("rut mon") || qNorm.Contains("huy mon") || qNorm.Contains("bo mon") ||
-                              qNorm.Contains("xin rut") || qNorm.Contains("huy hoc phan");
-
-            if (isWithdraw)
-            {
-                advice.AiMessage = "### 📋 Quy Chế Rút Môn & Hủy Học Phần Dành Cho Sinh Viên:\n\n" +
-                                   "- **Trong thời gian đăng ký trực tuyến:** Bạn hoàn toàn có thể vào mục **'Giỏ đăng ký'** hoặc **'Xem kết quả đăng ký'** để xóa hoặc đổi sang lớp khác mà không bị tính phí hay ghi điểm F vào bảng điểm.\n" +
-                                   "- **Sau khi kết thúc thời hạn trực tuyến:** Cổng trực tuyến sẽ đóng. Để rút học phần, bạn cần làm đơn xin rút môn (có ý kiến của Cố vấn học tập) và nộp về **Phòng Đào Tạo** để Cán bộ duyệt rút môn trên hệ thống.\n" +
-                                   "- **Lưu ý hạn mức:** Sau khi rút môn, tổng số tín chỉ trong kỳ của bạn **không được thấp hơn 10 tín chỉ** (hạn mức tối thiểu theo quy chế).";
-                return;
-            }
-
-            // =========================================================================
-            // TRƯỜNG HỢP 10: TƯ VẤN LỘ TRÌNH / GỢI Ý MÔN HỌC (Study Plan Recommendation)
-            // =========================================================================
-            bool isAdvisoryRequest = qNorm.Contains("goi y") || qNorm.Contains("tu van") || qNorm.Contains("nen hoc") ||
-                                     qNorm.Contains("thoi khoa bieu") || qNorm.Contains("ke hoach") || qNorm.Contains("can bang") ||
-                                     qNorm.Contains("toi da") || qNorm.Contains("hoc nhe") || qNorm.Contains("it tin chi") ||
-                                     qNorm.Contains("nhieu tin chi") || qNorm.Contains("tranh sang thu 2");
-
-            if (isAdvisoryRequest && student != null)
-            {
-                GenerateCourseRecommendations(
-                    advice,
-                    student,
-                    candidateSections,
-                    remainingCreditsAllowed,
-                    qNorm,
-                    semester);
-                return;
-            }
-
-            // =========================================================================
-            // TRƯỜNG HỢP 11: CÂU HỎI VỀ MÔN HỌC KHÔNG TỒN TẠI TRONG CSDL
+            // TRƯỜNG HỢP 12: MÔN HỌC KHÔNG TỒN TẠI TRONG CSDL
             // =========================================================================
             if (qNorm.Contains("mon ") || qNorm.Contains("hoc phan "))
             {
@@ -785,22 +775,23 @@ Hồ sơ sinh viên đang hỏi:
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 12: CÂU HỎI CHƯA RÕ RÀNG HOẶC CHUNG CHUNG -> HỎI LẠI RÕ RÀNG
+            // TRƯỜNG HỢP 13: CÂU HỎI CHƯA RÕ RÀNG HOẶC THIẾU DỮ LIỆU
             // =========================================================================
             string studentGreeting = student != null ? $"Chào bạn **{student.FullName}** (`{student.StudentCode}`)!" : "Chào bạn!";
             advice.AiMessage = $"### 🤖 Cố Vấn Học Thuật AI Sẵn Sàng Hỗ Trợ:\n\n" +
                                $"{studentGreeting} Tôi đã nhận được câu hỏi: *\"{qRaw}\"*.\n\n" +
-                               $"Để tôi có thể tra cứu CSDL SQL Server và trả lời chính xác nhất, bạn có thể hỏi cụ thể hơn theo một trong các gợi ý sau:\n\n" +
+                               $"Để Cố vấn AI có thể tra cứu CSDL SQL Server và trả lời chính xác nhất, bạn có thể hỏi cụ thể theo các mẫu sau:\n\n" +
+                               $"- **Lịch học cá nhân:** *\"Thứ 2 tôi học gì?\"* hoặc *\"Thời khóa biểu của tôi\"*\n" +
                                $"- **Tra cứu môn học:** *\"Môn Lập trình Web có mấy lớp và ai dạy?\"* hoặc *\"Môn Cơ sở dữ liệu học phòng nào?\"*\n" +
                                $"- **Tra cứu giảng viên:** *\"Thầy Long dạy môn gì?\"* hoặc *\"Thầy Sơn dạy vào thứ mấy?\"*\n" +
-                               $"- **Tra cứu mã lớp:** *\"Lớp WEB301_01 học thứ mấy, tiết mấy, phòng nào?\"*\n" +
-                               $"- **Tra cứu lịch theo thứ:** *\"Thứ 2 có những lớp nào học?\"*\n" +
-                               $"- **Tra cứu phòng học:** *\"Phòng Lab 402 học môn gì?\"*\n" +
-                               $"- **Tra cứu học phí & quy chế:** *\"Học phí 1 tín chỉ bao nhiêu?\"* hoặc *\"Quy chế rút môn học thế nào?\"*";
+                               $"- **Tra cứu mã lớp:** *\"Lớp WEB301_01 học thứ mấy, phòng nào?\"*\n" +
+                               $"- **Tra cứu học phí & quy chế:** *\"Học phí 1 tín chỉ bao nhiêu?\"* hoặc *\"Quy chế rút môn thế nào?\"*\n" +
+                               $"- **Tư vấn đăng ký:** *\"Gợi ý môn cho tôi kỳ này\"* (AI sẽ phân tích học bạ và đề xuất môn phù hợp).";
         }
 
         /// <summary>
-        /// Thuật toán tạo gợi ý học phần tối ưu không trùng lịch và tuân thủ tiên quyết
+        /// Thuật toán tạo gợi ý học phần tối ưu không trùng lịch và tuân thủ tiên quyết.
+        /// CHỈ được gọi khi sinh viên yêu cầu gợi ý rõ ràng!
         /// </summary>
         private static void GenerateCourseRecommendations(
             AiCourseAdvice advice,
@@ -905,6 +896,28 @@ Hồ sơ sinh viên đang hỏi:
                                $"- **Xác nhận người dùng:** Dữ liệu do AI đề xuất dưới đây là gợi ý. Bạn hãy rà soát danh sách bên dưới, chọn các môn mong muốn và bấm nút **'Xác Nhận & Thêm Vào Giỏ Đăng Ký'** để lưu vào giỏ hàng.";
         }
 
+        /// <summary>
+        /// Nhận diện yêu cầu tư vấn / gợi ý môn học rõ ràng từ sinh viên
+        /// </summary>
+        private static bool IsExplicitRecommendationRequest(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            string norm = RemoveDiacritics(text.ToLowerInvariant());
+
+            if (norm.Contains("goi y") || norm.Contains("tu van") || norm.Contains("de xuat") ||
+                norm.Contains("nen hoc") || norm.Contains("nen dang ky") || norm.Contains("hoc gi ky nay") ||
+                norm.Contains("dang ky gi ky nay") || norm.Contains("len thoi khoa bieu") ||
+                norm.Contains("xep thoi khoa bieu") || norm.Contains("ke hoach hoc tap") ||
+                norm.Contains("lo trinh hoc") || norm.Contains("hoc nhe") || norm.Contains("can bang") ||
+                norm.Contains("toi da tin chi") || norm.Contains("it tin chi") || norm.Contains("nhieu tin chi") ||
+                norm.Contains("tranh sang thu 2"))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private static Course? FindMatchingCourse(string qNorm, List<Course> allCourses)
         {
             foreach (var c in allCourses)
@@ -943,7 +956,7 @@ Hồ sơ sinh viên đang hỏi:
             {
                 return allCourses.FirstOrDefault(c => c.CourseCode == "ATTT401");
             }
-            if (qNorm.Contains("kiem thu") || qNorm.Contains("ktpm") || qNorm.Contains("chat luong phan mem"))
+            if (qNorm.Contains("kiem thu") || qNorm.Contains("ktpm") || qNorm.Contains("chat luong phan mem") || qNorm.Contains("ky thuat phan mem"))
             {
                 return allCourses.FirstOrDefault(c => c.CourseCode == "KTPM302");
             }
@@ -999,15 +1012,31 @@ Hồ sơ sinh viên đang hỏi:
             return null;
         }
 
-        private static int? DetectDayOfWeek(string qNorm)
+        /// <summary>
+        /// Xác định ngày được hỏi trong câu (Hôm nay / Ngày mai / Thứ 2 - CN)
+        /// </summary>
+        private static int? DetectTargetDay(string qNorm)
         {
+            if (qNorm.Contains("hom nay"))
+            {
+                DayOfWeek dow = DateTime.Today.DayOfWeek;
+                return dow == DayOfWeek.Sunday ? 8 : ((int)dow + 1);
+            }
+
+            if (qNorm.Contains("ngay mai"))
+            {
+                DayOfWeek dow = DateTime.Today.AddDays(1).DayOfWeek;
+                return dow == DayOfWeek.Sunday ? 8 : ((int)dow + 1);
+            }
+
             if (qNorm.Contains("thu 2") || qNorm.Contains("thu hai")) return 2;
             if (qNorm.Contains("thu 3") || qNorm.Contains("thu ba")) return 3;
             if (qNorm.Contains("thu 4") || qNorm.Contains("thu tu")) return 4;
             if (qNorm.Contains("thu 5") || qNorm.Contains("thu nam")) return 5;
             if (qNorm.Contains("thu 6") || qNorm.Contains("thu sau")) return 6;
             if (qNorm.Contains("thu 7") || qNorm.Contains("thu bay")) return 7;
-            if (qNorm.Contains("chu nhat")) return 8;
+            if (qNorm.Contains("chu nhat") || qNorm.Contains("cn")) return 8;
+
             return null;
         }
 

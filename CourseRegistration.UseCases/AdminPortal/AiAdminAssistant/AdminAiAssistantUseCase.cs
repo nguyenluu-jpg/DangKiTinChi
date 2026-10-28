@@ -239,6 +239,14 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                 qNorm.Contains("trung tiet") ||
                 qNorm.Contains("trung gio");
 
+            bool isInstructorInquiry =
+                qNorm.Contains("thay ") || qNorm.Contains("co ") ||
+                qNorm.Contains("giang vien") || qNorm.Contains("gv ") ||
+                qNorm.Contains("mon cua thay") || qNorm.Contains("mon cua co") ||
+                qNorm.Contains("lop cua thay") || qNorm.Contains("lop cua co") ||
+                qNorm.Contains("ai day") || qNorm.Contains("ai giang day") ||
+                qNorm.Contains("ai phu trach");
+
             // LƯU Ý QUAN TRỌNG: Chỉ nhận diện xuất file / in ấn khi có cụm từ rõ ràng,
             // TUYỆT ĐỐI KHÔNG match từ "in" hay "báo" đơn lẻ vì "sinh viên", "lập trình", "thông tin" đều chứa "in"!
             bool isExportReportIntent =
@@ -466,14 +474,36 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                     result.Sections.Add(CreateSectionItem(s));
                 }
 
-                result.AnswerSummary = $"Thông tin giảng dạy của **{instructorName}** trong học kỳ {semester}:\n\n" +
+                var courseNames = string.Join(", ", instSections.Select(s => s.Course?.CourseName).Where(n => !string.IsNullOrEmpty(n)).Distinct());
+                result.AnswerSummary = $"Thông tin giảng dạy của giảng viên **{instructorName}**:\n\n" +
                     $"- **Tổng số lớp học phần đảm nhiệm:** **{instSections.Count} lớp**.\n" +
                     $"- **Tổng sĩ số sinh viên đang theo học:** **{totalStudents} sinh viên** (trên tổng sức chứa {totalCapacity} chỗ).\n" +
-                    $"- **Các môn giảng dạy:** {string.Join(", ", instSections.Select(s => s.Course?.CourseName).Distinct())}.\n\n" +
+                    $"- **Các môn giảng dạy:** {courseNames}.\n\n" +
                     "Chi tiết các lớp học phần được phân công hiển thị trong bảng bên dưới:";
 
                 result.ActionableSuggestions.Add("Cán bộ có thể xuất danh sách sinh viên theo từng lớp của giảng viên để gửi danh sách điểm danh cho thầy/cô.");
                 result.ActionableSuggestions.Add("Có thể điều chỉnh lịch học hoặc phân công giảng viên tại mục 'Quản lý Lớp học phần'.");
+            }
+            else if (isInstructorInquiry && matchedInstructor == null)
+            {
+                result.Category = "Tra Cứu Thông Tin Giảng Viên & Phân Công";
+                var activeInstructors = sectionsPool
+                    .Where(s => !string.IsNullOrEmpty(s.Instructor))
+                    .GroupBy(s => s.Instructor)
+                    .OrderBy(g => g.Key)
+                    .ToList();
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"Hệ thống đã tra cứu CSDL SQL Server nhưng **không tìm thấy giảng viên** nào khớp với nội dung câu hỏi: *\"{qRaw}\"*.\n");
+                sb.AppendLine("👨‍🏫 **Danh sách các giảng viên hiện đang có phân công giảng dạy trong hệ thống CSDL nhà trường:**");
+                foreach (var g in activeInstructors)
+                {
+                    var coursesTaught = string.Join(", ", g.Select(s => s.Course?.CourseName).Where(n => !string.IsNullOrEmpty(n)).Distinct());
+                    sb.AppendLine($"- **{g.Key}**: phụ trách môn *{coursesTaught}*");
+                }
+
+                result.AnswerSummary = sb.ToString();
+                result.ActionableSuggestions.Add("Kiểm tra lại họ tên hoặc học hàm/học vị của giảng viên tại phân hệ Quản lý Lớp học phần.");
             }
             // -------------------------------------------------------------------------
             // NHÁNH 4: HỎI VỀ SINH VIÊN CỤ THỂ (VD: "SV21001", "Nguyễn Văn Tuấn")

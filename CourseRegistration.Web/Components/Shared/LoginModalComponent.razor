@@ -3,34 +3,34 @@
 @inject ILoginUseCase LoginUseCase
 @inject ICurrentUserStateStore CurrentUserStateStore
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 @if (LoginModalService.IsVisible)
 {
-    <!-- Modal Backdrop Overlay -->
+    <!-- Modal Backdrop Overlay (Chạm ra ngoài để thoát) -->
     <div class="login-modal-overlay" @onclick="CloseModal">
         <div class="login-modal-dialog" @onclick:stopPropagation="true">
             <!-- Modal Card -->
             <div class="login-modal-content card border-0 shadow-2xl rounded-4 overflow-hidden">
-                <!-- Header Gradient -->
-                <div class="login-modal-header text-white text-center py-4 px-4 position-relative">
+                <!-- Header Gradient (Thiết kế thanh lịch, đã loại bỏ hoàn toàn ô tròn quét khuôn mặt) -->
+                <div class="login-modal-header text-white text-center py-3 px-4 position-relative">
                     <button type="button" 
                             class="btn-close-modal position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center" 
                             @onclick="CloseModal"
-                            aria-label="Đóng">
+                            aria-label="Đóng"
+                            title="Bấm chạm để đóng/thoát (Esc)">
                         <i class="bi bi-x-lg"></i>
                     </button>
 
-                    <div class="mb-2">
-                        <span class="d-inline-flex align-items-center justify-content-center bg-white bg-opacity-20 rounded-circle p-3 shadow-sm">
-                            <i class="bi bi-mortarboard-fill fs-2 text-white"></i>
-                        </span>
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                        <i class="bi bi-mortarboard-fill fs-3 text-info"></i>
+                        <h4 class="fw-bold mb-0 text-white">Đăng Nhập Hệ Thống</h4>
                     </div>
-                    <h4 class="fw-bold mb-1 text-white">Đăng Nhập Hệ Thống</h4>
                     <div class="text-white-50 small">Cổng Đăng Ký Học Phần Trực Tuyến</div>
                 </div>
 
-                <!-- Body (Sử dụng div thay vì HTML form để triệt để ngăn chặn Microsoft Edge hiện popup "Just a moment...") -->
+                <!-- Body (Không chứa ô quét camera, có hướng dẫn lưu mật khẩu rõ ràng) -->
                 <div class="card-body p-4 p-md-4 bg-white" data-ms-editor="false">
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
@@ -53,7 +53,7 @@
                                    placeholder="Nhập mã sinh viên hoặc tên đăng nhập" 
                                    id="txt_auth_uid"
                                    name="txt_auth_uid"
-                                   autocomplete="one-time-code"
+                                   autocomplete="off"
                                    autocorrect="off"
                                    autocapitalize="off"
                                    spellcheck="false"
@@ -74,13 +74,12 @@
                             <span class="input-group-text bg-light border-end-0 text-muted">
                                 <i class="bi bi-shield-lock"></i>
                             </span>
-                            <input type="text" 
+                            <input type="@(showPassword ? "text" : "password")" 
                                    class="form-control border-start-0 border-end-0 ps-0 bg-light" 
-                                   style="@(showPassword ? "" : "-webkit-text-security: disc; text-security: disc;")"
                                    placeholder="Nhập mã truy cập của bạn" 
                                    id="txt_auth_sec"
                                    name="txt_auth_sec"
-                                   autocomplete="one-time-code"
+                                   autocomplete="off"
                                    autocorrect="off"
                                    autocapitalize="off"
                                    spellcheck="false"
@@ -101,21 +100,59 @@
                         </div>
                     </div>
 
-                    <button type="button" 
-                            class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-3"
-                            disabled="@isLoading"
-                            @onclick="HandleLogin">
-                        @if (isLoading)
-                        {
-                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                            <span>Đang xác thực...</span>
-                        }
-                        else
-                        {
-                            <i class="bi bi-box-arrow-in-right fs-5"></i>
-                            <span>Đăng Nhập</span>
-                        }
-                    </button>
+                    <!-- Tùy chọn Lưu mật khẩu & Câu khuyến nghị cho sinh viên biết nên lưu hay không -->
+                    <div class="password-remember-section mb-3 p-3 rounded-3 bg-light border">
+                        <div class="form-check d-flex align-items-center gap-2 mb-2">
+                            <input class="form-check-input mt-0 cursor-pointer" 
+                                   type="checkbox" 
+                                   id="chkRememberPassword" 
+                                   @bind="loginModel.RememberPassword" />
+                            <label class="form-check-label fw-bold text-dark small cursor-pointer" for="chkRememberPassword">
+                                Lưu mật khẩu / Ghi nhớ trên máy này?
+                            </label>
+                        </div>
+
+                        <!-- Khuyến nghị an toàn trực quan -->
+                        <div class="alert @(loginModel.RememberPassword ? "alert-warning" : "alert-info") py-2 px-3 mb-0 rounded-2" style="font-size: 0.77rem; line-height: 1.45;">
+                            <div class="fw-bold mb-1 d-flex align-items-center gap-1">
+                                <i class="bi @(loginModel.RememberPassword ? "bi-shield-exclamation text-warning" : "bi-info-circle-fill text-info")"></i>
+                                <span>Sinh viên có nên lưu mật khẩu trên máy không?</span>
+                            </div>
+                            <div class="text-success mb-1">
+                                <i class="bi bi-check-circle-fill me-1"></i><strong>NÊN LƯU:</strong> Khi đang sử dụng <strong>máy tính, laptop riêng hoặc điện thoại cá nhân</strong> để đăng nhập nhanh, thuận tiện hơn.
+                            </div>
+                            <div class="text-danger">
+                                <i class="bi bi-x-circle-fill me-1"></i><strong>KHÔNG NÊN LƯU:</strong> Khi sử dụng <strong>phòng máy trường, thư viện hoặc thiết bị công cộng</strong> để tránh bị kẻ khác tự ý truy cập đổi lịch học!
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Các nút hành động: Đăng nhập & Thoát (Chạm 1 lần là thoát được ra) -->
+                    <div class="d-flex gap-2 mb-3">
+                        <button type="button" 
+                                class="btn btn-primary flex-grow-1 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2"
+                                disabled="@isLoading"
+                                @onclick="HandleLogin">
+                            @if (isLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span>Đang xác thực...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-box-arrow-in-right fs-5"></i>
+                                <span>Đăng Nhập</span>
+                            }
+                        </button>
+                        <button type="button" 
+                                class="btn btn-outline-secondary py-2 px-3 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1"
+                                @onclick="CloseModal"
+                                disabled="@isLoading"
+                                title="Bấm chạm để thoát ra ngoài">
+                            <i class="bi bi-x-lg"></i>
+                            <span>Thoát</span>
+                        </button>
+                    </div>
 
                     <div class="mt-3 pt-3 border-top text-center text-secondary small" style="font-size: 0.78rem;">
                         <i class="bi bi-shield-check text-success me-1"></i>
@@ -141,15 +178,41 @@
         LoginModalService.OnChange += HandleModalStateChange;
     }
 
-    private void HandleModalStateChange()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadRememberedCredentialsAsync();
+        }
+    }
+
+    private async void HandleModalStateChange()
     {
         if (LoginModalService.IsVisible)
         {
             errorMessage = string.Empty;
-            loginModel = new LoginViewModel();
             showPassword = false;
+            await LoadRememberedCredentialsAsync();
         }
-        InvokeAsync(StateHasChanged);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadRememberedCredentialsAsync()
+    {
+        try
+        {
+            var saved = await JSRuntime.InvokeAsync<SavedAuthModel?>("authStorage.loadCredentials");
+            if (saved != null && saved.Remember && !string.IsNullOrEmpty(saved.Username))
+            {
+                loginModel.Username = saved.Username;
+                loginModel.Password = saved.Password ?? string.Empty;
+                loginModel.RememberPassword = true;
+            }
+        }
+        catch
+        {
+            // Bỏ qua nếu môi trường không cho phép truy xuất localStorage
+        }
     }
 
     private void CloseModal()
@@ -162,6 +225,10 @@
         if (e.Key == "Enter")
         {
             await HandleLogin();
+        }
+        else if (e.Key == "Escape")
+        {
+            CloseModal();
         }
     }
 
@@ -181,11 +248,33 @@
             var account = await LoginUseCase.ExecuteAsync(loginModel.Username.Trim(), loginModel.Password);
             if (account != null)
             {
+                // Xử lý lưu / xóa mật khẩu theo lựa chọn của người dùng
+                if (loginModel.RememberPassword)
+                {
+                    try
+                    {
+                        await JSRuntime.InvokeVoidAsync("authStorage.saveCredentials", 
+                            loginModel.Username.Trim(), 
+                            loginModel.Password, 
+                            true);
+                    }
+                    catch { }
+                }
+                else
+                {
+                    try
+                    {
+                        await JSRuntime.InvokeVoidAsync("authStorage.clearCredentials");
+                    }
+                    catch { }
+                }
+
                 await CurrentUserStateStore.SetCurrentUserAsync(account);
+                
+                // Đóng modal ngay lập tức để thoát ra giao diện
                 LoginModalService.Close();
 
-                // Người dùng muốn: "vào ngay luôn trang mà đã bấm đăng nhập á"
-                // Do đó: Giữ nguyên ngay tại trang người dùng đang đứng, không tự ý chuyển hướng đi nơi khác
+                // Giữ nguyên trang đang đứng, chỉ điều hướng nếu đang ở route /login riêng lẻ
                 var uri = new Uri(NavigationManager.Uri);
                 if (uri.AbsolutePath.Equals("/login", StringComparison.OrdinalIgnoreCase))
                 {
@@ -193,7 +282,6 @@
                 }
                 else
                 {
-                    // Tải lại nhẹ trang hiện tại để các component trên trang tự cập nhật theo state mới
                     NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: false);
                 }
             }
@@ -221,5 +309,13 @@
     {
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        public bool RememberPassword { get; set; } = false;
+    }
+
+    public class SavedAuthModel
+    {
+        public bool Remember { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string? Password { get; set; }
     }
 }

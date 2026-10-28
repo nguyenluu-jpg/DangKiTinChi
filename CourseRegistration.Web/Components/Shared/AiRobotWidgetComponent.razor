@@ -7,8 +7,6 @@
 @inject IAdminAiAssistantUseCase AdminAiAssistantUseCase
 @inject ICurrentUserStateStore CurrentUserStateStore
 @inject IStudentRepository StudentRepository
-@inject ICourseRepository CourseRepository
-@inject ISectionRepository SectionRepository
 @inject ILoginModalService LoginModalService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -88,10 +86,15 @@
                                                 @foreach (var sec in msg.RecommendedSections.Take(3))
                                                 {
                                                     <div class="p-1 px-2 rounded bg-white border small d-flex justify-content-between align-items-center">
-                                                        <span class="fw-semibold text-truncate me-1">@sec.CourseName</span>
+                                                        <span class="fw-semibold text-truncate me-1">@sec.CourseName (@sec.SectionCode)</span>
                                                         <span class="badge bg-primary-subtle text-primary flex-shrink-0">@sec.Credits TC</span>
                                                     </div>
                                                 }
+                                            </div>
+                                            <div class="mt-2 text-end">
+                                                <a href="/ai-advisor" class="btn btn-xs btn-outline-primary rounded-pill small py-0 px-2 fw-semibold" style="font-size: 0.72rem;">
+                                                    <i class="bi bi-cart-check me-1"></i>Xem &amp; Xác nhận thêm vào Giỏ <i class="bi bi-arrow-right"></i>
+                                                </a>
                                             </div>
                                         </div>
                                     }
@@ -267,10 +270,6 @@
     private string currentRole = string.Empty;
     private Student? currentStudent;
     private List<Student> allStudents = new List<Student>();
-    private List<Course> allCourses = new List<Course>();
-    private List<Section> allSections = new List<Section>();
-    private List<Prerequisite> allPrerequisites = new List<Prerequisite>();
-
     private List<ChatMessageModel> chatMessages = new List<ChatMessageModel>();
 
     private bool isOnAiAdvisorPage => NavigationManager.Uri.Contains("/ai-advisor", StringComparison.OrdinalIgnoreCase);
@@ -283,9 +282,6 @@
         try
         {
             allStudents = (await StudentRepository.GetAllStudentsAsync()).ToList();
-            allCourses = (await CourseRepository.GetAllCoursesAsync()).ToList();
-            allSections = (await SectionRepository.GetSectionsBySemesterAsync("2026_HK1")).ToList();
-            allPrerequisites = (await CourseRepository.GetAllPrerequisitesAsync()).ToList();
         }
         catch { }
 

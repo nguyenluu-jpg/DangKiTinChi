@@ -322,7 +322,71 @@ Hồ sơ sinh viên đang hỏi:
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 2: CÂU HỎI VỀ MÔN HỌC (Course: WEB301, Lập trình Web, Cơ sở dữ liệu...)
+            // TRƯỜNG HỢP 2: CÂU HỎI VỀ HỌC PHÍ & THANH TOÁN VIETQR
+            // =========================================================================
+            bool isTuition = qNorm.Contains("hoc phi") || qNorm.Contains("bao nhieu tien") || qNorm.Contains("dong tien") ||
+                             qNorm.Contains("nop tien") || qNorm.Contains("ngan hang") || qNorm.Contains("stk") ||
+                             qNorm.Contains("so tai khoan") || qNorm.Contains("vietqr") || qNorm.Contains("mb bank") ||
+                             qNorm.Contains("chuyen khoan");
+
+            if (isTuition)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("### 💰 Quy Định Mức Thu Học Phí & Thanh Toán Năm Học 2026 - 2027:");
+                sb.AppendLine();
+                sb.AppendLine("- **Đơn giá tín chỉ:** **450.000 VNĐ / tín chỉ**.");
+                sb.AppendLine("- **Ví dụ cụ thể:**");
+                sb.AppendLine("  + Môn 2 tín chỉ: **900.000 VNĐ**");
+                sb.AppendLine("  + Môn 3 tín chỉ: **1.350.000 VNĐ**");
+                sb.AppendLine("  + Môn 4 tín chỉ: **1.800.000 VNĐ**");
+                sb.AppendLine("  + Học kỳ tiêu chuẩn (14 tín chỉ): **6.300.000 VNĐ**");
+                sb.AppendLine();
+
+                if (student != null && registeredSections.Any())
+                {
+                    int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
+                    long totalTuition = (long)totalRegCredits * 450000;
+                    sb.AppendLine($"💳 **Học phí cá nhân của bạn ({student.FullName} - {student.StudentCode}):**");
+                    sb.AppendLine($"- Tổng số tín chỉ đã đăng ký: **{totalRegCredits} Tín chỉ**");
+                    sb.AppendLine($"- Tổng học phí học kỳ {semester}: **{totalTuition:N0} VNĐ**");
+                    sb.AppendLine();
+                }
+
+                sb.AppendLine("- **Thông tin tài khoản thu học phí nhà trường:**");
+                sb.AppendLine("  + Số tài khoản: **101705201967**");
+                sb.AppendLine("  + Ngân hàng: **MB Bank (Ngân hàng TMCP Quân Đội)**");
+                sb.AppendLine("  + Đơn vị thụ hưởng: **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**");
+                sb.AppendLine();
+                sb.AppendLine("- **Thanh toán thông minh qua VietQR:** Hệ thống tự động tạo mã VietQR Napas247 điền sẵn số tiền và nội dung `[MSSV] HP 2026_HK1`, gạch nợ tức thì 24/7.");
+                sb.AppendLine("- **Hạn nộp học phí:** Trong vòng 15 ngày kể từ ngày gửi phiếu đăng ký học phần.");
+
+                advice.AiMessage = sb.ToString();
+                return;
+            }
+
+            // =========================================================================
+            // TRƯỜNG HỢP 3: CHÀO HỎI & GIỚI THIỆU TRỢ LÝ
+            // =========================================================================
+            bool isGreeting = qNorm == "chao" || qNorm.StartsWith("chao ") || qNorm.Contains("xin chao") ||
+                              qNorm == "hello" || qNorm == "hi" || qNorm.StartsWith("hi ") ||
+                              qNorm.Contains("ban la ai") || qNorm == "alo" || qNorm.StartsWith("alo ") ||
+                              qNorm.Contains("tro giup");
+
+            if (isGreeting && !qNorm.Contains("mon") && !qNorm.Contains("lop") && !qNorm.Contains("thay") && !qNorm.Contains("co") && !qNorm.Contains("phong") && !qNorm.Contains("diem"))
+            {
+                advice.AiMessage = $"### 👋 Chào bạn! Tôi là Cố Vấn Học Thuật AI của Trường Đại học Kinh tế Huế.\n\n" +
+                                   $"Tôi có thể hỗ trợ bạn tra cứu toàn bộ thông tin học vụ theo thời gian thực từ SQL Server:\n" +
+                                   $"- 📘 **Môn học & Học phần:** Hỏi về *Lập trình Web*, *Cơ sở dữ liệu*, *Kỹ thuật phần mềm*, số tín chỉ, môn tiên quyết...\n" +
+                                   $"- 👨‍🏫 **Giảng viên:** Tra cứu giảng dạy của *TS. Hà Ngọc Long*, *PGS.TS. Lê Hoàng Sơn*, *TS. Phạm Thanh Tùng*...\n" +
+                                   $"- 🏫 **Phòng học & Lịch:** Phòng *Lab 402*, *A101*, học vào *Thứ 2*, *Thứ 4*, tiết mấy...\n" +
+                                   $"- 💰 **Học phí & VietQR:** 450.000 đ/tín chỉ, tài khoản MB Bank, mã QR Napas 24/7 gạch nợ tự động.\n" +
+                                   $"- ⚖️ **Quy chế tín chỉ:** Hạn mức 10-24 tín chỉ, quy định rút môn, điều kiện tiên quyết.\n\n" +
+                                   $"👉 Hãy đặt bất kỳ câu hỏi nào hoặc **Đăng nhập** để tôi phân tích thời khóa biểu cá nhân cho bạn nhé!";
+                return;
+            }
+
+            // =========================================================================
+            // TRƯỜNG HỢP 4: CÂU HỎI VỀ MÔN HỌC (Course: WEB301, Lập trình Web, Cơ sở dữ liệu...)
             // =========================================================================
             var matchedCourse = FindMatchingCourse(effectiveSearchText, allCourses);
             if (matchedCourse != null)
@@ -370,12 +434,25 @@ Hồ sơ sinh viên đang hỏi:
                     }
                 }
 
+                // Nếu câu hỏi có chỉ định đích danh giảng viên cụ thể của môn này (ví dụ: "lớp thầy Long"):
+                var specificInstructorMatch = FindMatchingInstructor(qNorm, courseSections);
+                var targetSections = (specificInstructorMatch.HasValue && specificInstructorMatch.Value.Sections.Any())
+                    ? specificInstructorMatch.Value.Sections
+                    : courseSections;
+
                 if (courseSections.Any())
                 {
-                    sb.AppendLine($"🏫 **Danh sách {courseSections.Count} lớp học phần đang mở trong kỳ ({semester}):**");
+                    if (specificInstructorMatch.HasValue && specificInstructorMatch.Value.Sections.Any())
+                    {
+                        sb.AppendLine($"👨‍🏫 **Lớp học phần môn {matchedCourse.CourseName} do {specificInstructorMatch.Value.Name} phụ trách ({semester}):**");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"🏫 **Danh sách {courseSections.Count} lớp học phần đang mở trong kỳ ({semester}):**");
+                    }
                     sb.AppendLine();
 
-                    foreach (var s in courseSections)
+                    foreach (var s in targetSections)
                     {
                         int remain = Math.Max(0, s.MaxCapacity - s.CurrentEnrollment);
                         sb.AppendLine($"- **Mã lớp:** `{s.SectionCode}`");
@@ -397,6 +474,13 @@ Hồ sơ sinh viên đang hỏi:
                             RecommendationReason = $"Lớp {s.SectionCode} thuộc môn {matchedCourse.CourseName} theo câu hỏi của bạn.",
                             IsSelected = true
                         });
+                    }
+
+                    if (targetSections.Count < courseSections.Count)
+                    {
+                        var otherClasses = string.Join(", ", courseSections.Where(s => !targetSections.Contains(s)).Select(s => $"`{s.SectionCode}` ({s.Instructor})"));
+                        sb.AppendLine();
+                        sb.AppendLine($"💡 *Môn này còn có lớp khác: {otherClasses}.*");
                     }
                 }
                 else
@@ -652,49 +736,6 @@ Hồ sơ sinh viên đang hỏi:
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 8: CÂU HỎI VỀ HỌC PHÍ & THANH TOÁN VIETQR
-            // =========================================================================
-            bool isTuition = qNorm.Contains("hoc phi") || qNorm.Contains("bao nhieu tien") || qNorm.Contains("dong tien") ||
-                             qNorm.Contains("nop tien") || qNorm.Contains("ngan hang") || qNorm.Contains("stk") ||
-                             qNorm.Contains("so tai khoan") || qNorm.Contains("vietqr") || qNorm.Contains("mb bank") ||
-                             qNorm.Contains("chuyen khoan");
-
-            if (isTuition)
-            {
-                var sb = new StringBuilder();
-                sb.AppendLine("### 💰 Quy Định Mức Thu Học Phí & Thanh Toán Năm Học 2026 - 2027:");
-                sb.AppendLine();
-                sb.AppendLine("- **Đơn giá tín chỉ:** **450.000 VNĐ / tín chỉ**.");
-                sb.AppendLine("- **Ví dụ cụ thể:**");
-                sb.AppendLine("  + Môn 2 tín chỉ: **900.000 VNĐ**");
-                sb.AppendLine("  + Môn 3 tín chỉ: **1.350.000 VNĐ**");
-                sb.AppendLine("  + Môn 4 tín chỉ: **1.800.000 VNĐ**");
-                sb.AppendLine("  + Học kỳ tiêu chuẩn (14 tín chỉ): **6.300.000 VNĐ**");
-                sb.AppendLine();
-
-                if (student != null && registeredSections.Any())
-                {
-                    int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
-                    long totalTuition = (long)totalRegCredits * 450000;
-                    sb.AppendLine($"💳 **Học phí cá nhân của bạn ({student.FullName} - {student.StudentCode}):**");
-                    sb.AppendLine($"- Tổng số tín chỉ đã đăng ký: **{totalRegCredits} Tín chỉ**");
-                    sb.AppendLine($"- Tổng học phí học kỳ {semester}: **{totalTuition:N0} VNĐ**");
-                    sb.AppendLine();
-                }
-
-                sb.AppendLine("- **Thông tin tài khoản thu học phí nhà trường:**");
-                sb.AppendLine("  + Số tài khoản: **101705201967**");
-                sb.AppendLine("  + Ngân hàng: **MB Bank (Ngân hàng TMCP Quân Đội)**");
-                sb.AppendLine("  + Đơn vị thụ hưởng: **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**");
-                sb.AppendLine();
-                sb.AppendLine("- **Thanh toán thông minh qua VietQR:** Hệ thống tự động tạo mã VietQR Napas247 điền sẵn số tiền và nội dung `[MSSV] HP 2026_HK1`, gạch nợ tức thì 24/7.");
-                sb.AppendLine("- **Hạn nộp học phí:** Trong vòng 15 ngày kể từ ngày gửi phiếu đăng ký học phần.");
-
-                advice.AiMessage = sb.ToString();
-                return;
-            }
-
-            // =========================================================================
             // TRƯỜNG HỢP 9: CÂU HỎI VỀ QUY CHẾ, RÚT MÔN, HỦY HỌC PHẦN
             // =========================================================================
             bool isWithdraw = qNorm.Contains("rut mon") || qNorm.Contains("huy mon") || qNorm.Contains("bo mon") ||
@@ -910,7 +951,8 @@ Hồ sơ sinh viên đang hỏi:
             {
                 return allCourses.FirstOrDefault(c => c.CourseCode == "TOEIC");
             }
-            if (qNorm.Contains("tri tue nhan tao") || qNorm.Contains("hoc may") || qNorm.Contains("ai"))
+            if (qNorm.Contains("tri tue nhan tao") || qNorm.Contains("hoc may") || qNorm.Contains("ai401") ||
+                qNorm.Contains("mon ai") || qNorm.Contains("lop ai") || qNorm.Contains("hoc ai"))
             {
                 return allCourses.FirstOrDefault(c => c.CourseCode == "AI401");
             }
@@ -929,14 +971,28 @@ Hồ sơ sinh viên đang hỏi:
             foreach (var inst in instructors)
             {
                 string instNorm = RemoveDiacritics(inst.ToLowerInvariant());
-                var parts = instNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                    .Where(p => p.Length > 2 && p != "thay" && p != "ths" && p != "ts" && p != "pgs")
-                    .ToList();
 
-                if (qNorm.Contains(instNorm) || parts.Any(p => qNorm.Contains(p)))
+                // 1. Khớp nguyên họ tên không dấu (ví dụ: "ha ngoc long", "ngo bao chau", "le hoang son")
+                if (qNorm.Contains(instNorm))
                 {
-                    var secs = allSections.Where(s => s.Instructor == inst).ToList();
-                    return (inst, secs);
+                    return (inst, allSections.Where(s => s.Instructor == inst).ToList());
+                }
+
+                // 2. Khớp tên kèm chức danh / kính ngữ (ví dụ: "thầy Long", "thầy Sơn", "thầy Châu", "cô Trúc", "thầy Tùng")
+                var words = instNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var lastName = words.LastOrDefault();
+                if (!string.IsNullOrEmpty(lastName) && lastName.Length >= 2)
+                {
+                    if (qNorm.Contains("thay " + lastName) ||
+                        qNorm.Contains("co " + lastName) ||
+                        qNorm.Contains("gv " + lastName) ||
+                        qNorm.Contains("giang vien " + lastName) ||
+                        qNorm.Contains(lastName + " day") ||
+                        qNorm.Contains("lop cua " + lastName) ||
+                        qNorm.Contains("lop " + lastName))
+                    {
+                        return (inst, allSections.Where(s => s.Instructor == inst).ToList());
+                    }
                 }
             }
 

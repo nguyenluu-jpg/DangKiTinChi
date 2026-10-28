@@ -49,5 +49,15 @@ namespace CourseRegistration.DataStore.SqlServer
                 .OrderBy(u => u.Username)
                 .ToListAsync();
         }
+
+        public async Task<bool> UpdatePasswordAsync(int accountId, string newPassword)
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var account = await context.UserAccounts.FirstOrDefaultAsync(u => u.AccountId == accountId);
+            if (account == null) return false;
+            
+            account.Password = newPassword;
+            return await context.SaveChangesAsync() > 0;
+        }
     }
 }

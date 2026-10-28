@@ -11,5 +11,6 @@ namespace CourseRegistration.UseCases.PluginInterfaces.DataStore
         Task<UserAccount?> AuthenticateAsync(string username, string password);
         Task<UserAccount?> GetByIdAsync(int accountId);
         Task<IEnumerable<UserAccount>> GetAllAccountsAsync();
+        Task<bool> UpdatePasswordAsync(int accountId, string newPassword);
     }
 }

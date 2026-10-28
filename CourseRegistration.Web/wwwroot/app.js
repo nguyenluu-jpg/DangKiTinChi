@@ -56,8 +56,10 @@ window.authStorage = {
 };
 
 // Kích hoạt hỏi lưu mật khẩu trên trình duyệt/máy tính đúng cơ chế
-window.triggerBrowserSavePassword = async function (username, password) {
+window.triggerBrowserSavePassword = async function (username, password, targetUrl) {
     if (!username || !password) return;
+
+    var actionUrl = targetUrl || window.location.pathname || '/';
 
     // 1. Lưu qua Credential Management API nếu trình duyệt hỗ trợ
     if (window.PasswordCredential && navigator.credentials && navigator.credentials.store) {
@@ -97,7 +99,7 @@ window.triggerBrowserSavePassword = async function (username, password) {
             form = document.createElement('form');
             form.id = formId;
             form.method = 'POST';
-            form.action = window.location.pathname || '/';
+            form.action = actionUrl;
             form.target = iframeName;
             form.style.position = 'fixed';
             form.style.top = '-9999px';
@@ -120,6 +122,8 @@ window.triggerBrowserSavePassword = async function (username, password) {
             form.appendChild(passInput);
 
             document.body.appendChild(form);
+        } else {
+            form.action = actionUrl;
         }
 
         form.elements['username'].value = username;

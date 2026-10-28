@@ -62,9 +62,11 @@ namespace CourseRegistration.Web
             builder.Services.AddScoped<IRegistrationCartStateStore, RegistrationCartStateStore>();
             builder.Services.AddScoped<ICurrentUserStateStore, CurrentUserStateStore>();
             builder.Services.AddScoped<ILoginModalService, LoginModalService>();
+            builder.Services.AddScoped<IChangePasswordModalService, ChangePasswordModalService>();
 
             // Đăng ký Account UseCases (Sprint 2 - Đăng nhập & Phân quyền)
             builder.Services.AddTransient<ILoginUseCase, LoginUseCase>();
+            builder.Services.AddTransient<IChangePasswordUseCase, ChangePasswordUseCase>();
 
             // Đăng ký Student Portal UseCases
             builder.Services.AddTransient<ISearchSectionUseCase, SearchSectionUseCase>();

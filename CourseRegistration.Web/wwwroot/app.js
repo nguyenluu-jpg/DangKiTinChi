@@ -55,3 +55,20 @@ window.authStorage = {
     }
 };
 
+// Kích hoạt trình quản lý mật khẩu của trình duyệt (Chrome, Edge, Safari...) tự động hỏi lưu mật khẩu trên máy
+window.triggerBrowserSavePassword = function (username, password) {
+    if (window.PasswordCredential && navigator.credentials && navigator.credentials.store) {
+        try {
+            var cred = new PasswordCredential({
+                id: username,
+                password: password,
+                name: username
+            });
+            navigator.credentials.store(cred).catch(function () {});
+        } catch (e) {
+            // Trình duyệt có thể tự xử lý qua sự kiện submit form
+        }
+    }
+};
+
+

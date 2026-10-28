@@ -3,6 +3,7 @@
 @inject IStudentRepository StudentRepository
 @inject IRegistrationCartStateStore CartStateStore
 @inject ILoginModalService LoginModalService
+@inject IChangePasswordModalService ChangePasswordModalService
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
@@ -299,6 +300,12 @@
 
                             <li><hr class="dropdown-divider my-2"></li>
                             <li>
+                                <button type="button" class="dropdown-item rounded-2 py-2 d-flex align-items-center text-dark fw-semibold" @onclick="OpenChangePasswordModal">
+                                    <i class="bi bi-key-fill text-warning me-2 fs-6"></i>
+                                    <span>Đổi mật khẩu</span>
+                                </button>
+                            </li>
+                            <li>
                                 <button class="dropdown-item rounded-2 py-2 d-flex align-items-center text-danger fw-semibold" @onclick="HandleLogout">
                                     <i class="bi bi-box-arrow-right me-2 fs-6"></i>
                                     <span>Đăng xuất</span>
@@ -483,6 +490,12 @@
     {
         CloseAllDropdowns();
         LoginModalService.Open();
+    }
+
+    private void OpenChangePasswordModal()
+    {
+        CloseAllDropdowns();
+        ChangePasswordModalService.Open();
     }
 
     public void Dispose()

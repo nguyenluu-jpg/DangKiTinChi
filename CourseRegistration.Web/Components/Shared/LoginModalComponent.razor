@@ -8,29 +8,28 @@
 
 @if (LoginModalService.IsVisible)
 {
-    <!-- Modal Backdrop Overlay (Chạm ra ngoài để thoát) -->
-    <div class="login-modal-overlay" @onclick="CloseModal">
-        <div class="login-modal-dialog" @onclick:stopPropagation="true">
+    <!-- Modal Backdrop Overlay (Cố định: không bị mất modal khi chạm ra bên ngoài) -->
+    <div class="login-modal-overlay">
+        <div class="login-modal-dialog">
             <!-- Modal Card -->
             <div class="login-modal-content card border-0 shadow-2xl rounded-4 overflow-hidden">
-                <!-- Header Gradient (Thiết kế thanh lịch, đã loại bỏ hoàn toàn ô tròn quét khuôn mặt) -->
-                <div class="login-modal-header text-white text-center py-3 px-4 position-relative">
+                <!-- Header Gradient (Giao diện cũ, đã bỏ hình tròn trắng) -->
+                <div class="login-modal-header text-white text-center py-4 px-4 position-relative">
                     <button type="button" 
                             class="btn-close-modal position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center" 
                             @onclick="CloseModal"
-                            aria-label="Đóng"
-                            title="Bấm chạm để đóng/thoát (Esc)">
+                            aria-label="Đóng">
                         <i class="bi bi-x-lg"></i>
                     </button>
 
-                    <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
-                        <i class="bi bi-mortarboard-fill fs-3 text-info"></i>
-                        <h4 class="fw-bold mb-0 text-white">Đăng Nhập Hệ Thống</h4>
+                    <div class="mb-2">
+                        <i class="bi bi-mortarboard-fill fs-1 text-white"></i>
                     </div>
+                    <h4 class="fw-bold mb-1 text-white">Đăng Nhập Hệ Thống</h4>
                     <div class="text-white-50 small">Cổng Đăng Ký Học Phần Trực Tuyến</div>
                 </div>
 
-                <!-- Body (Không chứa ô quét camera, có hướng dẫn lưu mật khẩu rõ ràng) -->
+                <!-- Body (Giao diện chuẩn ban đầu) -->
                 <div class="card-body p-4 p-md-4 bg-white" data-ms-editor="false">
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
@@ -100,59 +99,39 @@
                         </div>
                     </div>
 
-                    <!-- Tùy chọn Lưu mật khẩu & Câu khuyến nghị cho sinh viên biết nên lưu hay không -->
-                    <div class="password-remember-section mb-3 p-3 rounded-3 bg-light border">
-                        <div class="form-check d-flex align-items-center gap-2 mb-2">
+                    <!-- Tùy chọn lưu mật khẩu & Lời khuyên cho sinh viên -->
+                    <div class="mb-3">
+                        <div class="form-check d-flex align-items-center gap-2 mb-1">
                             <input class="form-check-input mt-0 cursor-pointer" 
                                    type="checkbox" 
                                    id="chkRememberPassword" 
                                    @bind="loginModel.RememberPassword" />
-                            <label class="form-check-label fw-bold text-dark small cursor-pointer" for="chkRememberPassword">
-                                Lưu mật khẩu / Ghi nhớ trên máy này?
+                            <label class="form-check-label text-dark small cursor-pointer fw-semibold" for="chkRememberPassword">
+                                Lưu mật khẩu trên máy này?
                             </label>
                         </div>
-
-                        <!-- Khuyến nghị an toàn trực quan -->
-                        <div class="alert @(loginModel.RememberPassword ? "alert-warning" : "alert-info") py-2 px-3 mb-0 rounded-2" style="font-size: 0.77rem; line-height: 1.45;">
-                            <div class="fw-bold mb-1 d-flex align-items-center gap-1">
-                                <i class="bi @(loginModel.RememberPassword ? "bi-shield-exclamation text-warning" : "bi-info-circle-fill text-info")"></i>
-                                <span>Sinh viên có nên lưu mật khẩu trên máy không?</span>
-                            </div>
-                            <div class="text-success mb-1">
-                                <i class="bi bi-check-circle-fill me-1"></i><strong>NÊN LƯU:</strong> Khi đang sử dụng <strong>máy tính, laptop riêng hoặc điện thoại cá nhân</strong> để đăng nhập nhanh, thuận tiện hơn.
-                            </div>
-                            <div class="text-danger">
-                                <i class="bi bi-x-circle-fill me-1"></i><strong>KHÔNG NÊN LƯU:</strong> Khi sử dụng <strong>phòng máy trường, thư viện hoặc thiết bị công cộng</strong> để tránh bị kẻ khác tự ý truy cập đổi lịch học!
-                            </div>
+                        <div class="text-muted small ps-4" style="font-size: 0.76rem; line-height: 1.4;">
+                            <span class="text-success fw-semibold"><i class="bi bi-check-circle me-1"></i>Nên lưu:</span> Máy tính cá nhân, điện thoại riêng.<br />
+                            <span class="text-danger fw-semibold"><i class="bi bi-x-circle me-1"></i>Không nên lưu:</span> Máy trường, phòng thực hành, thư viện.
                         </div>
                     </div>
 
-                    <!-- Các nút hành động: Đăng nhập & Thoát (Chạm 1 lần là thoát được ra) -->
-                    <div class="d-flex gap-2 mb-3">
-                        <button type="button" 
-                                class="btn btn-primary flex-grow-1 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2"
-                                disabled="@isLoading"
-                                @onclick="HandleLogin">
-                            @if (isLoading)
-                            {
-                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                <span>Đang xác thực...</span>
-                            }
-                            else
-                            {
-                                <i class="bi bi-box-arrow-in-right fs-5"></i>
-                                <span>Đăng Nhập</span>
-                            }
-                        </button>
-                        <button type="button" 
-                                class="btn btn-outline-secondary py-2 px-3 fw-semibold rounded-3 d-flex align-items-center justify-content-center gap-1"
-                                @onclick="CloseModal"
-                                disabled="@isLoading"
-                                title="Bấm chạm để thoát ra ngoài">
-                            <i class="bi bi-x-lg"></i>
-                            <span>Thoát</span>
-                        </button>
-                    </div>
+                    <!-- Nút Đăng Nhập nguyên bản duy nhất -->
+                    <button type="button" 
+                            class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-3"
+                            disabled="@isLoading"
+                            @onclick="HandleLogin">
+                        @if (isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Đang xác thực...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-box-arrow-in-right fs-5"></i>
+                            <span>Đăng Nhập</span>
+                        }
+                    </button>
 
                     <div class="mt-3 pt-3 border-top text-center text-secondary small" style="font-size: 0.78rem;">
                         <i class="bi bi-shield-check text-success me-1"></i>
@@ -226,10 +205,6 @@
         {
             await HandleLogin();
         }
-        else if (e.Key == "Escape")
-        {
-            CloseModal();
-        }
     }
 
     private async Task HandleLogin()
@@ -271,7 +246,7 @@
 
                 await CurrentUserStateStore.SetCurrentUserAsync(account);
                 
-                // Đóng modal ngay lập tức để thoát ra giao diện
+                // Đóng modal để trở lại giao diện
                 LoginModalService.Close();
 
                 // Giữ nguyên trang đang đứng, chỉ điều hướng nếu đang ở route /login riêng lẻ

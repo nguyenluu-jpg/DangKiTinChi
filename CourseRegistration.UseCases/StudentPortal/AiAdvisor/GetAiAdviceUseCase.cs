@@ -142,57 +142,28 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             {
                 try
                 {
-                    var sectionsDbDump = string.Join("\n", allSectionsAcrossSemesters.Select(s =>
-                        $"- Lớp: {s.SectionCode} | Môn: {s.Course?.CourseCode} - {s.Course?.CourseName} ({s.Course?.Credits}TC) | GV: {s.Instructor} | Phòng: {s.Room} | Lịch: {FormatSchedule(s)} | Sĩ số: {s.CurrentEnrollment}/{s.MaxCapacity} | Học kỳ: {s.Semester}"));
-
-                    var coursesDbDump = string.Join(", ", allCourses.Select(c => $"{c.CourseCode}: {c.CourseName} ({c.Credits}TC)"));
-
-                    var prereqDbDump = string.Join("\n", allPrerequisites.Select(p =>
-                        $"- Môn {p.Course?.CourseCode} yêu cầu tiên quyết {p.PrerequisiteCourse?.CourseCode} ({p.PrerequisiteCourse?.CourseName})"));
-
-                    string studentProfileText = student != null
-                        ? $"- Sinh viên: {student.FullName} (MSSV: {student.StudentCode}) | Ngành: {student.Major}\n" +
-                          $"- Số tín chỉ tối đa được đăng ký thêm trong kỳ {semester}: {remainingCreditsAllowed} TC\n" +
-                          $"- Các môn đã hoàn thành: {(completedCourses.Any() ? string.Join(", ", completedCourses.Select(c => $"{c.Course?.CourseCode} ({c.Grade}đ)")) : "Chưa hoàn thành môn nào")}\n" +
-                          $"- Các lớp đã đăng ký trong kỳ {semester}: {(registeredSections.Any() ? string.Join(", ", registeredSections.Select(r => $"{r.SectionCode} ({r.Course?.CourseName} - {FormatSchedule(r)} - GV {r.Instructor})")) : "Chưa đăng ký lớp nào")}"
-                        : "- Người dùng hiện đang ở chế độ Khách (chưa đăng nhập tài khoản cá nhân).";
-
-                    var systemPrompt = $@"Bạn là Cố vấn Học thuật AI của Trường Đại học Kinh tế Huế.
-Nhiệm vụ của bạn là trả lời sinh viên đúng trọng tâm, văn phong sư phạm, lịch sự, chuẩn xác dựa trên dữ liệu thực tế.
-Nếu người dùng hỏi bằng tiếng Anh, hãy trả lời bằng tiếng Anh. Nếu hỏi bằng tiếng Việt, hãy trả lời bằng tiếng Việt.
-
-[DỮ LIỆU THỰC TẾ TỪ CSDL SQL SERVER]
-Danh sách lớp học phần toàn trường:
-{sectionsDbDump}
-
-Danh sách môn học:
-{coursesDbDump}
-
-Điều kiện tiên quyết:
-{prereqDbDump}
-
-Hồ sơ sinh viên đang hỏi:
-{studentProfileText}
-
-[NGUYÊN TẮC CỐT LÕI & ĐỐI CHIẾU DỮ LIỆU]
-1. DỰA HOÀN TOÀN VÀO DỮ LIỆU SQL SERVER Ở TRÊN. Tuyệt đối không tự bịa thông tin, phòng học, giảng viên hay mã lớp.
-2. ĐỐI CHIẾU SINH VIÊN VÀ GIẢNG VIÊN (QUAN TRỌNG):
-   - Khi người dùng hỏi: 'Sinh viên [Tên] có đăng ký môn nào của [Giảng viên] không?' hoặc 'Tôi có đăng ký môn nào của [Giảng viên] không?':
-     BẮT BUỘC phải lấy các lớp sinh viên ĐÃ ĐĂNG KÝ, kiểm tra giảng viên phụ trách của các lớp đó.
-     CHỈ trả lời những lớp sinh viên ĐÃ ĐĂNG KÝ do giảng viên đó phụ trách (ghi rõ mã lớp, tên môn, lịch học, phòng học).
-     Nếu sinh viên không đăng ký môn nào của giảng viên đó, phải trả lời rõ ràng là KHÔNG ĐĂNG KÝ.
-     TUYỆT ĐỐI KHÔNG thay thế bằng danh sách toàn bộ các lớp giảng viên đó dạy hoặc tổng sĩ số lớp!
-3. LỊCH HỌC NGÀY MAI / CỤ THỂ:
-   - Khi sinh viên hỏi lịch học ngày mai hoặc một ngày cụ thể (ví dụ: 'Ngày mai tôi học gì?', 'Thứ 2 tôi học gì?', 'Do I have any classes tomorrow?'):
-     CHỈ tra cứu trong các lớp sinh viên ĐÃ ĐĂNG KÝ có lịch học đúng vào ngày đó.
-     Nếu không có lớp vào ngày đó, trả lời rõ ràng là không có lịch học.
-     TUYỆT ĐỐI KHÔNG liệt kê toàn bộ danh sách môn đã đăng ký!
-4. PHÂN BIỆT LỊCH CÁ NHÂN VS TOÀN TRƯỜNG:
-   - Các câu hỏi dùng đại từ nhân xưng (tôi, em, mình, I, my) là hỏi về lịch cá nhân của sinh viên đang đăng nhập.
-5. KHÔNG TỰ ĐỀ XUẤT MÔN KHI CHƯA ĐƯỢC YÊU CẦU:
-   - Chỉ khi sinh viên yêu cầu tư vấn/gợi ý môn học rõ ràng mới đề xuất môn học.
-6. HỌC PHÍ & QUY CHẾ:
-   - Đơn giá: 450.000 VNĐ / tín chỉ, MB Bank 101705201967 (Napas 24/7). Hạn mức 10-24 tín chỉ.";
+                    // Phân quyền System Prompt chuyên biệt theo 3 vai trò: Khách, Sinh viên, Quản trị
+                    string systemPrompt;
+                    if (currentRole == "Admin")
+                    {
+                        systemPrompt = BuildAdminSystemPrompt(allSectionsAcrossSemesters, allCourses, allStudents, semester);
+                    }
+                    else if (currentRole == "Student" && student != null)
+                    {
+                        systemPrompt = BuildStudentSystemPrompt(
+                            student,
+                            completedCourses,
+                            registeredSections,
+                            remainingCreditsAllowed,
+                            allSectionsAcrossSemesters,
+                            allCourses,
+                            allPrerequisites,
+                            semester);
+                    }
+                    else
+                    {
+                        systemPrompt = BuildGuestSystemPrompt(allCourses, allSectionsAcrossSemesters, semester);
+                    }
 
                     var messages = new List<ChatMessage>
                     {
@@ -2100,8 +2071,147 @@ Hồ sơ sinh viên đang hỏi:
                 if (context.HasContext) break;
             }
 
-            return context;
+        #region Specialized Role-Based System Prompts
+
+        /// <summary>
+        /// System Prompt dành cho Khách (Chưa đăng nhập):
+        /// - Chỉ trả lời quy chế đào tạo, hướng dẫn đăng nhập và sử dụng hệ thống.
+        /// - Tuyệt đối KHÔNG trả lời TKB, điểm số, học bạ cá nhân; yêu cầu người dùng đăng nhập.
+        /// </summary>
+        private static string BuildGuestSystemPrompt(
+            List<Course> allCourses,
+            List<Section> allSections,
+            string semester)
+        {
+            var coursesSummary = string.Join(", ", allCourses.Select(c => $"{c.CourseCode}: {c.CourseName} ({c.Credits}TC)"));
+
+            return $@"Bạn là Trợ lý Tuyển sinh & Cố vấn Học vụ (Trường Đại học Kinh tế Huế) dành cho KHÁCH THAM QUAN (CHƯA ĐĂNG NHẬP).
+
+[PHONG CÁCH GIAO TIẾP]
+- Lịch sự, cởi mở, tự nhiên, trả lời THẲNG VÀO TRỌNG TÂM câu hỏi.
+- Tuyệt đối không trả lời dập khuôn theo văn mẫu cứng nhắc. Hỗ trợ tiếng Việt và tiếng Anh tự nhiên.
+
+[DỮ LIỆU CÔNG KHAI ĐƯỢC PHÉP TRẢ LỜI]
+- Danh mục môn học đào tạo: {coursesSummary}
+- Hạn mức số tín chỉ: Mỗi sinh viên được đăng ký tối thiểu 10 tín chỉ, tối đa 24 tín chỉ trong học kỳ chính ({semester}).
+- Mức thu học phí: 450.000 VNĐ / 1 tín chỉ. Nộp qua tài khoản nhà trường tại MB Bank (STK: 101705201967, thụ hưởng TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ, thanh toán VietQR Napas 24/7).
+- Quy chế rút môn học: Rút trong 2 tuần đầu đợt đăng ký không lưu điểm F; sau đó phải nộp đơn tại Phòng Đào Tạo.
+- Hướng dẫn tính năng web: Nút 'Đăng nhập' ở góc phải màn hình, mục 'Đăng Ký Học Phần', 'Xem Giỏ Hàng', 'Thời Khóa Biểu', 'Thanh Toán Học Phí'.
+
+[NGUYÊN TẮC BẢO MẬT & PHÂN QUYỀN BẮT BUỘC]
+1. Người dùng hiện tại CHƯA ĐĂNG NHẬP (Guest mode).
+2. TUYỆT ĐỐI KHÔNG cung cấp thời khóa biểu cá nhân, danh sách môn đã đăng ký, điểm số, học bạ hay thông tin riêng tư của bất kỳ sinh viên nào.
+3. Khi người dùng hỏi: 'Tôi đã đăng ký môn nào?', 'Thời khóa biểu của tôi', 'Ngày mai tôi học gì?', 'Xem điểm của tôi', hoặc hỏi dữ liệu cá nhân của sinh viên khác:
+   Hãy giải thích thân thiện rằng thông tin học tập mang tính bảo mật cá nhân, và hướng dẫn họ bấm nút 'Đăng nhập' ở góc trên để hệ thống nhận diện và hiển thị dữ liệu chính xác.";
         }
+
+        /// <summary>
+        /// System Prompt dành cho Sinh viên (Đã đăng nhập):
+        /// - Trả lời đúng trọng tâm, tự nhiên, linh hoạt TKB, môn học, điều kiện tiên quyết, lớp học phần, học phí.
+        /// - Tránh dập khuôn; giải quyết đại từ nhân xưng và ngày cụ thể chính xác.
+        /// </summary>
+        private static string BuildStudentSystemPrompt(
+            Student student,
+            List<CompletedCourse> completedCourses,
+            List<Section> registeredSections,
+            int remainingCreditsAllowed,
+            List<Section> allSectionsAcrossSemesters,
+            List<Course> allCourses,
+            List<Prerequisite> allPrerequisites,
+            string semester)
+        {
+            var regSummary = registeredSections.Any()
+                ? string.Join("\n", registeredSections.Select(r => $"- Lớp `{r.SectionCode}` | Môn: {r.Course?.CourseCode} - {r.Course?.CourseName} ({r.Course?.Credits}TC) | GV: {r.Instructor} | Phòng: {r.Room} | Lịch: {FormatSchedule(r)}"))
+                : "- Bạn chưa đăng ký lớp học phần nào trong học kỳ này.";
+
+            var completedSummary = completedCourses.Any()
+                ? string.Join(", ", completedCourses.Select(c => $"{c.Course?.CourseCode} ({c.Course?.CourseName}: {c.Grade}đ, Kỳ {c.Semester})"))
+                : "- Chưa có dữ liệu môn hoàn thành.";
+
+            var prereqSummary = string.Join("\n", allPrerequisites.Select(p => $"- Môn {p.Course?.CourseCode} yêu cầu tiên quyết {p.PrerequisiteCourse?.CourseCode}"));
+
+            var openSectionsSummary = string.Join("\n", allSectionsAcrossSemesters.Where(s => s.Semester == semester).Select(s =>
+                $"- Lớp `{s.SectionCode}`: {s.Course?.CourseName} ({s.Course?.Credits}TC) | GV: {s.Instructor} | Phòng: {s.Room} | Lịch: {FormatSchedule(s)} | Còn {s.MaxCapacity - s.CurrentEnrollment}/{s.MaxCapacity} chỗ"));
+
+            int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
+            long totalTuition = (long)totalRegCredits * 450000;
+
+            return $@"Bạn là Cố vấn Học thuật AI của sinh viên {student.FullName} (MSSV: {student.StudentCode}, Ngành: {student.Major}, Khóa: {student.AcademicYear}) tại Trường Đại học Kinh tế Huế trong học kỳ {semester}.
+
+[PHONG CÁCH GIAO TIẾP]
+- Thân thiện, tự nhiên, tôn trọng, trả lời THẲNG VÀO TRỌNG TÂM câu hỏi.
+- TUYỆT ĐỐI KHÔNG trả lời dập khuôn văn mẫu, không lặp lại câu hỏi trừ khi cần làm rõ.
+- Hỗ trợ cả tiếng Việt và tiếng Anh tự nhiên.
+
+[HỒ SƠ CÁ NHÂN CỦA BẠN ({student.FullName} - {student.StudentCode})]
+- Giới hạn tín chỉ kỳ này: Tối đa {student.MaxCreditsPerSemester} TC (Hiện đã đăng ký {totalRegCredits} TC, còn được đăng ký tối đa {remainingCreditsAllowed} TC nữa).
+- Học phí kỳ {semester}: {totalRegCredits} tín chỉ = {totalTuition:N0} VNĐ (Đơn giá 450.000 VNĐ/TC, MB Bank: 101705201967).
+- Các môn BẠN ĐÃ ĐĂNG KÝ kỳ này ({registeredSections.Count} lớp):
+{regSummary}
+- Các môn BẠN ĐÃ HOÀN THÀNH trong học bạ:
+{completedSummary}
+
+[DỮ LIỆU CÁC LỚP HỌC PHẦN ĐANG MỞ KỲ {semester}]
+{openSectionsSummary}
+
+[ĐIỀU KIỆN TIÊN QUYẾT]
+{prereqSummary}
+
+[QUY TẮC PHẢN HỒI ĐÚNG TRỌNG TÂM]
+1. LỊCH HỌC NGÀY MAI / HÔM NAY / THỨ TRONG TUẦN:
+   - CHỈ tra cứu trong các lớp bạn ĐÃ ĐĂNG KÝ có lịch vào đúng ngày đó.
+   - Nêu trực tiếp: Môn gì, lớp nào, ca mấy, phòng nào, giảng viên nào.
+   - Nếu ngày đó bạn KHÔNG CÓ LỊCH: Trả lời tự nhiên, thân thiện: Ngày mai bạn không có lịch học nào cả, hãy nghỉ ngơi hoặc tự ôn bài nhé! TUYỆT ĐỐI KHÔNG liệt kê tràn lan các môn của ngày khác.
+2. ĐỐI CHIẾU SINH VIÊN VỚI GIẢNG VIÊN:
+   - Khi hỏi bạn có học môn nào của Thầy/Cô X không: CHỈ kiểm tra trong danh sách các lớp bạn ĐÃ ĐĂNG KÝ.
+   - Nếu có: Nêu rõ tên môn, mã lớp, lịch học, phòng học.
+   - Nếu không: Khẳng định rõ ràng bạn không đăng ký môn nào của Thầy/Cô X. TUYỆT ĐỐI KHÔNG liệt kê toàn bộ các lớp giảng viên đó dạy cho người khác.
+3. TƯ VẤN & GỢI Ý MÔN HỌC:
+   - CHỈ đề xuất môn khi sinh viên nói rõ 'gợi ý môn', 'tư vấn học gì', 'recommend courses'.
+   - Môn đề xuất phải thỏa mãn điều kiện tiên quyết, chưa từng học qua, còn chỗ trống và KHÔNG BỊ TRÙNG LỊCH với các lớp đã đăng ký.
+4. QUYỀN RIÊNG TƯ:
+   - Sinh viên chỉ được tra cứu dữ liệu của chính mình. Nếu hỏi thông tin cá nhân của bạn sinh viên khác, hãy từ chối lịch sự theo quy chế bảo mật.";
+        }
+
+        /// <summary>
+        /// System Prompt dành cho Phòng Đào tạo / Quản trị (Admin):
+        /// - Trả lời ngắn gọn, chuyên nghiệp về thống kê sĩ số, phân tích mở lớp, cảnh báo trùng lịch.
+        /// </summary>
+        private static string BuildAdminSystemPrompt(
+            List<Section> allSections,
+            List<Course> allCourses,
+            List<Student> allStudents,
+            string semester)
+        {
+            var fullSections = allSections.Where(s => s.CurrentEnrollment >= s.MaxCapacity).ToList();
+            var lowSections = allSections.Where(s => s.CurrentEnrollment < 10).ToList();
+
+            var sectionsSummary = string.Join("\n", allSections.Select(s =>
+                $"- Lớp {s.SectionCode}: {s.Course?.CourseName} ({s.Course?.CourseCode}) | GV: {s.Instructor} | Phòng: {s.Room} | Sĩ số: {s.CurrentEnrollment}/{s.MaxCapacity} | Kỳ: {s.Semester} | Lịch: {FormatSchedule(s)}"));
+
+            return $@"Bạn là Trợ lý AI Phân tích & Quản trị Đào tạo (Dành cho Cán bộ Phòng Đào Tạo / Ban Quản Trị) tại Trường Đại học Kinh tế Huế.
+
+[PHONG CÁCH GIAO TIẾP]
+- Tác phong hành chính giáo dục: Chuyên nghiệp, súc tích, dựa trên số liệu thực tế, định dạng bảng biểu hoặc gạch đầu dòng rõ ràng.
+- Trả lời thẳng vào trọng tâm câu hỏi quản trị.
+
+[DỮ LIỆU TỔNG QUAN KỲ {semester}]
+- Tổng số lớp học phần mở: {allSections.Count} lớp.
+- Tổng số môn học: {allCourses.Count} môn.
+- Tổng số sinh viên: {allStudents.Count} sinh viên.
+- Số lớp đã đầy sĩ số (>= 100%): {fullSections.Count} lớp ({string.Join(", ", fullSections.Select(f => f.SectionCode))}).
+- Số lớp vắng sinh viên (< 10 SV - nguy cơ hủy lớp): {lowSections.Count} lớp ({string.Join(", ", lowSections.Select(f => $"{f.SectionCode}: {f.CurrentEnrollment}/{f.MaxCapacity}"))}).
+
+[CHI TIẾT CÁC LỚP HỌC PHẦN TOÀN TRƯỜNG]
+{sectionsSummary}
+
+[NHIỆM VỤ QUẢN TRỊ ĐÀO TẠO]
+1. Báo cáo thống kê sĩ số: Trả lời chính xác số lượng sinh viên đăng ký, lớp nào đầy, lớp nào còn chỗ.
+2. Phân tích mở lớp & Cảnh báo: Đề xuất mở thêm lớp cho môn có nhu cầu cao hoặc ghép/hủy lớp vắng sinh viên.
+3. Tra cứu toàn diện: Cán bộ Phòng Đào Tạo có quyền tra cứu thông tin học vụ của bất kỳ sinh viên nào, đối chiếu sinh viên với lớp học phần và thời khóa biểu của giảng viên trên toàn trường.";
+        }
+
+        #endregion
 
         #endregion
     }

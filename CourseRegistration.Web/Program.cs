@@ -94,19 +94,40 @@ namespace CourseRegistration.Web
             //Đăng ký Dịch vụ xuất báo cáo Excel & PDF (ClosedXML + QuestPDF)
             builder.Services.AddSingleton<IReportExportService, ReportExportService>();
 
-            // Cấu hình AI IChatClient (Microsoft.Extensions.AI + OpenAI/Ollama)
-            // - API Key ưu tiên đọc từ User Secrets hoặc biến môi trường (không commit lên git)
-            // - Hỗ trợ đầy đủ Ollama local (miễn phí) và OpenAI
+            // Cấu hình AI IChatClient (Microsoft.Extensions.AI + Ollama / OpenAI / Gemini)
+            // - API Key được đọc từ User Secrets hoặc Biến Môi Trường (an toàn tuyệt đối, không commit Git)
+            // - Hỗ trợ chuyển đổi linh hoạt: "Ollama" (local miễn phí), "OpenAI" (gpt-4o-mini), "Gemini" (gemini-1.5-flash)
             var aiSection = builder.Configuration.GetSection("AI");
-            var aiEndpoint = aiSection["Endpoint"] ?? "http://localhost:11434/v1";
-            var aiModel = aiSection["ModelId"] ?? "llama3";
+            var aiProvider = (aiSection["Provider"] ?? "Ollama").Trim();
+
+            string defaultEndpoint = "http://localhost:11434/v1";
+            string defaultModel = "llama3";
+
+            if (aiProvider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
+            {
+                defaultEndpoint = "https://api.openai.com/v1";
+                defaultModel = "gpt-4o-mini";
+            }
+            else if (aiProvider.Equals("Gemini", StringComparison.OrdinalIgnoreCase))
+            {
+                // Endpoint tương thích chuẩn OpenAI của Google Gemini API
+                defaultEndpoint = "https://generativelanguage.googleapis.com/v1beta/openai/";
+                defaultModel = "gemini-1.5-flash";
+            }
+
+            var aiEndpoint = !string.IsNullOrWhiteSpace(aiSection["Endpoint"]) ? aiSection["Endpoint"] : defaultEndpoint;
+            var aiModel = !string.IsNullOrWhiteSpace(aiSection["ModelId"]) ? aiSection["ModelId"] : defaultModel;
+
             var aiApiKey = builder.Configuration["AI:ApiKey"]
                            ?? Environment.GetEnvironmentVariable("AI__ApiKey")
-                           ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+                           ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY")
+                           ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY");
 
             if (string.IsNullOrWhiteSpace(aiApiKey))
             {
-                aiApiKey = "ollama-local-key"; // Ollama local không cần phí/key
+                aiApiKey = aiProvider.Equals("Ollama", StringComparison.OrdinalIgnoreCase)
+                    ? "ollama-local-key"
+                    : "missing-key-fallback";
             }
 
             try
@@ -122,7 +143,8 @@ namespace CourseRegistration.Web
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AI Warning] Khởi tạo IChatClient: {ex.Message}");
+                // Ghi log cảnh báo an toàn mà không làm crash ứng dụng
+                Console.WriteLine($"[AI Warning] Khởi tạo IChatClient Provider '{aiProvider}': {ex.Message}");
             }
 
             var app = builder.Build();

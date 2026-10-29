@@ -24,7 +24,7 @@ namespace CourseRegistration.Web.Services
             var ws = workbook.Worksheets.Add("Danh Sách Sinh Viên");
 
             // Tiêu đề trường & khoa
-            ws.Cell(1, 1).Value = "TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN";
+            ws.Cell(1, 1).Value = "TRƯỜNG ĐẠI HỌC KINH TẾ - ĐẠI HỌC HUẾ";
             ws.Cell(1, 1).Style.Font.Bold = true;
             ws.Cell(1, 1).Style.Font.FontSize = 11;
 
@@ -159,7 +159,7 @@ namespace CourseRegistration.Web.Services
                         {
                             row.RelativeItem().Column(c =>
                             {
-                                c.Item().Text("TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN").Bold().FontSize(10);
+                                c.Item().Text("TRƯỜNG ĐẠI HỌC KINH TẾ - ĐẠI HỌC HUẾ").Bold().FontSize(10);
                                 c.Item().Text("PHÒNG ĐÀO TẠO ĐẠI HỌC").FontSize(9).Italic();
                             });
                             row.RelativeItem().AlignRight().Column(c =>
@@ -294,7 +294,7 @@ namespace CourseRegistration.Web.Services
                         {
                             r.RelativeItem().Column(c =>
                             {
-                                c.Item().Text("TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN").Bold().FontSize(10);
+                                c.Item().Text("TRƯỜNG ĐẠI HỌC KINH TẾ - ĐẠI HỌC HUẾ").Bold().FontSize(10);
                                 c.Item().Text("PHÒNG ĐÀO TẠO ĐẠI HỌC").FontSize(9).Italic();
                             });
                             r.RelativeItem().AlignRight().Column(c =>
@@ -434,7 +434,7 @@ namespace CourseRegistration.Web.Services
             using var workbook = new XLWorkbook();
             var ws = workbook.Worksheets.Add("ThoiKhoaBieu");
 
-            ws.Cell(1, 1).Value = "TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN";
+            ws.Cell(1, 1).Value = "TRƯỜNG ĐẠI HỌC KINH TẾ - ĐẠI HỌC HUẾ";
             ws.Cell(1, 1).Style.Font.Bold = true;
 
             ws.Range(3, 1, 3, 7).Merge();

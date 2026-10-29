@@ -511,6 +511,13 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 return;
             }
 
+            // 9. Phản hồi giao tiếp Yes/No hoặc Có/Không từ người dùng (Conversational Affirmation / Negation)
+            if (IsConversationalAffirmationOrNegationIntent(qNorm, qLower, out bool isAffirmative))
+            {
+                advice.AiMessage = BuildConversationalYesNoResponse(isAffirmative, isEnglish, currentStudent, semester, context);
+                return;
+            }
+
             // =========================================================================
             // BƯỚC 1: TRÍCH XUẤT THỰC THỂ (ENTITY EXTRACTION)
             // =========================================================================
@@ -618,7 +625,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
                     if (matchedCrossSections.Any())
                     {
-                        sb.AppendLine($"✅ Student **{targetStudent.FullName}** is currently enrolled in **{matchedCrossSections.Count} class(es)** taught by **{matchedInstructorName}**:");
+                        sb.AppendLine($"✅ **YES.** Student **{targetStudent.FullName}** is currently enrolled in **{matchedCrossSections.Count} class(es)** taught by **{matchedInstructorName}**:");
                         sb.AppendLine();
 
                         foreach (var s in matchedCrossSections)
@@ -631,7 +638,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     }
                     else
                     {
-                        sb.AppendLine($"❌ Student **{targetStudent.FullName}** has **NOT registered for any courses/classes** taught by **{matchedInstructorName}** in semester {semester}.");
+                        sb.AppendLine($"❌ **NO.** Student **{targetStudent.FullName}** has **NOT registered for any courses/classes** taught by **{matchedInstructorName}** in semester {semester}.");
                         if (studentRegisteredSections.Any())
                         {
                             sb.AppendLine();
@@ -648,7 +655,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
                     if (matchedCrossSections.Any())
                     {
-                        sb.AppendLine($"✅ Sinh viên **{targetStudent.FullName}** hiện **CÓ ĐĂNG KÝ {matchedCrossSections.Count} lớp học phần** do giảng viên **{matchedInstructorName}** phụ trách:");
+                        sb.AppendLine($"✅ **CÓ.** Sinh viên **{targetStudent.FullName}** hiện **CÓ ĐĂNG KÝ {matchedCrossSections.Count} lớp học phần** do giảng viên **{matchedInstructorName}** phụ trách:");
                         sb.AppendLine();
 
                         foreach (var s in matchedCrossSections)
@@ -661,7 +668,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     }
                     else
                     {
-                        sb.AppendLine($"❌ Sinh viên **{targetStudent.FullName}** **KHÔNG ĐĂNG KÝ môn học/lớp học phần nào** do **{matchedInstructorName}** phụ trách trong học kỳ {semester}.");
+                        sb.AppendLine($"❌ **KHÔNG.** Sinh viên **{targetStudent.FullName}** **KHÔNG ĐĂNG KÝ môn học/lớp học phần nào** do **{matchedInstructorName}** phụ trách trong học kỳ {semester}.");
                         if (studentRegisteredSections.Any())
                         {
                             sb.AppendLine();
@@ -915,6 +922,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     var daySections = effectiveRegisteredSections.Where(s =>
                         s.Schedules != null && s.Schedules.Any(sch => sch.DayOfWeek == day)).ToList();
 
+                    bool isYn = IsYesNoQuery(qNorm, qLower);
                     var sb = new StringBuilder();
                     if (isEnglish)
                     {
@@ -924,7 +932,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
                         if (daySections.Any())
                         {
-                            sb.AppendLine($"On **{dayNameEn}**, you have **{daySections.Count} registered class(es)**:");
+                            string prefix = isYn ? "✅ **YES.** " : "";
+                            sb.AppendLine($"{prefix}On **{dayNameEn}**, you have **{daySections.Count} registered class(es)**:");
                             sb.AppendLine();
 
                             foreach (var s in daySections)
@@ -940,7 +949,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                         }
                         else
                         {
-                            sb.AppendLine($"✅ On **{dayNameEn}**, you have **no scheduled classes** among your registered courses.");
+                            string prefix = isYn ? "❌ **NO.** " : "✅ ";
+                            sb.AppendLine($"{prefix}On **{dayNameEn}**, you have **no scheduled classes** among your registered courses.");
                             sb.AppendLine($"💡 You can use this time for self-study or review!");
                         }
                     }
@@ -952,7 +962,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
                         if (daySections.Any())
                         {
-                            sb.AppendLine($"Vào **{dayNameVi}**, bạn có **{daySections.Count} lớp học phần** đã đăng ký:");
+                            string prefix = isYn ? "✅ **CÓ.** " : "";
+                            sb.AppendLine($"{prefix}Vào **{dayNameVi}**, bạn có **{daySections.Count} lớp học phần** đã đăng ký:");
                             sb.AppendLine();
 
                             foreach (var s in daySections)
@@ -968,7 +979,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                         }
                         else
                         {
-                            sb.AppendLine($"✅ Vào **{dayNameVi}**, bạn **không có lịch học nào** trong số các lớp học phần đã đăng ký.");
+                            string prefix = isYn ? "❌ **KHÔNG.** " : "✅ ";
+                            sb.AppendLine($"{prefix}Vào **{dayNameVi}**, bạn **không có lịch học nào** trong số các lớp học phần đã đăng ký.");
                             sb.AppendLine($"💡 Bạn có thể dùng thời gian này để tự học, ôn bài hoặc nghỉ ngơi!");
                         }
                     }
@@ -1031,8 +1043,100 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     return;
                 }
 
-                // Sub-case 3.3: Hỏi toàn bộ thời khóa biểu / danh sách môn đã đăng ký
+                // Sub-case 3.3: Hỏi về môn học cụ thể hoặc toàn bộ thời khóa biểu / danh sách môn đã đăng ký
                 {
+                    if (matchedCourse != null)
+                    {
+                        var regForCourse = effectiveRegisteredSections.Where(s => s.CourseId == matchedCourse.CourseId).ToList();
+                        var sbCourseCheck = new StringBuilder();
+                        if (isEnglish)
+                        {
+                            sbCourseCheck.AppendLine($"### 📋 Personal Course Enrollment Check ({semester}):");
+                            sbCourseCheck.AppendLine($"Student: **{effectiveStudent.FullName}** (`{effectiveStudent.StudentCode}`)");
+                            sbCourseCheck.AppendLine();
+                            if (regForCourse.Any())
+                            {
+                                sbCourseCheck.AppendLine($"✅ **YES.** You are currently enrolled in **{matchedCourse.CourseName}** (`{matchedCourse.CourseCode}` - {matchedCourse.Credits} Credits):");
+                                sbCourseCheck.AppendLine();
+                                foreach (var s in regForCourse)
+                                {
+                                    sbCourseCheck.AppendLine($"- Class `{s.SectionCode}`: {FormatScheduleDetailed(s, true)} | Room: {s.Room ?? "TBD"} | Lecturer: {s.Instructor}");
+                                }
+                            }
+                            else
+                            {
+                                sbCourseCheck.AppendLine($"❌ **NO.** You have **NOT registered** for **{matchedCourse.CourseName}** (`{matchedCourse.CourseCode}`) in semester {semester}.");
+                            }
+                        }
+                        else
+                        {
+                            sbCourseCheck.AppendLine($"### 📋 Kiểm Tra Đăng Ký Học Phần Cá Nhân (Học kỳ {semester}):");
+                            sbCourseCheck.AppendLine($"Sinh viên: **{effectiveStudent.FullName}** (MSSV: `{effectiveStudent.StudentCode}`)");
+                            sbCourseCheck.AppendLine();
+                            if (regForCourse.Any())
+                            {
+                                sbCourseCheck.AppendLine($"✅ **CÓ.** Bạn hiện **CÓ ĐĂNG KÝ môn {matchedCourse.CourseName}** (Mã môn: `{matchedCourse.CourseCode}` — {matchedCourse.Credits} Tín chỉ):");
+                                sbCourseCheck.AppendLine();
+                                foreach (var s in regForCourse)
+                                {
+                                    sbCourseCheck.AppendLine($"- Mã lớp `{s.SectionCode}`: Lịch học **{FormatScheduleDetailed(s, false)}** | Phòng: **{s.Room ?? "Chưa xếp phòng"}** | Giảng viên: **{s.Instructor}**");
+                                }
+                            }
+                            else
+                            {
+                                sbCourseCheck.AppendLine($"❌ **KHÔNG.** Bạn **CHƯA ĐĂNG KÝ môn {matchedCourse.CourseName}** (`{matchedCourse.CourseCode}`) trong học kỳ {semester}.");
+                            }
+                        }
+                        advice.AiMessage = sbCourseCheck.ToString();
+                        return;
+                    }
+
+                    bool asksConflict = qNorm.Contains("trung lich") || qNorm.Contains("trung tiet") || qNorm.Contains("trung gio") || qLower.Contains("conflict") || qLower.Contains("overlap");
+                    if (asksConflict)
+                    {
+                        var conflicts = FindScheduleConflicts(effectiveRegisteredSections);
+                        var sbConflict = new StringBuilder();
+                        if (isEnglish)
+                        {
+                            sbConflict.AppendLine($"### 🗓️ Timetable Conflict Verification ({semester}):");
+                            sbConflict.AppendLine($"Student: **{effectiveStudent.FullName}** (`{effectiveStudent.StudentCode}`)");
+                            sbConflict.AppendLine();
+                            if (conflicts.Any())
+                            {
+                                sbConflict.AppendLine($"⚠️ **YES.** A timetable conflict was detected between registered sections:");
+                                foreach (var c in conflicts)
+                                {
+                                    sbConflict.AppendLine($"- Class `{c.Sec1.SectionCode}` ({c.Sec1.Course?.CourseName}) overlaps with `{c.Sec2.SectionCode}` ({c.Sec2.Course?.CourseName}) on Day {c.DayOfWeek}, Periods {c.StartPeriod}-{c.EndPeriod}.");
+                                }
+                            }
+                            else
+                            {
+                                sbConflict.AppendLine($"✅ **NO.** Your timetable has **NO schedule conflicts** among your {effectiveRegisteredSections.Count} registered classes.");
+                            }
+                        }
+                        else
+                        {
+                            sbConflict.AppendLine($"### 🗓️ Kết Quả Kiểm Tra Trùng Lịch Thời Khóa Biểu (Học kỳ {semester}):");
+                            sbConflict.AppendLine($"Sinh viên: **{effectiveStudent.FullName}** (MSSV: `{effectiveStudent.StudentCode}`)");
+                            sbConflict.AppendLine();
+                            if (conflicts.Any())
+                            {
+                                sbConflict.AppendLine($"⚠️ **CÓ.** Phát hiện trùng lịch giữa các lớp học phần đã đăng ký:");
+                                foreach (var c in conflicts)
+                                {
+                                    string dayName = c.DayOfWeek == 8 ? "Chủ Nhật" : $"Thứ {c.DayOfWeek}";
+                                    sbConflict.AppendLine($"- Lớp `{c.Sec1.SectionCode}` ({c.Sec1.Course?.CourseName}) bị trùng với lớp `{c.Sec2.SectionCode}` ({c.Sec2.Course?.CourseName}) vào **{dayName}** (Tiết {c.StartPeriod} - {c.EndPeriod}).");
+                                }
+                            }
+                            else
+                            {
+                                sbConflict.AppendLine($"✅ **KHÔNG.** Thời khóa biểu của bạn hoàn toàn hợp lệ, **KHÔNG BỊ TRÙNG LỊCH** giữa {effectiveRegisteredSections.Count} lớp học phần đã đăng ký.");
+                            }
+                        }
+                        advice.AiMessage = sbConflict.ToString();
+                        return;
+                    }
+
                     var sb = new StringBuilder();
                     if (isEnglish)
                     {
@@ -1419,9 +1523,79 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     ? string.Join(", ", prereqCourses.Select(c => $"**{c.CourseName} ({c.CourseCode})**"))
                     : (isEnglish ? "None (free to register)" : "Không yêu cầu (sinh viên có thể đăng ký tự do)");
 
+                // Nếu câu hỏi đối chiếu cả Giảng viên và Môn học: "Thầy Hà Ngọc Long có dạy môn Lập trình Web không?"
+                if (!string.IsNullOrEmpty(matchedInstructorName))
+                {
+                    var instructorSectionsForCourse = courseSections.Where(s => IsInstructorMatch(s.Instructor, matchedInstructorName)).ToList();
+                    var sbInstCourse = new StringBuilder();
+                    if (isEnglish)
+                    {
+                        sbInstCourse.AppendLine($"### 👨‍🏫 Lecturer & Course Lookup (Semester {semester}):");
+                        sbInstCourse.AppendLine($"- Lecturer: **{matchedInstructorName}**");
+                        sbInstCourse.AppendLine($"- Course: **{matchedCourse.CourseName}** (`{matchedCourse.CourseCode}` - {matchedCourse.Credits} Credits)");
+                        sbInstCourse.AppendLine();
+
+                        if (instructorSectionsForCourse.Any())
+                        {
+                            sbInstCourse.AppendLine($"✅ **YES.** Lecturer **{matchedInstructorName}** currently teaches **{instructorSectionsForCourse.Count} section(s)** of **{matchedCourse.CourseName}**:");
+                            sbInstCourse.AppendLine();
+                            foreach (var s in instructorSectionsForCourse)
+                            {
+                                int remain = Math.Max(0, s.MaxCapacity - s.CurrentEnrollment);
+                                sbInstCourse.AppendLine($"- Class `{s.SectionCode}`: {FormatScheduleDetailed(s, true)} | Room: {s.Room ?? "TBD"} | Slots: {s.CurrentEnrollment}/{s.MaxCapacity} ({remain} left)");
+                            }
+                        }
+                        else
+                        {
+                            sbInstCourse.AppendLine($"❌ **NO.** Lecturer **{matchedInstructorName}** does **NOT teach any section** of **{matchedCourse.CourseName}** in semester {semester}.");
+                            if (courseSections.Any())
+                            {
+                                sbInstCourse.AppendLine();
+                                sbInstCourse.AppendLine($"💡 This course is taught by other instructor(s): {string.Join(", ", courseSections.Select(s => $"**{s.Instructor}**").Distinct())}.");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        sbInstCourse.AppendLine($"### 👨‍🏫 Thông Tin Giảng Viên Phụ Trách Môn Học (Học kỳ {semester}):");
+                        sbInstCourse.AppendLine($"- Giảng viên: **{matchedInstructorName}**");
+                        sbInstCourse.AppendLine($"- Môn học: **{matchedCourse.CourseName}** (Mã môn: `{matchedCourse.CourseCode}` — **{matchedCourse.Credits} Tín chỉ**)");
+                        sbInstCourse.AppendLine();
+
+                        if (instructorSectionsForCourse.Any())
+                        {
+                            sbInstCourse.AppendLine($"✅ **CÓ.** Giảng viên **{matchedInstructorName}** hiện **CÓ PHỤ TRÁCH {instructorSectionsForCourse.Count} lớp học phần** môn **{matchedCourse.CourseName}**:");
+                            sbInstCourse.AppendLine();
+                            foreach (var s in instructorSectionsForCourse)
+                            {
+                                int remain = Math.Max(0, s.MaxCapacity - s.CurrentEnrollment);
+                                sbInstCourse.AppendLine($"- Mã lớp `{s.SectionCode}`: Lịch học **{FormatScheduleDetailed(s, false)}** | Phòng: **{s.Room ?? "Chưa xếp"}** | Sĩ số: **{s.CurrentEnrollment}/{s.MaxCapacity}** (Còn trống **{remain} chỗ**)");
+                            }
+                        }
+                        else
+                        {
+                            sbInstCourse.AppendLine($"❌ **KHÔNG.** Giảng viên **{matchedInstructorName}** hiện **KHÔNG PHỤ TRÁCH lớp nào** của môn **{matchedCourse.CourseName}** trong học kỳ {semester}.");
+                            if (courseSections.Any())
+                            {
+                                sbInstCourse.AppendLine();
+                                sbInstCourse.AppendLine($"💡 Môn học này hiện đang do các giảng viên sau phụ trách: {string.Join(", ", courseSections.Select(s => $"**{s.Instructor}**").Distinct())}.");
+                            }
+                        }
+                    }
+                    advice.AiMessage = sbInstCourse.ToString();
+                    return;
+                }
+
+                bool isCourseYn = IsYesNoQuery(qNorm, qLower);
                 var sb = new StringBuilder();
                 if (isEnglish)
                 {
+                    if (isCourseYn)
+                    {
+                        sb.AppendLine(courseSections.Any()
+                            ? $"✅ **YES.** In semester **{semester}**, there are **{courseSections.Count} section(s) currently open** for **{matchedCourse.CourseName}** (`{matchedCourse.CourseCode}`):\n"
+                            : $"❌ **NO.** In semester **{semester}**, there are **no open sections** scheduled for **{matchedCourse.CourseName}** (`{matchedCourse.CourseCode}`).\n");
+                    }
                     sb.AppendLine($"### 📘 Course Information: {matchedCourse.CourseName} (`{matchedCourse.CourseCode}`)");
                     sb.AppendLine();
                     sb.AppendLine($"- **Credits:** **{matchedCourse.Credits} Credits** (Estimated tuition: **{(matchedCourse.Credits * 450000):N0} VNĐ**)");
@@ -1461,6 +1635,12 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 }
                 else
                 {
+                    if (isCourseYn)
+                    {
+                        sb.AppendLine(courseSections.Any()
+                            ? $"✅ **CÓ.** Trong học kỳ **{semester}**, nhà trường **CÓ MỞ {courseSections.Count} lớp học phần** cho môn **{matchedCourse.CourseName}** (`{matchedCourse.CourseCode}`):\n"
+                            : $"❌ **KHÔNG.** Trong học kỳ **{semester}**, nhà trường **CHƯA MỞ lớp học phần nào** cho môn **{matchedCourse.CourseName}** (`{matchedCourse.CourseCode}`).\n");
+                    }
                     sb.AppendLine($"### 📘 Thông Tin Học Phần: {matchedCourse.CourseName} (`{matchedCourse.CourseCode}`)");
                     sb.AppendLine();
                     sb.AppendLine($"- **Số tín chỉ:** **{matchedCourse.Credits} Tín chỉ** (Học phí tạm tính: **{(matchedCourse.Credits * 450000):N0} VNĐ**)");
@@ -1533,11 +1713,14 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 int totalEnrolled = matchedInstructorSections.Sum(s => s.CurrentEnrollment);
                 int totalCap = matchedInstructorSections.Sum(s => s.MaxCapacity);
 
+                bool isInstYn = IsYesNoQuery(qNorm, qLower);
+
                 if (isEnglish)
                 {
                     sb.AppendLine($"### 👨‍🏫 Lecturer Information & Assigned Courses: **{matchedInstructorName}**");
                     sb.AppendLine();
-                    sb.AppendLine($"Lecturer **{matchedInstructorName}** currently teaches **{matchedInstructorSections.Count} class(es)** (Total enrollment: **{totalEnrolled}/{totalCap} students**):");
+                    string prefixEn = isInstYn ? "✅ **YES.** " : "";
+                    sb.AppendLine($"{prefixEn}Lecturer **{matchedInstructorName}** currently teaches **{matchedInstructorSections.Count} class(es)** (Total enrollment: **{totalEnrolled}/{totalCap} students**):");
                     sb.AppendLine();
 
                     var courseGroups = matchedInstructorSections.GroupBy(s => s.CourseId);
@@ -1560,7 +1743,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 {
                     sb.AppendLine($"### 👨‍🏫 Thông Tin Giảng Viên & Môn Học Phụ Trách: **{matchedInstructorName}**");
                     sb.AppendLine();
-                    sb.AppendLine($"Cố vấn AI đã truy vấn CSDL SQL Server thời gian thực. Giảng viên **{matchedInstructorName}** hiện phụ trách **{matchedInstructorSections.Count} lớp học phần** (Tổng sĩ số: **{totalEnrolled}/{totalCap} sinh viên**):");
+                    string prefixVi = isInstYn ? "✅ **CÓ.** " : "";
+                    sb.AppendLine($"{prefixVi}Cố vấn AI đã truy vấn CSDL SQL Server thời gian thực. Giảng viên **{matchedInstructorName}** hiện phụ trách **{matchedInstructorSections.Count} lớp học phần** (Tổng sĩ số: **{totalEnrolled}/{totalCap} sinh viên**):");
                     sb.AppendLine();
 
                     var courseGroups = matchedInstructorSections.GroupBy(s => s.CourseId);
@@ -1740,24 +1924,42 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 15: CÂU HỎI CHƯA ĐỦ THÔNG TIN HOẶC CHƯA HIỂU RÕ Ý ĐỊNH (FALLBACK)
-            // Tuyệt đối không dump danh sách câu hỏi SQL Server mẫu!
-            // Phản hồi tự nhiên, lịch sự và hỏi lại thông tin cần thiết.
+            // TRƯỜNG HỢP 15: CÂU HỎI HỌC THUẬT RỘNG / QUY CHẾ / TƯ VẤN (TỰ NHIÊN NHƯ AI THỰC THỤ)
+            // Trả lời đa dạng, đúng trọng tâm câu hỏi của sinh viên Trường Đại học Kinh tế - Đại học Huế.
             // =========================================================================
-            if (isEnglish)
+            if (TryAnswerGeneralAcademicKnowledge(qNorm, qLower, qRaw, isEnglish, currentStudent, semester, out string generalResponse))
             {
-                advice.AiMessage = $"I received your question: *\"{qRaw}\"*, but I don't have enough specific details to provide an accurate answer.\n\n" +
-                                   $"Could you please clarify what you need assistance with? (For example: portal navigation, course details, your personal timetable, lecturer info, or tuition fees).";
+                advice.AiMessage = generalResponse;
+                return;
             }
-            else
-            {
-                string greetingPrefix = currentStudent != null
-                    ? $"Chào bạn **{currentStudent.FullName}**! "
-                    : "Chào bạn! ";
 
-                advice.AiMessage = $"{greetingPrefix}Tôi đã nhận được câu hỏi: *\"{qRaw}\"*, nhưng chưa đủ thông tin cụ thể để phản hồi chính xác.\n\n" +
-                                   $"Bạn có thể diễn đạt rõ hơn bạn đang cần hỗ trợ điều gì không (ví dụ: hướng dẫn thao tác trên website, thông tin môn học, thời khóa biểu cá nhân, thông tin giảng viên hay học phí)?";
+            // Với câu hỏi quá ngắn hoặc cụt lủn (1-2 từ như "ngày mai", "tiết mấy", "học phí", "đăng ký", "cho hỏi chút") -> Hỏi lại lịch sự
+            bool isVeryShortAmbiguous = qNorm.Length <= 14 && (
+                qNorm == "ngay mai" || qNorm == "tiet may" || qNorm == "hoc phi" ||
+                qNorm == "dang ky" || qNorm == "cho hoi chut" || qNorm == "hoi chut" ||
+                qNorm == "lich hoc" || qNorm == "lop hoc" || qNorm == "cho hoi");
+
+            if (isVeryShortAmbiguous)
+            {
+                if (isEnglish)
+                {
+                    advice.AiMessage = $"I received your question: *\"{qRaw}\"*, but I don't have enough specific details to provide an accurate answer.\n\n" +
+                                       $"Could you please clarify what you need assistance with? (For example: portal navigation, course details, your personal timetable, lecturer info, or tuition fees).";
+                }
+                else
+                {
+                    string greetingPrefix = currentStudent != null
+                        ? $"Chào bạn **{currentStudent.FullName}**! "
+                        : "Chào bạn! ";
+
+                    advice.AiMessage = $"{greetingPrefix}Tôi đã nhận được câu hỏi: *\"{qRaw}\"*, nhưng chưa đủ thông tin cụ thể để phản hồi chính xác.\n\n" +
+                                       $"Bạn có thể diễn đạt rõ hơn bạn đang cần hỗ trợ điều gì không (ví dụ: hướng dẫn thao tác trên website, thông tin môn học, thời khóa biểu cá nhân, thông tin giảng viên hay học phí)?";
+                }
+                return;
             }
+
+            // Với các câu hỏi khác: Phản hồi thông minh, chuyên nghiệp, đúng trọng tâm như AI cố vấn thực thụ
+            advice.AiMessage = GenerateSynthesizedAiAcademicResponse(qRaw, qNorm, qLower, isEnglish, currentStudent, semester);
         }
 
         /// <summary>

@@ -672,6 +672,202 @@ namespace CourseRegistration.Tests
         }
 
         #endregion
+
+        #region 11. Hỗ Trợ Trả Lời Yes/No, Có/Không & Mở Rộng Tri Thức Học Thuật Đa Dạng
+
+        [Theory]
+        [InlineData("có")]
+        [InlineData("dạ có")]
+        [InlineData("vâng")]
+        [InlineData("đúng rồi")]
+        [InlineData("ok")]
+        [InlineData("yes")]
+        public async Task Test_Unit_Conversational_Affirmation_Yes_Ok_ReturnsPoliteGuidance(string affirmation)
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", affirmation);
+
+            Assert.NotNull(result);
+            Assert.False(string.IsNullOrWhiteSpace(result.AiMessage));
+            // Không được rơi vào câu fallback báo thiếu thông tin
+            Assert.DoesNotContain("chưa đủ thông tin cụ thể", result.AiMessage);
+            // Phải chứa phản hồi giao tiếp tích cực
+            Assert.True(result.AiMessage.Contains("Dạ vâng") || result.AiMessage.Contains("Yes") || result.AiMessage.Contains("rất sẵn sàng"));
+        }
+
+        [Theory]
+        [InlineData("không")]
+        [InlineData("dạ không")]
+        [InlineData("không nhé")]
+        [InlineData("no")]
+        public async Task Test_Unit_Conversational_Negation_No_ReturnsPoliteClosing(string negation)
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", negation);
+
+            Assert.NotNull(result);
+            Assert.False(string.IsNullOrWhiteSpace(result.AiMessage));
+            Assert.DoesNotContain("chưa đủ thông tin cụ thể", result.AiMessage);
+            Assert.True(result.AiMessage.Contains("không có vấn đề gì") || result.AiMessage.Contains("No problem") || result.AiMessage.Contains("hiểu ý"));
+        }
+
+        [Fact]
+        public async Task Test_Unit_YesNoQuery_StudentLecturerCrossCheck_ExplicitYesNo()
+        {
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 1,
+                Username = "admin",
+                FullName = "Admin",
+                Role = "Admin"
+            });
+
+            // Nguyễn Văn Tuấn CÓ đăng ký môn của TS. Hà Ngọc Long
+            var resultYes = await useCase.ExecuteAsync(0, "2026_HK1", "Sinh viên Nguyễn Văn Tuấn có đăng ký môn nào của thầy Hà Ngọc Long không?");
+            Assert.NotNull(resultYes);
+            Assert.Contains("CÓ.", resultYes.AiMessage);
+            Assert.Contains("Nguyễn Văn Tuấn", resultYes.AiMessage);
+            Assert.Contains("Hà Ngọc Long", resultYes.AiMessage);
+            Assert.Contains("WEB301_01", resultYes.AiMessage);
+
+            // Trần Thị Mai KHÔNG đăng ký môn nào của TS. Hà Ngọc Long
+            var resultNo = await useCase.ExecuteAsync(0, "2026_HK1", "Sinh viên Trần Thị Mai có đăng ký môn nào của thầy Hà Ngọc Long không?");
+            Assert.NotNull(resultNo);
+            Assert.Contains("KHÔNG.", resultNo.AiMessage);
+            Assert.Contains("Trần Thị Mai", resultNo.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_YesNoQuery_SpecificDaySchedule_ExplicitYesNo()
+        {
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            // Thứ 2: Tuấn CÓ lịch học WEB301_01
+            var resultMon = await useCase.ExecuteAsync(1, "2026_HK1", "Thứ 2 tôi có học không?");
+            Assert.NotNull(resultMon);
+            Assert.Contains("CÓ.", resultMon.AiMessage);
+            Assert.Contains("WEB301_01", resultMon.AiMessage);
+
+            // Thứ 4: Tuấn KHÔNG có lịch học
+            var resultThu = await useCase.ExecuteAsync(1, "2026_HK1", "Thứ 4 tôi có học không?");
+            Assert.NotNull(resultThu);
+            Assert.Contains("KHÔNG.", resultThu.AiMessage);
+            Assert.Contains("không có lịch học nào", resultThu.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_YesNoQuery_CourseAvailability_ExplicitYesNo()
+        {
+            var useCase = CreateUseCase();
+
+            // Môn Lập trình Web CÓ mở lớp trong kỳ
+            var resultWeb = await useCase.ExecuteAsync(0, "2026_HK1", "Kỳ này có mở môn Lập trình Web không?");
+            Assert.NotNull(resultWeb);
+            Assert.Contains("CÓ.", resultWeb.AiMessage);
+            Assert.Contains("Lập trình Ứng dụng Web", resultWeb.AiMessage);
+            Assert.Contains("WEB301_01", resultWeb.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_YesNoQuery_LecturerCourseAssignment_ExplicitYesNo()
+        {
+            var useCase = CreateUseCase();
+
+            // Thầy Hà Ngọc Long CÓ dạy môn Lập trình Web
+            var resultYes = await useCase.ExecuteAsync(0, "2026_HK1", "Thầy Hà Ngọc Long có dạy môn Lập trình Web không?");
+            Assert.NotNull(resultYes);
+            Assert.Contains("CÓ.", resultYes.AiMessage);
+            Assert.Contains("Hà Ngọc Long", resultYes.AiMessage);
+            Assert.Contains("WEB301_01", resultYes.AiMessage);
+
+            // Thầy Hà Ngọc Long KHÔNG dạy môn Cơ sở Dữ liệu (do TS. Phạm Thanh Tùng dạy)
+            var resultNo = await useCase.ExecuteAsync(0, "2026_HK1", "Thầy Hà Ngọc Long có dạy môn Cơ sở Dữ liệu không?");
+            Assert.NotNull(resultNo);
+            Assert.Contains("KHÔNG.", resultNo.AiMessage);
+            Assert.Contains("Hà Ngọc Long", resultNo.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_YesNoQuery_ScheduleConflictVerification_ExplicitYesNo()
+        {
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            // Thời khóa biểu của Tuấn hoàn toàn không trùng lịch
+            var result = await useCase.ExecuteAsync(1, "2026_HK1", "Lịch học của tôi có bị trùng không?");
+            Assert.NotNull(result);
+            Assert.Contains("KHÔNG.", result.AiMessage);
+            Assert.Contains("KHÔNG BỊ TRÙNG LỊCH", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_GeneralAcademicKnowledge_MajorsAtHueUniversityOfEconomics()
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Trường Đại học Kinh tế Huế có những ngành nào?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Trường Đại học Kinh tế – Đại học Huế", result.AiMessage);
+            Assert.Contains("Tin học Kinh tế", result.AiMessage);
+            Assert.Contains("Hệ thống thông tin quản lý", result.AiMessage);
+            Assert.Contains("Thương mại điện tử", result.AiMessage);
+            Assert.Contains("Quản trị kinh doanh", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_GeneralAcademicKnowledge_GpaCpaCalculationAndGradingScale()
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Cách tính điểm GPA thang điểm 4 như thế nào?");
+
+            Assert.NotNull(result);
+            Assert.Contains("thang điểm 4", result.AiMessage);
+            Assert.Contains("Điểm A", result.AiMessage);
+            Assert.Contains("Điểm F", result.AiMessage);
+            Assert.Contains("GPA", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_GeneralAcademicKnowledge_RegistrationTipsAndTricks()
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Mẹo đăng ký tín chỉ nhanh?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Bí Quyết", result.AiMessage);
+            Assert.Contains("Giỏ đăng ký", result.AiMessage);
+            Assert.Contains("tiên quyết", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_GeneralAcademicKnowledge_ScholarshipRequirements()
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Làm thế nào để được xét học bổng khuyến khích học tập?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Học bổng Xuất sắc", result.AiMessage);
+            Assert.Contains("3.60", result.AiMessage);
+            Assert.Contains("Điểm rèn luyện", result.AiMessage);
+        }
+
+        #endregion
     }
 
     /// <summary>

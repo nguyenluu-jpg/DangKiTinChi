@@ -86,6 +86,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 var allSectionsAcrossSemesters = (await _sectionRepository.GetAllSectionsAsync()).ToList();
                 var allPrerequisites = (await _courseRepository.GetAllPrerequisitesAsync()).ToList();
                 var allStudents = (await _studentRepository.GetAllStudentsAsync()).ToList();
+                var allSemesterEnrollments = (await _enrollmentRepository.GetEnrollmentsBySemesterAsync(semester)).ToList();
 
                 Student? student = null;
                 var completedCourses = new List<CompletedCourse>();
@@ -148,7 +149,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                         string systemPrompt;
                         if (currentRole == "Admin")
                         {
-                            systemPrompt = BuildAdminSystemPrompt(allSectionsAcrossSemesters, allCourses, allStudents, semester);
+                            systemPrompt = BuildAdminSystemPrompt(allSectionsAcrossSemesters, allCourses, allStudents, semester, allSemesterEnrollments);
                         }
                         else if (currentRole == "Student" && student != null)
                         {
@@ -160,7 +161,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                                 allSectionsAcrossSemesters,
                                 allCourses,
                                 allPrerequisites,
-                                semester);
+                                semester,
+                                allSemesterEnrollments);
                         }
                         else
                         {
@@ -258,7 +260,9 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                         conversationHistory,
                         allSectionsAcrossSemesters,
                         _registrationPeriodService,
-                        _enrollmentRepository);
+                        _enrollmentRepository,
+                        _studentRepository,
+                        allSemesterEnrollments);
                 }
             }
             catch (Exception ex)
@@ -295,7 +299,9 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             List<AiConversationMessage>? conversationHistory,
             List<Section>? allSectionsAcrossSemesters,
             IRegistrationPeriodService? registrationPeriodService,
-            IEnrollmentRepository enrollmentRepository)
+            IEnrollmentRepository enrollmentRepository,
+            IStudentRepository? studentRepository = null,
+            List<Enrollment>? allSemesterEnrollments = null)
         {
             var sectionsPool = allSectionsAcrossSemesters != null && allSectionsAcrossSemesters.Any()
                 ? allSectionsAcrossSemesters
@@ -543,10 +549,6 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 // Có nhắc đích danh một sinh viên trong câu hỏi
                 targetStudent = matchedExplicitStudent;
                 if (currentStudent != null && matchedExplicitStudent.StudentId != currentStudent.StudentId)
-                {
-                    isTargetingOtherStudent = true;
-                }
-                else if (currentStudent == null && currentRole != "Admin")
                 {
                     isTargetingOtherStudent = true;
                 }
@@ -1091,7 +1093,11 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                         return;
                     }
 
-                    bool asksConflict = qNorm.Contains("trung lich") || qNorm.Contains("trung tiet") || qNorm.Contains("trung gio") || qLower.Contains("conflict") || qLower.Contains("overlap");
+                    bool asksConflict =
+                        qNorm.Contains("trung lich") || qNorm.Contains("trung tiet") || qNorm.Contains("trung gio") ||
+                        qNorm.Contains("bi trung") || qNorm.Contains("co trung") || qNorm.Contains("trung khong") ||
+                        (qNorm.Contains("trung") && (qNorm.Contains("lich") || qNorm.Contains("tiet") || qNorm.Contains("gio"))) ||
+                        qLower.Contains("conflict") || qLower.Contains("overlap");
                     if (asksConflict)
                     {
                         var conflicts = FindScheduleConflicts(effectiveRegisteredSections);
@@ -1199,32 +1205,53 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             bool asksGrades = qNorm.Contains("diem cua em") || qNorm.Contains("diem cua toi") || qNorm.Contains("hoc ba") ||
                               qNorm.Contains("mon da hoc") || qNorm.Contains("mon da qua") || qNorm.Contains("mon tich luy") ||
                               qNorm.Contains("ket qua hoc tap") || qNorm.Contains("diem f") || qNorm.Contains("mon rot") ||
-                              qLower.Contains("my grade") || qLower.Contains("transcript") || qLower.Contains("completed course");
+                              qNorm.Contains("bang diem") || qNorm.Contains("diem so") ||
+                              qLower.Contains("my grade") || qLower.Contains("transcript") || qLower.Contains("completed course") ||
+                              ((qNorm.Contains("diem") || qNorm.Contains("hoc ba") || qNorm.Contains("bang diem")) && (matchedExplicitStudent != null || targetStudent != null));
 
             if (asksGrades)
             {
-                if (currentStudent == null)
+                var targetGradeStudent = matchedExplicitStudent ?? targetStudent ?? currentStudent;
+                if (targetGradeStudent == null)
                 {
                     advice.AiMessage = isEnglish
-                        ? "👋 Please log in with your student account to view your academic transcripts and completed courses."
+                        ? "👋 Please log in with your student account or provide a Student ID to view academic transcripts and completed courses."
                         : "👋 **Chào bạn! Bạn hiện đang ở chế độ Khách (chưa đăng nhập).**\n\nĐể xem học bạ, điểm số tích lũy cá nhân, vui lòng bấm nút **Đăng nhập** nhé!";
                     advice.SuggestLogin = true;
                     return;
                 }
 
+                if (currentRole == "Student" && currentStudent != null && targetGradeStudent.StudentId != currentStudent.StudentId)
+                {
+                    advice.AiMessage = isEnglish
+                        ? $"🔒 **Privacy Alert:** You are not authorized to view academic records of other students."
+                        : $"🔒 **Thông Báo Bảo Mật:** Bạn không có quyền truy cập bảng điểm của sinh viên khác ({targetGradeStudent.FullName}).";
+                    return;
+                }
+
+                var targetCompletedCourses = completedCourses;
+                if (studentRepository != null && targetGradeStudent.StudentId != currentStudent?.StudentId)
+                {
+                    try
+                    {
+                        targetCompletedCourses = (studentRepository.GetCompletedCoursesByStudentIdAsync(targetGradeStudent.StudentId).GetAwaiter().GetResult()).ToList();
+                    }
+                    catch { }
+                }
+
                 var sb = new StringBuilder();
                 if (isEnglish)
                 {
-                    sb.AppendLine($"### 📊 Academic Record & Transcripts: {currentStudent.FullName} (`{currentStudent.StudentCode}`)");
-                    sb.AppendLine($"- **Major:** {currentStudent.Major} | **Cohort:** {currentStudent.AcademicYear}");
-                    sb.AppendLine($"- **Max credits allowance:** **{currentStudent.MaxCreditsPerSemester} Credits/semester**");
+                    sb.AppendLine($"### 📊 Academic Record & Transcripts: {targetGradeStudent.FullName} (`{targetGradeStudent.StudentCode}`)");
+                    sb.AppendLine($"- **Major:** {targetGradeStudent.Major} | **Cohort:** {targetGradeStudent.AcademicYear}");
+                    sb.AppendLine($"- **Max credits allowance:** **{targetGradeStudent.MaxCreditsPerSemester} Credits/semester**");
                     sb.AppendLine();
 
-                    if (completedCourses.Any())
+                    if (targetCompletedCourses.Any())
                     {
-                        sb.AppendLine($"You have completed **{completedCourses.Count} course(s)**:");
+                        sb.AppendLine($"Completed **{targetCompletedCourses.Count} course(s)**:");
                         sb.AppendLine();
-                        foreach (var c in completedCourses)
+                        foreach (var c in targetCompletedCourses)
                         {
                             string status = c.Grade >= 5.0 ? "✅ Passed" : "❌ Failed";
                             sb.AppendLine($"- **{c.Course?.CourseCode}** — {c.Course?.CourseName} ({c.Course?.Credits}TC): **Grade {c.Grade:0.0}** ({status} - Semester {c.Semester})");
@@ -1237,16 +1264,16 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 }
                 else
                 {
-                    sb.AppendLine($"### 📊 Kết Quả Tích Lũy & Học Bạ Của Sinh Viên: {currentStudent.FullName} (`{currentStudent.StudentCode}`)");
-                    sb.AppendLine($"- **Chuyên ngành:** {currentStudent.Major} | **Khóa học:** {currentStudent.AcademicYear}");
-                    sb.AppendLine($"- **Hạn mức số tín chỉ tối đa:** **{currentStudent.MaxCreditsPerSemester} Tín chỉ / kỳ**");
+                    sb.AppendLine($"### 📊 Kết Quả Tích Lũy & Học Bạ Của Sinh Viên: {targetGradeStudent.FullName} (`{targetGradeStudent.StudentCode}`)");
+                    sb.AppendLine($"- **Chuyên ngành:** {targetGradeStudent.Major} | **Khóa học:** {targetGradeStudent.AcademicYear}");
+                    sb.AppendLine($"- **Hạn mức số tín chỉ tối đa:** **{targetGradeStudent.MaxCreditsPerSemester} Tín chỉ / kỳ**");
                     sb.AppendLine();
 
-                    if (completedCourses.Any())
+                    if (targetCompletedCourses.Any())
                     {
-                        sb.AppendLine($"Bạn đã hoàn thành **{completedCourses.Count} học phần** nền tảng:");
+                        sb.AppendLine($"Đã hoàn thành **{targetCompletedCourses.Count} học phần** nền tảng:");
                         sb.AppendLine();
-                        foreach (var c in completedCourses)
+                        foreach (var c in targetCompletedCourses)
                         {
                             string status = c.Grade >= 5.0 ? "✅ Đạt" : "❌ Chưa đạt";
                             sb.AppendLine($"- **{c.Course?.CourseCode}** — {c.Course?.CourseName} ({c.Course?.Credits}TC): **{c.Grade:0.0} điểm** ({status} - Kỳ {c.Semester})");
@@ -1254,7 +1281,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     }
                     else
                     {
-                        sb.AppendLine("- *Bạn chưa có dữ liệu môn học đã hoàn thành trong hệ thống.*");
+                        sb.AppendLine("- *Chưa có dữ liệu môn học đã hoàn thành trong hệ thống.*");
                     }
                 }
 
@@ -1290,17 +1317,166 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             }
 
             // =========================================================================
-            // TRƯỜNG HỢP 6: HỌC PHÍ & VIETQR
+            // TRƯỜNG HỢP 6: HỌC PHÍ & TÌNH TRẠNG THANH TOÁN (TUITION & PAYMENT STATUS)
             // =========================================================================
-            bool isTuition = qNorm.Contains("hoc phi") || qNorm.Contains("bao nhieu tien") || qNorm.Contains("dong tien") ||
+            bool asksPaymentStatus = qNorm.Contains("dong chua") || qNorm.Contains("nop chua") || 
+                                     qNorm.Contains("thanh toan chua") || qNorm.Contains("da dong") || 
+                                     qNorm.Contains("da nop") || qNorm.Contains("chua dong") || 
+                                     qNorm.Contains("chua nop") || qNorm.Contains("con no") || 
+                                     qNorm.Contains("no hoc phi") || qNorm.Contains("no tien") || 
+                                     qNorm.Contains("tinh trang hoc phi") || qNorm.Contains("trang thai hoc phi") ||
+                                     qNorm.Contains("kiem tra hoc phi") || qNorm.Contains("hoan tat hoc phi") ||
+                                     qNorm.Contains("dong tien chua") || qNorm.Contains("nop tien chua") ||
+                                     qNorm.Contains("dong hoc phi chua") || qNorm.Contains("nop hoc phi chua") ||
+                                     qLower.Contains("paid yet") || qLower.Contains("has paid") || 
+                                     qLower.Contains("is paid") || qLower.Contains("unpaid") || 
+                                     qLower.Contains("payment status") || qLower.Contains("tuition status") ||
+                                     (qNorm.Contains("hoc phi") && (qNorm.Contains("chua") || qNorm.Contains("roi") || qNorm.Contains("xong")));
+
+            bool isTuition = qNorm.Contains("hoc phi") || qNorm.Contains("tien hoc") || qNorm.Contains("gia tin chi") ||
+                             qNorm.Contains("dong tien") || qNorm.Contains("thanh toan") || qNorm.Contains("gia bao nhieu") ||
+                             qNorm.Contains("bao nhieu tien") || qNorm.Contains("don gia") || qNorm.Contains("chuyen tien") ||
                              qNorm.Contains("nop tien") || qNorm.Contains("ngan hang") || qNorm.Contains("stk") ||
                              qNorm.Contains("so tai khoan") || qNorm.Contains("vietqr") || qNorm.Contains("mb bank") ||
                              qNorm.Contains("chuyen khoan") || qLower.Contains("tuition") || qLower.Contains("fee") ||
-                             qLower.Contains("payment") || qLower.Contains("how much is");
+                             qLower.Contains("payment") || qLower.Contains("how much is") || asksPaymentStatus;
 
             if (isTuition)
             {
                 var sb = new StringBuilder();
+                var evalTuitionStudent = matchedExplicitStudent ?? targetStudent ?? currentStudent;
+
+                if (asksPaymentStatus)
+                {
+                    if (evalTuitionStudent == null)
+                    {
+                        if (isEnglish)
+                        {
+                            advice.AiMessage = "👋 **You are currently browsing as a Guest (not logged in).**\n\nTo check your personalized tuition payment status (Paid vs Unpaid), please click **Login** with your student account, or specify your Full Name / Student ID (e.g. `SV21001` or `Nguyen Van Tuan`) in your question!";
+                            advice.SuggestLogin = true;
+                        }
+                        else
+                        {
+                            advice.AiMessage = "👋 **Chào bạn! Bạn hiện đang ở chế độ Khách (chưa đăng nhập).**\n\nĐể Cố vấn AI kiểm tra chính xác trạng thái đóng học phí (đã đóng hay chưa đóng), vui lòng bấm nút **Đăng nhập** tài khoản sinh viên hoặc nhập kèm Họ và tên / Mã số sinh viên (ví dụ: `SV21001` hoặc `Nguyễn Văn Tuấn`) để hệ thống tra cứu CSDL cho bạn nhé!";
+                            advice.SuggestLogin = true;
+                        }
+                        return;
+                    }
+
+                    // Tìm phiếu đăng ký của sinh viên
+                    var studentEnrollment = allSemesterEnrollments?.FirstOrDefault(e => e.StudentId == evalTuitionStudent.StudentId && (e.Semester == semester || (semester == "2026_HK1" && e.Semester == "2025_HK1")) && e.Status != "Cancelled")
+                        ?? allSemesterEnrollments?.FirstOrDefault(e => e.StudentId == evalTuitionStudent.StudentId && e.Status != "Cancelled");
+
+                    var targetRegSections = (evalTuitionStudent.StudentId == currentStudent?.StudentId)
+                        ? registeredSections
+                        : enrollmentRepository.GetRegisteredSectionsByStudentAsync(evalTuitionStudent.StudentId, semester).GetAwaiter().GetResult().ToList();
+
+                    int totalRegCredits = targetRegSections.Sum(s => s.Course?.Credits ?? 0);
+                    if (totalRegCredits == 0 && studentEnrollment != null && studentEnrollment.TotalCredits > 0)
+                    {
+                        totalRegCredits = studentEnrollment.TotalCredits;
+                    }
+
+                    long totalTuition = (long)totalRegCredits * 450000;
+                    if (totalTuition == 0 && studentEnrollment != null && studentEnrollment.TuitionFee > 0)
+                    {
+                        totalTuition = (long)studentEnrollment.TuitionFee;
+                    }
+
+                    bool isPaid = studentEnrollment?.IsPaid == true;
+                    bool asksDebt = qNorm.Contains("con no") || qNorm.Contains("co no") || qNorm.Contains("no hoc phi") || qLower.Contains("owe") || qLower.Contains("debt");
+
+                    if (isEnglish)
+                    {
+                        if (asksDebt)
+                        {
+                            if (isPaid)
+                            {
+                                sb.AppendLine($"❌ **NO.** Student **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`) **has zero outstanding tuition debt** for semester **{semester}** (fully paid {totalTuition:N0} VNĐ successfully).");
+                            }
+                            else
+                            {
+                                sb.AppendLine($"✅ **YES.** Student **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`) currently **owes tuition fee** for semester **{semester}**: **{totalTuition:N0} VNĐ** ({totalRegCredits} credits registered).");
+                                sb.AppendLine($"- **Status:** **Unpaid**.");
+                                sb.AppendLine($"- **Payment channel:** MB Bank VietQR Napas24/7 (Account: 101705201967 - TRUONG DAI HOC KINH TE HUE).");
+                            }
+                        }
+                        else
+                        {
+                            if (isPaid)
+                            {
+                                sb.AppendLine($"✅ **PAID.** Student **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`) has **successfully completed** the tuition fee payment for semester **{semester}**!");
+                                sb.AppendLine();
+                                sb.AppendLine($"- **Registered credits:** **{totalRegCredits} Credits**");
+                                sb.AppendLine($"- **Tuition paid:** **{totalTuition:N0} VNĐ** (450,000 VNĐ / credit)");
+                                sb.AppendLine($"- **Payment date:** **{(studentEnrollment?.PaymentDate.HasValue == true ? studentEnrollment.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm:ss") : "Recorded")}**");
+                                sb.AppendLine($"- **Payment method:** **{(!string.IsNullOrEmpty(studentEnrollment?.PaymentMethod) ? studentEnrollment.PaymentMethod : "VietQR Napas247")}**");
+                                sb.AppendLine($"- **Transaction reference:** **{(!string.IsNullOrEmpty(studentEnrollment?.TransactionReference) ? studentEnrollment.TransactionReference : "VQR-CONFIRMED")}**");
+                                sb.AppendLine($"- **Enrollment status:** **{(studentEnrollment?.Status ?? "Confirmed")}**");
+                            }
+                            else
+                            {
+                                sb.AppendLine($"❌ **UNPAID.** Student **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`) **has not paid** the tuition fee for semester **{semester}** yet!");
+                                sb.AppendLine();
+                                sb.AppendLine($"- **Registered credits:** **{totalRegCredits} Credits**");
+                                sb.AppendLine($"- **Tuition due:** **{totalTuition:N0} VNĐ** (Unit price 450,000 VNĐ / credit)");
+                                sb.AppendLine($"- **Payment status:** **Unpaid**");
+                                sb.AppendLine($"- **Payment instructions:** Please visit `/tuition` to scan the dynamic VietQR MB Bank code for 24/7 real-time settlement.");
+                                sb.AppendLine($"- **University Account:** 101705201967 - MB Bank, Beneficiary: TRUONG DAI HOC KINH TE HUE.");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (asksDebt)
+                        {
+                            if (isPaid)
+                            {
+                                sb.AppendLine($"❌ **KHÔNG.** Sinh viên **{evalTuitionStudent.FullName}** (MSSV: `{evalTuitionStudent.StudentCode}`) **không còn nợ học phí** học kỳ **{semester}** (đã thanh toán toàn bộ **{totalTuition:N0} VNĐ** thành công)!");
+                            }
+                            else
+                            {
+                                sb.AppendLine($"✅ **CÓ.** Sinh viên **{evalTuitionStudent.FullName}** (MSSV: `{evalTuitionStudent.StudentCode}`) hiện **đang còn nợ học phí** học kỳ **{semester}** là **{totalTuition:N0} VNĐ** (tương ứng **{totalRegCredits} tín chỉ** đã đăng ký)!");
+                                sb.AppendLine();
+                                sb.AppendLine($"- **Trạng thái:** **Chưa thanh toán (Unpaid)**.");
+                                sb.AppendLine($"- **Kênh nộp tiền:** Quét mã VietQR tại trang **'Thanh toán học phí'** (`/tuition`) hoặc chuyển khoản tới MB Bank STK **101705201967** (TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ).");
+                            }
+                        }
+                        else
+                        {
+                            if (isPaid)
+                            {
+                                sb.AppendLine($"✅ **ĐÃ ĐÓNG.** Sinh viên **{evalTuitionStudent.FullName}** (MSSV: `{evalTuitionStudent.StudentCode}`) đã **hoàn tất thanh toán học phí** học kỳ **{semester}**!");
+                                sb.AppendLine();
+                                sb.AppendLine($"- **Số tín chỉ đã đăng ký:** **{totalRegCredits} Tín chỉ**");
+                                sb.AppendLine($"- **Số tiền học phí đã nộp:** **{totalTuition:N0} VNĐ** (Đơn giá 450.000 VNĐ / tín chỉ)");
+                                sb.AppendLine($"- **Thời gian thanh toán:** **{(studentEnrollment?.PaymentDate.HasValue == true ? studentEnrollment.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm:ss") : "Đã xác nhận thanh toán")}**");
+                                sb.AppendLine($"- **Phương thức thanh toán:** **{(!string.IsNullOrEmpty(studentEnrollment?.PaymentMethod) ? studentEnrollment.PaymentMethod : "VietQR Napas247")}**");
+                                sb.AppendLine($"- **Mã giao dịch / Mã tham chiếu:** **{(!string.IsNullOrEmpty(studentEnrollment?.TransactionReference) ? studentEnrollment.TransactionReference : "VQR-CONFIRMED-2026")}**");
+                                sb.AppendLine($"- **Trạng thái phiếu đăng ký:** **{(studentEnrollment?.Status ?? "Confirmed")}**");
+                            }
+                            else
+                            {
+                                sb.AppendLine($"❌ **CHƯA ĐÓNG.** Sinh viên **{evalTuitionStudent.FullName}** (MSSV: `{evalTuitionStudent.StudentCode}`) hiện **chưa thanh toán** học phí học kỳ **{semester}**!");
+                                sb.AppendLine();
+                                sb.AppendLine($"- **Số tín chỉ đã đăng ký:** **{totalRegCredits} Tín chỉ**");
+                                sb.AppendLine($"- **Tổng số tiền học phí cần nộp:** **{totalTuition:N0} VNĐ** (Đơn giá quy định: **450.000 VNĐ / tín chỉ**)");
+                                sb.AppendLine($"- **Trạng thái công nợ:** **Chưa thanh toán (Unpaid)**");
+                                sb.AppendLine();
+                                sb.AppendLine("- **Hướng dẫn hoàn tất học phí:**");
+                                sb.AppendLine("  + Bạn vào mục **'Thanh toán học phí'** (`/tuition`) trên thanh menu để quét mã VietQR MB Bank tự động gạch nợ tức thì 24/7.");
+                                sb.AppendLine("  + Hoặc chuyển khoản tới tài khoản thu học phí nhà trường: **101705201967** - **MB Bank (Ngân hàng Quân Đội)**.");
+                                sb.AppendLine("  + Đơn vị thụ hưởng: **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**.");
+                                sb.AppendLine($"  + Cú pháp chuyển khoản: `[{evalTuitionStudent.StudentCode}] HP {semester}`");
+                            }
+                        }
+                    }
+
+                    advice.AiMessage = sb.ToString();
+                    return;
+                }
+
+                // Không hỏi tình trạng đóng tiền -> Hiển thị quy định mức thu học phí chuẩn
                 if (isEnglish)
                 {
                     sb.AppendLine("### 💰 Tuition Fee Regulations & Online VietQR Payment 2026 - 2027:");
@@ -1313,13 +1489,15 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     sb.AppendLine("  + Standard semester (14 credits): **6,300,000 VNĐ**");
                     sb.AppendLine();
 
-                    if (currentStudent != null && registeredSections.Any())
+                    if (evalTuitionStudent != null && registeredSections.Any())
                     {
                         int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
                         long totalTuition = (long)totalRegCredits * 450000;
-                        sb.AppendLine($"💳 **Your personalized tuition ({currentStudent.FullName} - {currentStudent.StudentCode}):**");
+                        var studentEnrollment = allSemesterEnrollments?.FirstOrDefault(e => e.StudentId == evalTuitionStudent.StudentId && e.Status != "Cancelled");
+                        string statusLabel = studentEnrollment?.IsPaid == true ? "✅ Paid" : "❌ Unpaid";
+                        sb.AppendLine($"💳 **Your personalized tuition ({evalTuitionStudent.FullName} - {evalTuitionStudent.StudentCode}):**");
                         sb.AppendLine($"- Registered credits: **{totalRegCredits} Credits**");
-                        sb.AppendLine($"- Total semester tuition: **{totalTuition:N0} VNĐ**");
+                        sb.AppendLine($"- Total semester tuition: **{totalTuition:N0} VNĐ** (Status: **{statusLabel}**)");
                         sb.AppendLine();
                     }
 
@@ -1341,13 +1519,15 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     sb.AppendLine("  + Học kỳ tiêu chuẩn (14 tín chỉ): **6.300.000 VNĐ**");
                     sb.AppendLine();
 
-                    if (currentStudent != null && registeredSections.Any())
+                    if (evalTuitionStudent != null && registeredSections.Any())
                     {
                         int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
                         long totalTuition = (long)totalRegCredits * 450000;
-                        sb.AppendLine($"💳 **Học phí cá nhân của bạn ({currentStudent.FullName} - {currentStudent.StudentCode}):**");
+                        var studentEnrollment = allSemesterEnrollments?.FirstOrDefault(e => e.StudentId == evalTuitionStudent.StudentId && e.Status != "Cancelled");
+                        string statusLabel = studentEnrollment?.IsPaid == true ? "✅ Đã đóng" : "❌ Chưa đóng";
+                        sb.AppendLine($"💳 **Học phí cá nhân của bạn ({evalTuitionStudent.FullName} - {evalTuitionStudent.StudentCode}):**");
                         sb.AppendLine($"- Tổng số tín chỉ đã đăng ký: **{totalRegCredits} Tín chỉ**");
-                        sb.AppendLine($"- Tổng học phí học kỳ {semester}: **{totalTuition:N0} VNĐ**");
+                        sb.AppendLine($"- Tổng học phí học kỳ {semester}: **{totalTuition:N0} VNĐ** (Trạng thái: **{statusLabel}**)");
                         sb.AppendLine();
                     }
 
@@ -1357,6 +1537,93 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     sb.AppendLine("  + Đơn vị thụ hưởng: **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**");
                     sb.AppendLine();
                     sb.AppendLine("- **Thanh toán thông minh qua VietQR:** Hệ thống tự động tạo mã VietQR Napas247 điền sẵn số tiền và nội dung `[MSSV] HP 2026_HK1`, gạch nợ tức thì 24/7.");
+                }
+
+                advice.AiMessage = sb.ToString();
+                return;
+            }
+
+            // =========================================================================
+            // TRƯỜNG HỢP 6.1: HỒ SƠ & THÔNG TIN CÁ NHÂN SINH VIÊN (STUDENT PROFILE)
+            // =========================================================================
+            bool isStudentProfileQuery =
+                (matchedExplicitStudent != null || (currentStudent != null && (qNorm.Contains("thong tin cua toi") || qNorm.Contains("ho so cua toi") || qNorm.Contains("thong tin ca nhan") || qNorm.Contains("mssv cua toi") || qNorm.Contains("nganh cua toi")))) &&
+                (qNorm.Contains("thong tin") || qNorm.Contains("nganh gi") || qNorm.Contains("nganh nao") ||
+                 qNorm.Contains("nganh hoc") || qNorm.Contains("chuyen nganh") || qNorm.Contains("khoa may") ||
+                 qNorm.Contains("khoa hoc") || qNorm.Contains("la ai") || qNorm.Contains("email") ||
+                 qNorm.Contains("so dien thoai") || qNorm.Contains("sdt") || qNorm.Contains("mssv") ||
+                 qNorm.Contains("han muc") || qLower.Contains("profile") || qLower.Contains("who is") ||
+                 qLower.Contains("student info") || qLower.Contains("major"));
+
+            if (isStudentProfileQuery)
+            {
+                var profileStu = matchedExplicitStudent ?? currentStudent;
+                if (profileStu != null)
+                {
+                    var sb = new StringBuilder();
+                    if (isEnglish)
+                    {
+                        sb.AppendLine($"### 👤 Student Profile: **{profileStu.FullName}** (`{profileStu.StudentCode}`)");
+                        sb.AppendLine();
+                        sb.AppendLine($"- **Student ID (MSSV):** `{profileStu.StudentCode}`");
+                        sb.AppendLine($"- **Full Name:** **{profileStu.FullName}**");
+                        sb.AppendLine($"- **Academic Major:** **{profileStu.Major}**");
+                        sb.AppendLine($"- **Academic Cohort:** **{profileStu.AcademicYear}**");
+                        sb.AppendLine($"- **Maximum Credit Limit:** **{profileStu.MaxCreditsPerSemester} Credits/semester**");
+                        sb.AppendLine($"- **University Email:** `{profileStu.Email}`");
+                        sb.AppendLine($"- **Phone Number:** `{profileStu.PhoneNumber}`");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"### 👤 Thông Tin Hồ Sơ Sinh Viên: **{profileStu.FullName}** (`{profileStu.StudentCode}`)");
+                        sb.AppendLine();
+                        sb.AppendLine($"- **Mã số sinh viên (MSSV):** `{profileStu.StudentCode}`");
+                        sb.AppendLine($"- **Họ và tên:** **{profileStu.FullName}**");
+                        sb.AppendLine($"- **Ngành đào tạo:** **{profileStu.Major}**");
+                        sb.AppendLine($"- **Khóa đào tạo:** **{profileStu.AcademicYear}**");
+                        sb.AppendLine($"- **Hạn mức đăng ký:** **Tối đa {profileStu.MaxCreditsPerSemester} tín chỉ / học kỳ**");
+                        sb.AppendLine($"- **Email sinh viên:** `{profileStu.Email}`");
+                        sb.AppendLine($"- **Số điện thoại:** `{profileStu.PhoneNumber}`");
+                    }
+
+                    advice.AiMessage = sb.ToString();
+                    return;
+                }
+            }
+
+            // =========================================================================
+            // TRƯỜNG HỢP 6.2: DANH SÁCH MÔN ĐÃ ĐĂNG KÝ CỦA SINH VIÊN TRONG HỌC KỲ
+            // =========================================================================
+            bool isRegisteredListQuery =
+                (matchedExplicitStudent != null || (currentStudent != null && (hasPersonalPronoun || qNorm.Contains("da dang ky mon nao") || qNorm.Contains("mon da dang ky")))) &&
+                (qNorm.Contains("da dang ky") || qNorm.Contains("dang ky nhung mon") || qNorm.Contains("cac mon da dang ky") ||
+                 qNorm.Contains("phieu dang ky") || qNorm.Contains("ket qua dang ky") || qLower.Contains("registered courses") ||
+                 qLower.Contains("enrolled courses"));
+
+            if (isRegisteredListQuery && (matchedExplicitStudent != null || currentStudent != null))
+            {
+                var regStu = matchedExplicitStudent ?? currentStudent!;
+                var targetSections = (regStu.StudentId == currentStudent?.StudentId)
+                    ? registeredSections
+                    : enrollmentRepository.GetRegisteredSectionsByStudentAsync(regStu.StudentId, semester).GetAwaiter().GetResult().ToList();
+
+                var sb = new StringBuilder();
+                if (targetSections.Any())
+                {
+                    int totalCr = targetSections.Sum(s => s.Course?.Credits ?? 0);
+                    long totalFee = (long)totalCr * 450000;
+                    sb.AppendLine($"### 📋 Danh Sách Học Phần Đã Đăng Ký Kỳ {semester}: **{regStu.FullName}** (`{regStu.StudentCode}`)");
+                    sb.AppendLine($"- **Tổng số lớp học phần:** **{targetSections.Count} lớp** ({totalCr} tín chỉ, học phí: {totalFee:N0} VNĐ).");
+                    sb.AppendLine();
+                    foreach (var sec in targetSections)
+                    {
+                        sb.AppendLine($"- **Lớp `{sec.SectionCode}`** | Môn: **{sec.Course?.CourseCode} - {sec.Course?.CourseName}** ({sec.Course?.Credits}TC) | GV: **{sec.Instructor}** | Phòng: **{sec.Room}** | Lịch: {FormatSchedule(sec)}");
+                    }
+                }
+                else
+                {
+                    sb.AppendLine($"### 📋 Danh Sách Học Phần Đã Đăng Ký Kỳ {semester}: **{regStu.FullName}** (`{regStu.StudentCode}`)");
+                    sb.AppendLine($"- Sinh viên hiện **chưa đăng ký lớp học phần nào** trong học kỳ {semester}.");
                 }
 
                 advice.AiMessage = sb.ToString();
@@ -2284,16 +2551,27 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
         private static Student? FindMatchingStudent(string qNorm, string qLower, List<Student> allStudents)
         {
-            // 1. Khớp theo MSSV (e.g. SV21001, SV21002)
-            var mssvMatch = Regex.Match(qLower, @"\b(sv\d{5})\b");
+            if (allStudents == null || !allStudents.Any()) return null;
+
+            // 1. Khớp trực tiếp theo StudentCode
+            foreach (var stu in allStudents)
+            {
+                if (!string.IsNullOrWhiteSpace(stu.StudentCode) && qLower.Contains(stu.StudentCode.ToLowerInvariant()))
+                {
+                    return stu;
+                }
+            }
+
+            // 2. Khớp Regex MSSV (e.g. SV21001, SV 21001)
+            var mssvMatch = Regex.Match(qLower, @"\b(sv\s*?\d{3,8})\b");
             if (mssvMatch.Success)
             {
-                string code = mssvMatch.Groups[1].Value.ToUpperInvariant();
+                string code = mssvMatch.Groups[1].Value.Replace(" ", "").ToUpperInvariant();
                 var s = allStudents.FirstOrDefault(st => st.StudentCode.Equals(code, StringComparison.OrdinalIgnoreCase));
                 if (s != null) return s;
             }
 
-            // 2. Khớp theo họ tên đầy đủ
+            // 3. Khớp theo họ tên đầy đủ
             foreach (var stu in allStudents)
             {
                 string stuNorm = RemoveDiacritics(stu.FullName.ToLowerInvariant());
@@ -2819,7 +3097,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             List<Section> allSectionsAcrossSemesters,
             List<Course> allCourses,
             List<Prerequisite> allPrerequisites,
-            string semester)
+            string semester,
+            List<Enrollment>? allSemesterEnrollments = null)
         {
             var regSummary = registeredSections.Any()
                 ? string.Join("\n", registeredSections.Select(r => $"- Lớp `{r.SectionCode}` | Môn: {r.Course?.CourseCode} - {r.Course?.CourseName} ({r.Course?.Credits}TC) | GV: {r.Instructor} | Phòng: {r.Room} | Lịch: {FormatSchedule(r)}"))
@@ -2837,6 +3116,12 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
             long totalTuition = (long)totalRegCredits * 450000;
 
+            var studentEnrollment = allSemesterEnrollments?.FirstOrDefault(e => e.StudentId == student.StudentId && e.Status != "Cancelled");
+            bool isStudentPaid = studentEnrollment?.IsPaid == true;
+            string paymentDetail = isStudentPaid
+                ? $"ĐÃ HOÀN TẤT THANH TOÁN (Số tiền: {(studentEnrollment!.TuitionFee > 0 ? studentEnrollment.TuitionFee : totalTuition):N0} VNĐ, ngày: {studentEnrollment.PaymentDate:dd/MM/yyyy HH:mm}, qua: {studentEnrollment.PaymentMethod}, mã GD: {studentEnrollment.TransactionReference})"
+                : $"CHƯA THANH TOÁN (Còn nợ: {totalTuition:N0} VNĐ, hạn mức nộp qua VietQR Napas247 MB Bank: 101705201967)";
+
             return $@"Bạn là Cố vấn Học thuật AI của sinh viên {student.FullName} (MSSV: {student.StudentCode}, Ngành: {student.Major}, Khóa: {student.AcademicYear}) tại Trường Đại học Kinh tế Huế trong học kỳ {semester}.
 
 [PHONG CÁCH GIAO TIẾP]
@@ -2848,6 +3133,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 [HỒ SƠ CÁ NHÂN CỦA BẠN ({student.FullName} - {student.StudentCode})]
 - Giới hạn tín chỉ kỳ này: Tối đa {student.MaxCreditsPerSemester} TC (Hiện đã đăng ký {totalRegCredits} TC, còn được đăng ký tối đa {remainingCreditsAllowed} TC nữa).
 - Học phí kỳ {semester}: {totalRegCredits} tín chỉ = {totalTuition:N0} VNĐ (Đơn giá 450.000 VNĐ/TC, MB Bank: 101705201967).
+- Tình trạng đóng học phí thực tế: {paymentDetail}
 - Các môn BẠN ĐÃ ĐĂNG KÝ kỳ này ({registeredSections.Count} lớp):
 {regSummary}
 - Các môn BẠN ĐÃ HOÀN THÀNH trong học bạ:
@@ -2860,43 +3146,50 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 {prereqSummary}
 
 [QUY TẮC PHẢN HỒI ĐÚNG TRỌNG TÂM]
-1. LỊCH HỌC NGÀY MAI / HÔM NAY / THỨ TRONG TUẦN:
+1. TÌNH TRẠNG ĐÓNG HỌC PHÍ:
+   - Nếu hỏi bạn đã đóng học phí chưa, có nợ tiền không: Hãy trả lời TRỰC TIẾP và DỨT KHOÁT ngay đầu câu: '✅ ĐÃ ĐÓNG.' hoặc '❌ CHƯA ĐÓNG.', kèm chi tiết số tiền, ngày giờ nộp và phương thức!
+2. LỊCH HỌC NGÀY MAI / HÔM NAY / THỨ TRONG TUẦN:
    - CHỈ tra cứu trong các lớp bạn ĐÃ ĐĂNG KÝ có lịch vào đúng ngày đó.
    - Nêu trực tiếp: Môn gì, lớp nào, ca mấy, phòng nào, giảng viên nào.
    - Nếu ngày đó bạn KHÔNG CÓ LỊCH: Trả lời tự nhiên, thân thiện: Ngày mai bạn không có lịch học nào cả, hãy nghỉ ngơi hoặc tự ôn bài nhé! TUYỆT ĐỐI KHÔNG liệt kê tràn lan các môn của ngày khác.
-2. ĐỐI CHIẾU SINH VIÊN VỚI GIẢNG VIÊN:
+3. ĐỐI CHIẾU SINH VIÊN VỚI GIẢNG VIÊN:
    - Khi hỏi bạn có học môn nào của Thầy/Cô X không: CHỈ kiểm tra trong danh sách các lớp bạn ĐÃ ĐĂNG KÝ.
    - Nếu có: Nêu rõ tên môn, mã lớp, lịch học, phòng học.
    - Nếu không: Khẳng định rõ ràng bạn không đăng ký môn nào của Thầy/Cô X. TUYỆT ĐỐI KHÔNG liệt kê toàn bộ các lớp giảng viên đó dạy cho người khác.
-3. TƯ VẤN & GỢI Ý MÔN HỌC:
+4. TƯ VẤN & GỢI Ý MÔN HỌC:
    - CHỈ đề xuất môn khi sinh viên nói rõ 'gợi ý môn', 'tư vấn học gì', 'recommend courses'.
    - Môn đề xuất phải thỏa mãn điều kiện tiên quyết, chưa từng học qua, còn chỗ trống và KHÔNG BỊ TRÙNG LỊCH với các lớp đã đăng ký.
-4. HƯỚNG DẪN THAO TÁC GIAO DIỆN:
+5. HƯỚNG DẪN THAO TÁC GIAO DIỆN:
    - Đăng xuất: Bấm vào avatar/tên ở góc phải Navbar -> chọn 'Đăng xuất'.
    - Đổi mật khẩu: Bấm vào avatar -> chọn 'Đổi mật khẩu' (/change-password).
    - Thanh toán học phí: Vào mục 'Thanh toán học phí' (/tuition) để quét mã VietQR MB Bank.
-5. CÂU HỎI TIẾP NỐI & NGOÀI PHẠM VI:
+6. CÂU HỎI TIẾP NỐI & NGOÀI PHẠM VI:
    - Nếu câu hỏi tiếp nối ('Cái đó học lúc mấy giờ?'): trả lời thời gian của môn học đã đề cập trước đó. Nếu không rõ môn nào, hỏi lại tự nhiên.
    - Nếu câu hỏi ngoài phạm vi (thời tiết, giải trí...): từ chối lịch sự, nêu rõ phạm vi hỗ trợ học vụ tại ĐH Kinh tế Huế.
-6. QUYỀN RIÊNG TƯ:
+7. QUYỀN RIÊNG TƯ:
    - Sinh viên chỉ được tra cứu dữ liệu của chính mình. Nếu hỏi thông tin cá nhân của bạn sinh viên khác, hãy từ chối lịch sự theo quy chế bảo mật.";
         }
 
         /// <summary>
         /// System Prompt dành cho Phòng Đào tạo / Quản trị (Admin):
-        /// - Trả lời ngắn gọn, chuyên nghiệp về thống kê sĩ số, phân tích mở lớp, cảnh báo trùng lịch.
+        /// - Trả lời ngắn gọn, chuyên nghiệp về thống kê sĩ số, phân tích mở lớp, cảnh báo trùng lịch, công nợ học phí.
         /// </summary>
         private static string BuildAdminSystemPrompt(
             List<Section> allSections,
             List<Course> allCourses,
             List<Student> allStudents,
-            string semester)
+            string semester,
+            List<Enrollment>? allSemesterEnrollments = null)
         {
             var fullSections = allSections.Where(s => s.CurrentEnrollment >= s.MaxCapacity).ToList();
             var lowSections = allSections.Where(s => s.CurrentEnrollment < 10).ToList();
 
             var sectionsSummary = string.Join("\n", allSections.Select(s =>
                 $"- Lớp {s.SectionCode}: {s.Course?.CourseName} ({s.Course?.CourseCode}) | GV: {s.Instructor} | Phòng: {s.Room} | Sĩ số: {s.CurrentEnrollment}/{s.MaxCapacity} | Kỳ: {s.Semester} | Lịch: {FormatSchedule(s)}"));
+
+            int totalEnr = allSemesterEnrollments?.Count ?? 0;
+            int paidEnr = allSemesterEnrollments?.Count(e => e.IsPaid) ?? 0;
+            int unpaidEnr = allSemesterEnrollments?.Count(e => !e.IsPaid) ?? 0;
 
             return $@"Bạn là Trợ lý AI Phân tích & Quản trị Đào tạo (Dành cho Cán bộ Phòng Đào Tạo / Ban Quản Trị) tại Trường Đại học Kinh tế Huế.
 
@@ -2909,6 +3202,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 - Tổng số lớp học phần mở: {allSections.Count} lớp.
 - Tổng số môn học: {allCourses.Count} môn.
 - Tổng số sinh viên: {allStudents.Count} sinh viên.
+- Thống kê học phí: {totalEnr} phiếu đăng ký, {paidEnr} sinh viên đã nộp, {unpaidEnr} sinh viên chưa nộp.
 - Số lớp đã đầy sĩ số (>= 100%): {fullSections.Count} lớp ({string.Join(", ", fullSections.Select(f => f.SectionCode))}).
 - Số lớp vắng sinh viên (< 10 SV - nguy cơ hủy lớp): {lowSections.Count} lớp ({string.Join(", ", lowSections.Select(f => $"{f.SectionCode}: {f.CurrentEnrollment}/{f.MaxCapacity}"))}).
 
@@ -2924,6 +3218,480 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
         #endregion
 
+        #region Natural Language Yes/No Helpers & General Academic Knowledge Engine
+
+        private static bool IsYesNoQuery(string qNorm, string qLower)
+        {
+            if (string.IsNullOrWhiteSpace(qNorm)) return false;
+
+            // Dấu hiệu câu hỏi Có / Không trong tiếng Việt
+            if (qNorm.Contains("co ") && (qNorm.Contains(" khong") || qNorm.Contains(" ko") || qNorm.EndsWith(" k") || qNorm.Contains(" k ") || qNorm.Contains(" chua")))
+                return true;
+            if (qNorm.EndsWith("khong") || qNorm.EndsWith("khong?") || qNorm.EndsWith("ko") || qNorm.EndsWith("ko?") || qNorm.EndsWith("k?"))
+                return true;
+            if (qNorm.Contains("phai khong") || qNorm.Contains("dung khong") || qNorm.Contains("duoc khong") || qNorm.Contains("het cho chua") || qNorm.Contains("con cho khong"))
+                return true;
+            if (qNorm.Contains("co mon nao khong") || qNorm.Contains("co hoc khong") || qNorm.Contains("co lop khong") || qNorm.Contains("co mo khong") || qNorm.Contains("co day khong") || qNorm.Contains("co trung khong"))
+                return true;
+
+            // Dấu hiệu câu hỏi Yes / No trong tiếng Anh
+            if (qLower.StartsWith("do ") || qLower.StartsWith("does ") || qLower.StartsWith("is ") || qLower.StartsWith("are ") ||
+                qLower.StartsWith("can ") || qLower.StartsWith("will ") || qLower.StartsWith("did ") || qLower.StartsWith("has ") || qLower.StartsWith("have "))
+                return true;
+            if (qLower.Contains("do i have") || qLower.Contains("is there") || qLower.Contains("are there") || qLower.Contains("does he") || qLower.Contains("does she") || qLower.Contains("is it") || qLower.Contains("or not"))
+                return true;
+
+            return false;
+        }
+
+        private static bool IsConversationalAffirmationOrNegationIntent(string qNorm, string qLower, out bool isAffirmative)
+        {
+            isAffirmative = false;
+            string trimmed = qNorm.Trim().TrimEnd('.', '!', '?', ',');
+            string trimmedLower = qLower.Trim().TrimEnd('.', '!', '?', ',');
+
+            string[] affirmativePatterns = new[]
+            {
+                "co", "co nha", "co chu", "co chu sao ko", "co chu sao khong", "co nhe", "co chu a",
+                "da co", "da co a", "da vang", "vang", "vang a", "vang dung roi",
+                "dung", "dung roi", "dung roi a", "chuan", "chuan roi", "chinh xac",
+                "ok", "oke", "okay", "oki", "ok nhe", "duoc", "duoc chu", "duoc chu sao khong",
+                "uh", "u", "uhm", "uh dung roi",
+                "yes", "yeah", "yep", "yup", "sure", "correct", "right", "of course", "yes please", "sure thing", "sounds good"
+            };
+
+            foreach (var p in affirmativePatterns)
+            {
+                if (trimmed == p || trimmedLower == p)
+                {
+                    isAffirmative = true;
+                    return true;
+                }
+            }
+
+            string[] negationPatterns = new[]
+            {
+                "khong", "ko", "k", "khong nha", "khong nhe", "khong a", "da khong", "da khong a",
+                "chua", "chua nha", "chua nhe", "chua a", "da chua",
+                "khong can", "ko can", "thoi", "thoi khoi", "thoi khong can", "het roi", "khong con gi",
+                "no", "nope", "nah", "not really", "no thanks", "none", "nothing", "no need"
+            };
+
+            foreach (var p in negationPatterns)
+            {
+                if (trimmed == p || trimmedLower == p)
+                {
+                    isAffirmative = false;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string BuildConversationalYesNoResponse(
+            bool isAffirmative,
+            bool isEnglish,
+            Student? currentStudent,
+            string semester,
+            ConversationContextInfo context)
+        {
+            if (isEnglish)
+            {
+                if (isAffirmative)
+                {
+                    if (context.LastReferencedCourse != null)
+                    {
+                        return $"✅ **Yes, absolutely!**\n\nRegarding **{context.LastReferencedCourse.CourseName}** (`{context.LastReferencedCourse.CourseCode}`), would you like me to check open sections, schedules, lecturers, or show you how to register it in your cart?";
+                    }
+                    if (context.LastReferencedSection != null)
+                    {
+                        return $"✅ **Yes, understood!**\n\nFor section `{context.LastReferencedSection.SectionCode}` ({context.LastReferencedSection.Course?.CourseName}), would you like me to guide you to the Course Registration page (`/sections`) or check for potential timetable conflicts?";
+                    }
+
+                    return $"✅ **Yes, noted!**\n\nHow can I best assist you further? You can ask me:\n" +
+                           $"- 🗓️ *\"Do I have any classes tomorrow?\"* or *\"What is my schedule this week?\"*\n" +
+                           $"- 📘 *\"What courses are open this semester?\"*\n" +
+                           $"- 👨‍🏫 *\"Which classes does Dr. Ha Ngoc Long teach?\"*\n" +
+                           $"- 💰 *\"How much is tuition fee per credit?\"*";
+                }
+                else
+                {
+                    return $"✨ **Understood! No problem at all.**\n\n" +
+                           $"If you need any academic advising, timetable checks, or tuition fee guidance later, feel free to ask anytime. Wishing you a successful semester {semester} at Hue University of Economics!";
+                }
+            }
+            else
+            {
+                if (isAffirmative)
+                {
+                    if (context.LastReferencedCourse != null)
+                    {
+                        return $"✅ **Dạ vâng! Tuyệt vời.**\n\n" +
+                               $"Về học phần **{context.LastReferencedCourse.CourseName}** (`{context.LastReferencedCourse.CourseCode}`), bạn có muốn Cố vấn AI kiểm tra danh sách các lớp đang mở, lịch học chi tiết hay điều kiện tiên quyết không?";
+                    }
+                    if (context.LastReferencedSection != null)
+                    {
+                        return $"✅ **Dạ vâng! Cố vấn AI đã ghi nhận.**\n\n" +
+                               $"Về lớp học phần `{context.LastReferencedSection.SectionCode}` ({context.LastReferencedSection.Course?.CourseName}), bạn có muốn tôi hướng dẫn cách thêm vào giỏ đăng ký hoặc kiểm tra xem có bị trùng lịch với các môn khác của bạn không?";
+                    }
+
+                    string name = currentStudent != null ? $" bạn **{currentStudent.FullName}**" : " bạn";
+                    return $"✅ **Dạ vâng! Rất sẵn sàng hỗ trợ{name}.**\n\n" +
+                           $"Bạn đang quan tâm đến nội dung học vụ nào? Bạn có thể hỏi tôi:\n" +
+                           $"- 🗓️ *\"Ngày mai tôi có học không?\"* hoặc *\"Thứ 2 tôi học gì?\"*\n" +
+                           $"- 📘 *\"Kỳ này có mở môn Lập trình Web không?\"*\n" +
+                           $"- 👨‍🏫 *\"Thầy Hà Ngọc Long dạy những lớp nào?\"*\n" +
+                           $"- 💰 *\"Học phí 1 tín chỉ bao nhiêu tiền và nộp qua đâu?\"*\n" +
+                           $"- 💡 *\"Gợi ý đăng ký học phần tối ưu cho tôi\"*";
+                }
+                else
+                {
+                    string name = currentStudent != null ? $" bạn **{currentStudent.FullName}**" : " bạn";
+                    return $"✨ **Dạ vâng, không có vấn đề gì cả! Cố vấn AI đã hiểu ý{name}.**\n\n" +
+                           $"Nếu trong quá trình học tập hoặc đăng ký tín chỉ tại Trường Đại học Kinh tế - Đại học Huế bạn cần hỗ trợ thêm thông tin gì (môn học, lịch học, giảng viên hay học phí), cứ nhắn cho Cố vấn AI bất cứ lúc nào nhé!\n\n" +
+                           $"Chúc bạn luôn có những kỳ học thật thuận lợi và đạt kết quả cao nhất!";
+                }
+            }
+        }
+
+        private static List<(Section Sec1, Section Sec2, int DayOfWeek, int StartPeriod, int EndPeriod)> FindScheduleConflicts(List<Section> sections)
+        {
+            var conflicts = new List<(Section, Section, int, int, int)>();
+            for (int i = 0; i < sections.Count; i++)
+            {
+                var s1 = sections[i];
+                if (s1.Schedules == null) continue;
+                for (int j = i + 1; j < sections.Count; j++)
+                {
+                    var s2 = sections[j];
+                    if (s2.Schedules == null) continue;
+
+                    foreach (var sch1 in s1.Schedules)
+                    {
+                        foreach (var sch2 in s2.Schedules)
+                        {
+                            if (sch1.DayOfWeek == sch2.DayOfWeek)
+                            {
+                                int overlapStart = Math.Max(sch1.StartPeriod, sch2.StartPeriod);
+                                int overlapEnd = Math.Min(sch1.EndPeriod, sch2.EndPeriod);
+                                if (overlapStart <= overlapEnd)
+                                {
+                                    conflicts.Add((s1, s2, sch1.DayOfWeek, overlapStart, overlapEnd));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return conflicts;
+        }
+
+        private static bool TryAnswerGeneralAcademicKnowledge(
+            string qNorm,
+            string qLower,
+            string qRaw,
+            bool isEnglish,
+            Student? currentStudent,
+            string semester,
+            out string response)
+        {
+            response = string.Empty;
+
+            // 1. Các ngành đào tạo tại Trường Đại học Kinh tế - Đại học Huế
+            bool asksMajors =
+                qNorm.Contains("cac nganh") || qNorm.Contains("nganh dao tao") || qNorm.Contains("co nhung nganh") ||
+                qNorm.Contains("nganh hoc") || qNorm.Contains("tin hoc kinh te") || qNorm.Contains("he thong thong tin") ||
+                qNorm.Contains("thuong mai dien tu") || qNorm.Contains("kinh te so") || qNorm.Contains("quan tri kinh doanh") ||
+                qNorm.Contains("tai chinh ngan hang") || qNorm.Contains("ke toan") || qNorm.Contains("logistics") ||
+                qLower.Contains("what majors") || qLower.Contains("degree programs") || qLower.Contains("available majors");
+
+            if (asksMajors)
+            {
+                response = isEnglish
+                    ? "### 🎓 Academic Programs & Majors at Hue University of Economics (HCE):\n\n" +
+                      "Hue University of Economics offers diverse undergraduate programs structured under modern credit-based training:\n\n" +
+                      "1. **Information Technology & Digital Economics:**\n" +
+                      "   - **Economic Informatics (Tin học Kinh tế):** Integrating IT applications, software engineering, and data analysis in economic management.\n" +
+                      "   - **Management Information Systems (MIS):** Enterprise resource planning, business intelligence, and database design.\n" +
+                      "   - **E-Commerce (Thương mại điện tử):** Digital marketing, online business models, and payment gateways.\n" +
+                      "   - **Digital Economy (Kinh tế số):** Data-driven economy, fintech, and digital transformation.\n\n" +
+                      "2. **Management & Business Administration:**\n" +
+                      "   - Business Administration, Marketing, International Business, Logistics & Supply Chain Management.\n\n" +
+                      "3. **Finance, Banking & Accounting:**\n" +
+                      "   - Finance - Banking, Accounting, Auditing, Economic Law.\n\n" +
+                      "💡 *Training duration: 4 years (130 - 135 credits). Students graduate with a Bachelor's degree and strong industry readiness.*"
+                    : "### 🎓 Các Ngành Đào Tạo Tiêu Biểu Tại Trường Đại học Kinh tế - Đại học Huế (HCE):\n\n" +
+                      "Trường Đại học Kinh tế – Đại học Huế đào tạo theo hệ thống tín chỉ hiện đại với 3 khối ngành trọng điểm:\n\n" +
+                      "1. 💻 **Khối Công Nghệ Thông Tin & Kinh Tế Số:**\n" +
+                      "   - **Tin học Kinh tế:** Chuyên sâu về ứng dụng công nghệ thông tin, phát triển phần mềm ứng dụng, phân tích dữ liệu kinh doanh và chuyển đổi số doanh nghiệp.\n" +
+                      "   - **Hệ thống thông tin quản lý (MIS):** Thiết kế và quản trị hệ thống ERP, quản trị CSDL lớn, phân tích nghiệp vụ kinh doanh (BA).\n" +
+                      "   - **Thương mại điện tử (E-Commerce):** Kinh doanh số, Digital Marketing, sàn giao dịch trực tuyến và thanh toán số.\n" +
+                      "   - **Kinh tế số:** Mô hình kinh tế dữ liệu, công nghệ tài chính (FinTech) và quản trị số.\n\n" +
+                      "2. 📈 **Khối Quản Trị & Kinh Doanh:**\n" +
+                      "   - **Quản trị kinh doanh**, **Marketing**, **Logistics & Quản lý chuỗi cung ứng**, **Kinh doanh thương mại**, **Kinh tế quốc tế**.\n\n" +
+                      "3. 💰 **Khối Tài Chính - Kế Toán & Luật:**\n" +
+                      "   - **Tài chính - Ngân hàng**, **Kế toán - Kiểm toán**, **Kinh tế học**, **Luật kinh tế**.\n\n" +
+                      "💡 *Thời gian đào tạo: 4 năm (130 - 135 tín chỉ). Sinh viên được trang bị kiến thức chuyên môn, thực hành thực tế và chuẩn đầu ra ngoại ngữ/tin học vững vàng.*";
+                return true;
+            }
+
+            // 2. Cách tính điểm trung bình GPA / CPA thang điểm 4 & Quy đổi điểm chữ
+            bool asksGpa =
+                qNorm.Contains("cach tinh diem") || qNorm.Contains("tinh gpa") || qNorm.Contains("tinh cpa") ||
+                qNorm.Contains("thang diem 4") || qNorm.Contains("quy doi diem") || qNorm.Contains("diem chu") ||
+                qNorm.Contains("diem a") || qNorm.Contains("diem b") || qNorm.Contains("diem c") ||
+                qNorm.Contains("diem d") || qNorm.Contains("diem f") || qNorm.Contains("gpa") ||
+                qLower.Contains("grading scale") || qLower.Contains("calculate gpa") || qLower.Contains("cpa calculation");
+
+            if (asksGpa)
+            {
+                response = isEnglish
+                    ? "### 📊 GPA / CPA Calculation & 4.0 Grading Scale Guide:\n\n" +
+                      "Under university credit regulations, student academic standing is evaluated using letter grades and the **4.0 GPA scale**:\n\n" +
+                      "1. **Conversion from 10-Point Scale to Letter & 4.0 Scale:**\n" +
+                      "   - `8.5 - 10.0`: **Grade A** (4.0) — Excellent / Outstanding\n" +
+                      "   - `7.0 - 8.4`: **Grade B** (3.0) — Good\n" +
+                      "   - `5.5 - 6.9`: **Grade C** (2.0) — Average\n" +
+                      "   - `4.0 - 5.4`: **Grade D** (1.0) — Below Average (Passed)\n" +
+                      "   - `< 4.0`: **Grade F** (0.0) — Failed (Must retake course)\n\n" +
+                      "2. **Formula:**\n" +
+                      "   $$\\text{GPA} = \\frac{\\sum (\\text{Grade Point (4.0)} \\times \\text{Course Credits})}{\\sum \\text{Total Registered Credits}}$$\n\n" +
+                      "3. **Academic Classification:**\n" +
+                      "   - **High Distinction:** GPA `3.60 - 4.00`\n" +
+                      "   - **Distinction:** GPA `3.20 - 3.59`\n" +
+                      "   - **Credit:** GPA `2.50 - 3.19`\n" +
+                      "   - **Pass:** GPA `2.00 - 2.49`\n" +
+                      "   - **Weak / Academic Warning:** GPA `< 2.00`."
+                    : "### 📊 Hướng Dẫn Cách Tính Điểm Trung Bình GPA / CPA Thang Điểm 4:\n\n" +
+                      "Theo quy chế đào tạo tín chỉ tại Trường Đại học Kinh tế - Đại học Huế, kết quả học tập được đánh giá qua điểm chữ và quy đổi sang **thang điểm 4.0** như sau:\n\n" +
+                      "1. **Bảng quy đổi từ thang điểm 10 sang thang điểm chữ và hệ 4:**\n" +
+                      "   - `8.5 – 10.0`: **Điểm A** (Hệ 4: **4.0**) — Xếp loại Giỏi / Xuất sắc\n" +
+                      "   - `7.0 – 8.4`: **Điểm B** (Hệ 4: **3.0**) — Xếp loại Khá\n" +
+                      "   - `5.5 – 6.9`: **Điểm C** (Hệ 4: **2.0**) — Xếp loại Trung bình\n" +
+                      "   - `4.0 – 5.4`: **Điểm D** (Hệ 4: **1.0**) — Xếp loại Trung bình yếu (Đạt môn)\n" +
+                      "   - `Dưới 4.0`: **Điểm F** (Hệ 4: **0.0**) — Không đạt (Buộc phải đăng ký học lại)\n\n" +
+                      "2. **Công thức tính điểm trung bình (GPA học kỳ hoặc CPA tích lũy):**\n" +
+                      "   $$\\text{GPA} = \\frac{\\sum (\\text{Điểm môn hệ 4} \\times \\text{Số tín chỉ môn})}{\\sum \\text{Tổng số tín chỉ tính điểm}}$$\n\n" +
+                      "3. **Xếp loại học lực chung:**\n" +
+                      "   - **Xuất sắc:** GPA từ `3.60` đến `4.00`\n" +
+                      "   - **Giỏi:** GPA từ `3.20` đến `3.59`\n" +
+                      "   - **Khá:** GPA từ `2.50` đến `3.19`\n" +
+                      "   - **Trung bình:** GPA từ `2.00` đến `2.49`\n" +
+                      "   - **Yếu (Nguy cơ cảnh báo học vụ):** GPA dưới `2.00`.";
+                return true;
+            }
+
+            // 3. Mẹo / Kinh nghiệm đăng ký tín chỉ nhanh
+            bool asksRegTips =
+                qNorm.Contains("meo dang ky") || qNorm.Contains("dang ky nhanh") || qNorm.Contains("kinh nghiem dang ky") ||
+                qNorm.Contains("bi quyet dang ky") || qNorm.Contains("nghen mang") || qNorm.Contains("bi lag") ||
+                qNorm.Contains("bi full") || qNorm.Contains("het cho") || qLower.Contains("registration tips") ||
+                qLower.Contains("how to register fast");
+
+            if (asksRegTips)
+            {
+                response = isEnglish
+                    ? "### ⚡ Expert Tips for Fast Course Registration (Hue University of Economics):\n\n" +
+                      "1. **Prepare Plan A & Plan B:** Always prepare backup section codes in advance in case your primary choice fills up.\n" +
+                      "2. **Check Prerequisites Early:** Verify that all prerequisite courses have been completed and passed (grade >= 5.0) to prevent registration locks.\n" +
+                      "3. **Pre-stage in Registration Cart:** Log in 10-15 minutes before the opening window, stage your intended classes into `/cart`, and verify no timetable overlap.\n" +
+                      "4. **Fast Click upon Gate Opening:** Keep your browser refreshed right at the opening second, click **'Confirm Registration'** immediately.\n" +
+                      "5. **Post-Registration Check:** Visit `/schedule` to inspect your confirmed timetable and complete tuition payment via VietQR Napas 24/7."
+                    : "### ⚡ Bí Quyết & Mẹo Đăng Ký Tín Chỉ Nhanh, Không Lo Nghẽn Mạng:\n\n" +
+                      "Để đăng ký được các lớp học phần như ý và tránh tình trạng hết chỗ tại Cổng đăng ký Trường Đại học Kinh tế Huế, bạn nên áp dụng các mẹo sau:\n\n" +
+                      "1. **Chuẩn bị trước Phương án A và Phương án B:** Trước ngày mở cổng, tra cứu danh sách lớp (`/sections`), ghi sẵn mã lớp chính muốn học và luôn chuẩn bị sẵn 1-2 mã lớp dự phòng nếu lớp chính đầy.\n" +
+                      "2. **Kiểm tra học phần tiên quyết:** Đảm bảo bạn đã hoàn thành môn tiên quyết (điểm >= 5.0). Hệ thống sẽ chặn ngay nếu cố tình ghi danh môn chưa đủ điều kiện.\n" +
+                      "3. **Thêm trước vào 'Giỏ đăng ký' (`/cart`):** Trước giờ mở cổng 10-15 phút, hãy thêm các lớp học phần dự kiến vào giỏ và xem Cố vấn AI kiểm tra trùng lịch.\n" +
+                      "4. **Thao tác đúng giờ mở cổng:** Vào mạng Wi-Fi/4G ổn định, canh đồng hồ chính xác từng giây, bấm nút **'Xác Nhận Đăng Ký'** ngay khi hệ thống mở.\n" +
+                      "5. **Kiểm tra và hoàn tất học phí:** Sau khi xác nhận thành công, vào mục **'Thời Khóa Biểu'** (`/schedule`) hoặc **'Thanh Toán Học Phí'** (`/tuition`) quét mã VietQR để hoàn tất công nợ (450.000 VNĐ/TC).";
+                return true;
+            }
+
+            // 4. Chính sách xét cấp Học bổng khuyến khích học tập
+            bool asksScholarship =
+                qNorm.Contains("hoc bong") || qNorm.Contains("dieu kien hoc bong") || qNorm.Contains("xet hoc bong") ||
+                qNorm.Contains("hoc bong khuyen khich") || qLower.Contains("scholarship") || qLower.Contains("scholarship requirements");
+
+            if (asksScholarship)
+            {
+                response = isEnglish
+                    ? "### 🏆 Academic Encouragement Scholarship Regulations (Hue University of Economics):\n\n" +
+                      "- **Eligibility Requirements:**\n" +
+                      "  + Successfully enrolled in at least **14 credits** in the regular semester.\n" +
+                      "  + No failing grades (Grade F) or disciplinary actions during the semester.\n" +
+                      "  + Training Evaluation Score (Điểm rèn luyện) must be at least **Good (>= 70)**.\n\n" +
+                      "- **Scholarship Tiers:**\n" +
+                      "  + **High Distinction (Xuất sắc):** GPA `>= 3.60` AND Training Score `>= 90`.\n" +
+                      "  + **Distinction (Giỏi):** GPA `>= 3.20` AND Training Score `>= 80`.\n" +
+                      "  + **Credit (Khá):** GPA `>= 2.50` AND Training Score `>= 70`.\n\n" +
+                      "💡 *Scholarships are granted from top to bottom according to the Faculty/Major scholarship budget.*"
+                    : "### 🏆 Chính Sách Xét Cấp Học Bổng Khuyến Khích Học Tập (Trường ĐH Kinh Tế Huế):\n\n" +
+                      "Học bổng khuyến khích học tập được xét và trao vào cuối mỗi học kỳ chính theo các tiêu chí sau:\n\n" +
+                      "1. **Điều kiện cần để được đưa vào danh sách xét:**\n" +
+                      "   - Đăng ký và tích lũy tối thiểu từ **14 tín chỉ** trở lên trong học kỳ chính.\n" +
+                      "   - Không có học phần nào bị điểm F (phải học lại hoặc thi lại) trong học kỳ xét.\n" +
+                      "   - Điểm rèn luyện đạt từ loại Khá trở lên (từ 70 điểm trở lên).\n\n" +
+                      "2. **Các mức học bổng khuyến khích:**\n" +
+                      "   - **Học bổng Xuất sắc:** GPA đạt từ **3.60 trở lên** VÀ Điểm rèn luyện đạt từ **90 điểm trở lên**.\n" +
+                      "   - **Học bổng Giỏi:** GPA đạt từ **3.20 đến 3.59** VÀ Điểm rèn luyện đạt từ **80 đến 89 điểm**.\n" +
+                      "   - **Học bổng Khá:** GPA đạt từ **2.50 đến 3.19** VÀ Điểm rèn luyện đạt từ **70 đến 79 điểm**.\n\n" +
+                      "💡 *Nguyên tắc xét: Xét thứ tự điểm GPA từ cao xuống thấp cho đến khi hết quỹ học bổng của từng Khoa/Ngành trong từng khóa học.*";
+                return true;
+            }
+
+            // 5. Chuẩn đầu ra Ngoại ngữ & Tin học
+            bool asksExitStandards =
+                qNorm.Contains("chuan dau ra") || qNorm.Contains("ngoai ngu") || qNorm.Contains("tieng anh") ||
+                qNorm.Contains("vstep") || qNorm.Contains("chung chi tin hoc") || qNorm.Contains("ic3") ||
+                qNorm.Contains("mos") || qLower.Contains("exit standards") || qLower.Contains("graduation requirements");
+
+            if (asksExitStandards)
+            {
+                response = isEnglish
+                    ? "### 📜 Graduation Exit Standards at Hue University of Economics:\n\n" +
+                      "To be eligible for graduation and bachelor's degree conferral, students must fulfill:\n\n" +
+                      "1. **Foreign Language Standard:**\n" +
+                      "   - VSTEP Level 3 (B1) according to Vietnam's 6-level foreign language framework, or international equivalents (TOEIC 450 - 500+, IELTS 4.5+ depending on major).\n\n" +
+                      "2. **Informatics Standard:**\n" +
+                      "   - Basic IT Application Certificate (Circular 03/2014/TT-BTTTT) or international certificates (MOS / IC3).\n\n" +
+                      "3. **Academic & Physical/Military Education:**\n" +
+                      "   - Complete all required curriculum credits (CPA >= 2.00, no failing core courses).\n" +
+                      "   - Complete Physical Education and National Defense Education certificates."
+                    : "### 📜 Chuẩn Đầu Ra Tốt Nghiệp Tại Trường Đại học Kinh tế - Đại học Huế:\n\n" +
+                      "Để đủ điều kiện xét tốt nghiệp và nhận bằng Cử nhân, sinh viên cần hoàn thành các chuẩn đầu ra sau:\n\n" +
+                      "1. 🌐 **Chuẩn đầu ra Ngoại ngữ:**\n" +
+                      "   - Đạt chứng chỉ **VSTEP Bậc 3 (B1)** theo khung năng lực ngoại ngữ 6 bậc của Bộ GD&ĐT, hoặc các chứng chỉ quốc tế tương đương (TOEIC từ 450 – 500+ điểm tùy chuyên ngành, IELTS từ 4.5+).\n" +
+                      "   - Sinh viên các ngành chất lượng cao hoặc tiếng Anh thương mại có chuẩn đầu ra TOEIC từ 600+.\n\n" +
+                      "2. 💻 **Chuẩn đầu ra Tin học:**\n" +
+                      "   - Đạt chứng chỉ Ứng dụng CNTT cơ bản theo Thông tư 03/2014/TT-BTTTT, hoặc chứng chỉ quốc tế **MOS (Word, Excel, PowerPoint)** / **IC3**.\n\n" +
+                      "3. 🏅 **Điều kiện học vụ khác:**\n" +
+                      "   - Tích lũy đủ số tín chỉ chương trình đào tạo (130 - 135 TC), điểm CPA tích lũy từ **2.00 trở lên**.\n" +
+                      "   - Hoàn thành chứng chỉ Giáo dục Quốc phòng - An ninh và Giáo dục Thể chất.";
+                return true;
+            }
+
+            // 6. Thủ tục hành chính sinh viên (Giấy xác nhận, bảng điểm, vay vốn, tạm hoãn NVQS)
+            bool asksProcedures =
+                qNorm.Contains("xin bang diem") || qNorm.Contains("giay xac nhan") || qNorm.Contains("xac nhan sinh vien") ||
+                qNorm.Contains("vay von") || qNorm.Contains("nghia vu quan su") || qNorm.Contains("nvqs") ||
+                qNorm.Contains("tam hoan") || qNorm.Contains("the sinh vien") || qNorm.Contains("thu tuc sinh vien") ||
+                qLower.Contains("student verification") || qLower.Contains("student certificate") || qLower.Contains("transcript request");
+
+            if (asksProcedures)
+            {
+                response = isEnglish
+                    ? "### 🏢 Student Administrative Services & Office Procedures:\n\n" +
+                      "1. **Student Status Certificate (for military postponement, student loan, bus pass):**\n" +
+                      "   - Contact the One-Stop Student Affairs Office (Phòng Công tác Sinh viên) at 99 Ho Dac Di, Hue City.\n" +
+                      "   - Processing time: 1 - 2 working days with university official seal.\n\n" +
+                      "2. **Official Academic Transcripts:**\n" +
+                      "   - Submit request at Academic Affairs Office (Phòng Đào Tạo).\n\n" +
+                      "💡 *Bring your Student ID card or National ID for in-person verification.*"
+                    : "### 🏢 Hướng Dẫn Thủ Tục Hành Chính Học Vụ Dành Cho Sinh Viên:\n\n" +
+                      "1. 📝 **Xin cấp Giấy xác nhận sinh viên** (Tạm hoãn NVQS, vay vốn ngân hàng chính sách, làm vé xe buýt):\n" +
+                      "   - Sinh viên liên hệ Bộ phận Một cửa — **Phòng Công tác Sinh viên (CTSV)** (Nhà Hiệu bộ, Số 99 Hồ Đắc Di, TP. Huế).\n" +
+                      "   - Mang theo Thẻ sinh viên hoặc CCCD để nhận giấy xác nhận có mộc đỏ nhà trường trong 1 – 2 ngày làm việc.\n\n" +
+                      "2. 📊 **Xin cấp Bảng điểm học tập / Giấy chứng nhận tốt nghiệp tạm thời:**\n" +
+                      "   - Đăng ký tại **Phòng Đào Tạo Trường Đại học Kinh tế Huế**.\n\n" +
+                      "3. 🚪 **Bảo lưu kết quả học tập / Xin nghỉ học tạm thời:**\n" +
+                      "   - Làm đơn theo mẫu của Phòng Đào Tạo, xin ý kiến Cố vấn học tập và nộp hồ sơ trước thời hạn quy định.";
+                return true;
+            }
+
+            // 7. Thực tập tốt nghiệp & Khóa luận tốt nghiệp
+            bool asksThesis =
+                qNorm.Contains("thuc tap") || qNorm.Contains("khoa luan") || qNorm.Contains("do an tot nghiep") ||
+                qNorm.Contains("chuyen de tot nghiep") || qLower.Contains("internship") || qLower.Contains("thesis") ||
+                qLower.Contains("graduation thesis");
+
+            if (asksThesis)
+            {
+                response = isEnglish
+                    ? "### 🎓 Graduation Internship & Thesis Guidelines (Hue University of Economics):\n\n" +
+                      "- **Graduation Thesis (Khóa luận tốt nghiệp):**\n" +
+                      "  + Eligibility: Minimum 105 - 110 accumulated credits, CPA >= 2.80 - 3.00, and no academic warnings.\n" +
+                      "  + Weight: Equivalent to 6 - 9 credits.\n\n" +
+                      "- **Graduation Internship & Graduation Alternatives:**\n" +
+                      "  + Students who do not undertake a thesis participate in enterprise internships and complete alternative specialized courses.\n" +
+                      "- **Timeframe:** Second semester of the final fourth academic year."
+                    : "### 🎓 Quy Định Về Thực Tập Doanh Nghiệp & Khóa Luận Tốt Nghiệp:\n\n" +
+                      "Vào năm thứ 4 (học kỳ 2), sinh viên Trường Đại học Kinh tế Huế sẽ thực hiện một trong hai hình thức tốt nghiệp:\n\n" +
+                      "1. 📘 **Làm Khóa luận tốt nghiệp:**\n" +
+                      "   - Điều kiện: Tích lũy tối thiểu từ **105 – 110 tín chỉ**, điểm CPA tích lũy đạt từ **2.80 trở lên** (tùy khoa), không bị kỷ luật học vụ.\n" +
+                      "   - Sinh viên được phân công giảng viên hướng dẫn chuyên môn và bảo vệ trước Hội đồng chấm khóa luận.\n\n" +
+                      "2. 🏢 **Thực tập tốt nghiệp & Học phần thay thế:**\n" +
+                      "   - Dành cho sinh viên không làm khóa luận: Thực tập tại doanh nghiệp/ngân hàng/cơ quan, làm Báo cáo thực tập chuyên đề và học bổ sung 2 môn chuyên ngành thay thế.";
+                return true;
+            }
+
+            // 8. Phương pháp học đại học hiệu quả
+            bool asksStudyMethods =
+                qNorm.Contains("phuong phap hoc") || qNorm.Contains("cach hoc dai hoc") || qNorm.Contains("cach hoc tot") ||
+                qNorm.Contains("kinh nghiem hoc") || qNorm.Contains("hoc tap hieu qua") || qLower.Contains("study tips") ||
+                qLower.Contains("how to study");
+
+            if (asksStudyMethods)
+            {
+                response = isEnglish
+                    ? "### 💡 Effective University Study Methods (Hue University of Economics Advisor):\n\n" +
+                      "1. **Preview Before Lectures:** Skim through slide decks and lecture notes before each class.\n" +
+                      "2. **Master Active Recall & Spaced Repetition:** Review weekly instead of cramming before final exam week.\n" +
+                      "3. **Collaborative Study & Case Studies:** Engage in group projects, business case discussions, and lab assignments.\n" +
+                      "4. **Leverage University Resources:** Visit HCE Library and Hue University digital library for rich research papers and textbooks."
+                    : "### 💡 Lời Khuyên & Phương Pháp Học Đại Học Hiệu Quả Từ Cố Vấn AI:\n\n" +
+                      "Học đại học theo tín chỉ đòi hỏi tinh thần chủ động cao. Dưới đây là các phương pháp học tập hiệu quả dành cho sinh viên ĐH Kinh tế Huế:\n\n" +
+                      "1. 📖 **Đọc giáo trình trước buổi học:** Dành 15-20 phút xem qua slide bài giảng của thầy/cô để nắm khung kiến thức trước khi lên lớp.\n" +
+                      "2. 👥 **Học nhóm và thảo luận tình huống (Case Study):** Các môn kinh tế và CNTT đòi hỏi làm bài tập lớn và dự án thực tế; học nhóm giúp trao đổi góc nhìn và giải quyết vấn đề nhanh chóng.\n" +
+                      "3. 🗓️ **Quản lý thời gian học tập đều đặn:** Ôn tập theo từng tuần, làm đầy đủ bài tập thực hành, tuyệt đối tránh dồn bài sát ngày thi cuối kỳ.\n" +
+                      "4. 📚 **Khai thác thư viện trường:** Tận dụng nguồn giáo trình và tài liệu số phong phú tại Thư viện Trường Đại học Kinh tế Huế (99 Hồ Đắc Di).";
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string GenerateSynthesizedAiAcademicResponse(
+            string qRaw,
+            string qNorm,
+            string qLower,
+            bool isEnglish,
+            Student? currentStudent,
+            string semester)
+        {
+            if (isEnglish)
+            {
+                string greeting = currentStudent != null
+                    ? $"Hello **{currentStudent.FullName}** (`{currentStudent.StudentCode}` - {currentStudent.Major})!"
+                    : "Hello!";
+
+                return $"### 🤖 AI Academic Advisor Insight:\n\n" +
+                       $"{greeting}\n\n" +
+                       $"Regarding your question *\"{qRaw}\"*, here is helpful guidance from Hue University of Economics academic regulations:\n\n" +
+                       $"- **Academic Support:** Hue University of Economics applies standard credit-based training regulations. Course registration, timetable allocations, and prerequisite policies are managed digitally.\n" +
+                       $"- **Course & Schedule Enquiries:** You can explore open sections under `/sections`, stage them into `/cart`, or view confirmed timetables under `/schedule`.\n" +
+                       $"- **Assistance & Inquiries:** For specific paperwork, petitions, or academic advice, you can connect directly with your Faculty Academic Advisor or the Academic Affairs Office (99 Ho Dac Di, Hue City).\n\n" +
+                       $"Feel free to ask me any further questions regarding courses, lecturers, tuition, or exam schedules!";
+            }
+            else
+            {
+                string greeting = currentStudent != null
+                    ? $"Chào bạn **{currentStudent.FullName}** (MSSV: `{currentStudent.StudentCode}` — Ngành {currentStudent.Major})!"
+                    : "Chào bạn!";
+
+                return $"### 🤖 Phản Hồi Từ Cố Vấn Học Thuật AI:\n\n" +
+                       $"{greeting}\n\n" +
+                       $"Về thắc mắc của bạn: *\"{qRaw}\"*, Cố vấn AI xin chia sẻ các thông tin và định hướng học vụ tại Trường Đại học Kinh tế - Đại học Huế như sau:\n\n" +
+                       $"- 📌 **Về quy chế đào tạo tín chỉ:** Toàn bộ chương trình đào tạo của nhà trường được tổ chức theo hệ thống tín chỉ chuẩn. Bạn có thể chủ động sắp xếp kế hoạch học tập, đăng ký môn học và theo dõi lộ trình tích lũy của mình.\n" +
+                       $"- 🔍 **Tra cứu trực tuyến trên hệ thống:** Bạn có thể vào mục **'Tra cứu môn học'** (`/sections`) để kiểm tra danh mục lớp mở, vào **'Thời khóa biểu'** (`/schedule`) xem lịch học chi tiết, hoặc **'Thanh toán học phí'** (`/tuition`) để kiểm tra công nợ và nộp qua VietQR MB Bank.\n" +
+                       $"- 🏢 **Hỗ trợ trực tiếp từ nhà trường:** Nếu cần hỗ trợ các thủ tục hồ sơ giấy tờ, bảo lưu hay xác nhận học vụ, bạn có thể liên hệ trực tiếp **Phòng Đào Tạo** hoặc **Phòng Công tác Sinh viên** (Số 99 Hồ Đắc Di, TP. Huế).\n\n" +
+                       $"Nếu bạn có câu hỏi cụ thể hơn về môn học, giảng viên, phòng học hay lịch học các ngày trong tuần, hãy nhắn cho tôi bất kỳ lúc nào nhé!";
+            }
+        }
+
+        #endregion
+
         #endregion
     }
 }
+

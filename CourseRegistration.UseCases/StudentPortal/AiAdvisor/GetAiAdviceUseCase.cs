@@ -539,6 +539,53 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             bool hasPersonalPronoun = DetectHasPersonalPronoun(qNorm, qLower);
 
             // =========================================================================
+            // BƯỚC 1.5: ĐỊNH NGHĨA CÁC Ý ĐỊNH HỌC VỤ NGỮ NGHĨA (SEMANTIC INTENTS)
+            // =========================================================================
+            bool asksPaymentStatus = qNorm.Contains("dong chua") || qNorm.Contains("nop chua") || 
+                                     qNorm.Contains("thanh toan chua") || qNorm.Contains("da dong") || 
+                                     qNorm.Contains("da nop") || qNorm.Contains("chua dong") || 
+                                     qNorm.Contains("chua nop") || qNorm.Contains("con no") || 
+                                     qNorm.Contains("no hoc phi") || qNorm.Contains("no tien") || 
+                                     qNorm.Contains("tinh trang hoc phi") || qNorm.Contains("trang thai hoc phi") ||
+                                     qNorm.Contains("kiem tra hoc phi") || qNorm.Contains("hoan tat hoc phi") ||
+                                     qNorm.Contains("dong tien chua") || qNorm.Contains("nop tien chua") ||
+                                     qNorm.Contains("dong hoc phi chua") || qNorm.Contains("nop hoc phi chua") ||
+                                     qLower.Contains("paid yet") || qLower.Contains("has paid") || 
+                                     qLower.Contains("is paid") || qLower.Contains("unpaid") || 
+                                     qLower.Contains("payment status") || qLower.Contains("tuition status") ||
+                                     (qNorm.Contains("hoc phi") && (qNorm.Contains("chua") || qNorm.Contains("roi") || qNorm.Contains("xong")));
+
+            bool isTuition = qNorm.Contains("hoc phi") || qNorm.Contains("tien hoc") || qNorm.Contains("gia tin chi") ||
+                             qNorm.Contains("dong tien") || qNorm.Contains("thanh toan") || qNorm.Contains("gia bao nhieu") ||
+                             qNorm.Contains("bao nhieu tien") || qNorm.Contains("don gia") || qNorm.Contains("chuyen tien") ||
+                             qNorm.Contains("nop tien") || qNorm.Contains("ngan hang") || qNorm.Contains("stk") ||
+                             qNorm.Contains("so tai khoan") || qNorm.Contains("vietqr") || qNorm.Contains("mb bank") ||
+                             qNorm.Contains("chuyen khoan") || qLower.Contains("tuition") || qLower.Contains("fee") ||
+                             qLower.Contains("payment") || qLower.Contains("how much is") || asksPaymentStatus;
+
+            bool isStudentProfileQuery =
+                (matchedExplicitStudent != null || (currentStudent != null && (qNorm.Contains("thong tin cua toi") || qNorm.Contains("ho so cua toi") || qNorm.Contains("thong tin ca nhan") || qNorm.Contains("mssv cua toi") || qNorm.Contains("nganh cua toi")))) &&
+                (qNorm.Contains("thong tin") || qNorm.Contains("nganh gi") || qNorm.Contains("nganh nao") ||
+                 qNorm.Contains("nganh hoc") || qNorm.Contains("chuyen nganh") || qNorm.Contains("khoa may") ||
+                 qNorm.Contains("khoa hoc") || qNorm.Contains("la ai") || qNorm.Contains("email") ||
+                 qNorm.Contains("so dien thoai") || qNorm.Contains("sdt") || qNorm.Contains("mssv") ||
+                 qNorm.Contains("han muc") || qLower.Contains("profile") || qLower.Contains("who is") ||
+                 qLower.Contains("student info") || qLower.Contains("major"));
+
+            bool asksGrades = qNorm.Contains("diem cua em") || qNorm.Contains("diem cua toi") || qNorm.Contains("hoc ba") ||
+                              qNorm.Contains("mon da hoc") || qNorm.Contains("mon da qua") || qNorm.Contains("mon tich luy") ||
+                              qNorm.Contains("ket qua hoc tap") || qNorm.Contains("diem f") || qNorm.Contains("mon rot") ||
+                              qNorm.Contains("bang diem") || qNorm.Contains("diem so") ||
+                              qLower.Contains("my grade") || qLower.Contains("transcript") || qLower.Contains("completed course") ||
+                              ((qNorm.Contains("diem") || qNorm.Contains("hoc ba") || qNorm.Contains("bang diem")) && (matchedExplicitStudent != null || hasPersonalPronoun));
+
+            bool isAdvisoryRequest = IsExplicitRecommendationRequest(qNorm);
+
+            bool isRegisteredCoursesQuery =
+                !isTuition && !isStudentProfileQuery && !asksGrades && !isAdvisoryRequest &&
+                IsRegisteredCoursesIntent(qNorm, qLower, hasPersonalPronoun, null);
+
+            // =========================================================================
             // BƯỚC 2: PHÂN GIẢI DANH TÍNH SINH VIÊN & XÁC THỰC QUYỀN TRUY CẬP (SECURITY)
             // =========================================================================
             Student? targetStudent = null;
@@ -553,9 +600,9 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     isTargetingOtherStudent = true;
                 }
             }
-            else if (hasPersonalPronoun || queriedDay.HasValue || isWeekQuery || IsPersonalRegistrationQuery(qNorm, qLower))
+            else if (hasPersonalPronoun || queriedDay.HasValue || isWeekQuery || isRegisteredCoursesQuery || IsPersonalRegistrationQuery(qNorm, qLower))
             {
-                // Sử dụng đại từ nhân xưng hoặc hỏi lịch cá nhân -> Gán về sinh viên đang đăng nhập
+                // Sử dụng đại từ nhân xưng hoặc hỏi lịch cá nhân / môn đăng ký -> Gán về sinh viên đang đăng nhập
                 targetStudent = currentStudent;
             }
             else if (context.LastReferencedStudent != null)
@@ -567,6 +614,22 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     isTargetingOtherStudent = true;
                 }
             }
+
+            // Cập nhật lại isRegisteredCoursesQuery khi đã biết targetStudent
+            if (!isRegisteredCoursesQuery && !isTuition && !isStudentProfileQuery && !asksGrades && !isAdvisoryRequest)
+            {
+                isRegisteredCoursesQuery = IsRegisteredCoursesIntent(qNorm, qLower, hasPersonalPronoun, targetStudent);
+            }
+
+            bool isPersonalSchedule =
+                !isTuition && !isStudentProfileQuery && !asksGrades && !isAdvisoryRequest &&
+                (queriedDay.HasValue ||
+                 isWeekQuery ||
+                 isRegisteredCoursesQuery ||
+                 qNorm.Contains("trung lich") || qNorm.Contains("trung gio") || qLower.Contains("conflict") ||
+                 qNorm.Contains("thoi khoa bieu") || qNorm.Contains("lich hoc") || qNorm.Contains("lich cua toi") || qLower.Contains("my schedule") || qLower.Contains("my classes") ||
+                 (matchedCourse != null && (hasPersonalPronoun || targetStudent != null))
+                );
 
             // KIỂM TRA BẢO MẬT: Sinh viên thường KHÔNG được tra cứu dữ liệu cá nhân của sinh viên khác!
             if (isTargetingOtherStudent && currentRole != "Admin")
@@ -692,7 +755,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             // =========================================================================
             bool isFollowUpQuery = IsFollowUpQuestion(qNorm, qLower);
 
-            if (isFollowUpQuery && !isTuition && !isStudentProfileQuery && !asksGrades)
+            if (isFollowUpQuery && !isTuition && !isStudentProfileQuery && !asksGrades && !isRegisteredCoursesQuery)
             {
                 if (context.HasContext)
                 {
@@ -982,68 +1045,9 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             }
 
             // =========================================================================
-            // ĐỊNH NGHĨA CÁC Ý ĐỊNH TRỌNG TÂM ĐỂ PHÂN LUỒNG CHÍNH XÁC (TUITION, PROFILE, GRADES, ADVISORY)
-            // =========================================================================
-            bool asksPaymentStatus = qNorm.Contains("dong chua") || qNorm.Contains("nop chua") || 
-                                     qNorm.Contains("thanh toan chua") || qNorm.Contains("da dong") || 
-                                     qNorm.Contains("da nop") || qNorm.Contains("chua dong") || 
-                                     qNorm.Contains("chua nop") || qNorm.Contains("con no") || 
-                                     qNorm.Contains("no hoc phi") || qNorm.Contains("no tien") || 
-                                     qNorm.Contains("tinh trang hoc phi") || qNorm.Contains("trang thai hoc phi") ||
-                                     qNorm.Contains("kiem tra hoc phi") || qNorm.Contains("hoan tat hoc phi") ||
-                                     qNorm.Contains("dong tien chua") || qNorm.Contains("nop tien chua") ||
-                                     qNorm.Contains("dong hoc phi chua") || qNorm.Contains("nop hoc phi chua") ||
-                                     qLower.Contains("paid yet") || qLower.Contains("has paid") || 
-                                     qLower.Contains("is paid") || qLower.Contains("unpaid") || 
-                                     qLower.Contains("payment status") || qLower.Contains("tuition status") ||
-                                     (qNorm.Contains("hoc phi") && (qNorm.Contains("chua") || qNorm.Contains("roi") || qNorm.Contains("xong")));
-
-            bool isTuition = qNorm.Contains("hoc phi") || qNorm.Contains("tien hoc") || qNorm.Contains("gia tin chi") ||
-                             qNorm.Contains("dong tien") || qNorm.Contains("thanh toan") || qNorm.Contains("gia bao nhieu") ||
-                             qNorm.Contains("bao nhieu tien") || qNorm.Contains("don gia") || qNorm.Contains("chuyen tien") ||
-                             qNorm.Contains("nop tien") || qNorm.Contains("ngan hang") || qNorm.Contains("stk") ||
-                             qNorm.Contains("so tai khoan") || qNorm.Contains("vietqr") || qNorm.Contains("mb bank") ||
-                             qNorm.Contains("chuyen khoan") || qLower.Contains("tuition") || qLower.Contains("fee") ||
-                             qLower.Contains("payment") || qLower.Contains("how much is") || asksPaymentStatus;
-
-            bool isStudentProfileQuery =
-                (matchedExplicitStudent != null || (currentStudent != null && (qNorm.Contains("thong tin cua toi") || qNorm.Contains("ho so cua toi") || qNorm.Contains("thong tin ca nhan") || qNorm.Contains("mssv cua toi") || qNorm.Contains("nganh cua toi")))) &&
-                (qNorm.Contains("thong tin") || qNorm.Contains("nganh gi") || qNorm.Contains("nganh nao") ||
-                 qNorm.Contains("nganh hoc") || qNorm.Contains("chuyen nganh") || qNorm.Contains("khoa may") ||
-                 qNorm.Contains("khoa hoc") || qNorm.Contains("la ai") || qNorm.Contains("email") ||
-                 qNorm.Contains("so dien thoai") || qNorm.Contains("sdt") || qNorm.Contains("mssv") ||
-                 qNorm.Contains("han muc") || qLower.Contains("profile") || qLower.Contains("who is") ||
-                 qLower.Contains("student info") || qLower.Contains("major"));
-
-            bool asksGrades = qNorm.Contains("diem cua em") || qNorm.Contains("diem cua toi") || qNorm.Contains("hoc ba") ||
-                              qNorm.Contains("mon da hoc") || qNorm.Contains("mon da qua") || qNorm.Contains("mon tich luy") ||
-                              qNorm.Contains("ket qua hoc tap") || qNorm.Contains("diem f") || qNorm.Contains("mon rot") ||
-                              qNorm.Contains("bang diem") || qNorm.Contains("diem so") ||
-                              qLower.Contains("my grade") || qLower.Contains("transcript") || qLower.Contains("completed course") ||
-                              ((qNorm.Contains("diem") || qNorm.Contains("hoc ba") || qNorm.Contains("bang diem")) && (matchedExplicitStudent != null || targetStudent != null));
-
-            bool isAdvisoryRequest = IsExplicitRecommendationRequest(qNorm);
-
-            // =========================================================================
             // TRƯỜNG HỢP 3: LỊCH HỌC / THỜI KHÓA BIỂU CÁ NHÂN CỦA SINH VIÊN
-            // Ví dụ: "Ngày mai tôi học gì?", "Thứ 2 tôi học gì?", "Do I have any classes tomorrow?"
+            // Ví dụ: "Ngày mai tôi học gì?", "Thứ 2 tôi học gì?", "Tôi đã đăng ký môn nào?", "Do I have any classes tomorrow?"
             // =========================================================================
-            bool isPersonalSchedule =
-                !isTuition && !isStudentProfileQuery && !asksGrades && !isAdvisoryRequest &&
-                (queriedDay.HasValue ||
-                 isWeekQuery ||
-                 qNorm.Contains("trung lich") || qNorm.Contains("trung gio") || qLower.Contains("conflict") ||
-                 qNorm.Contains("thoi khoa bieu") || qNorm.Contains("lich hoc") || qNorm.Contains("lich cua toi") || qLower.Contains("my schedule") || qLower.Contains("my classes") ||
-                 IsPersonalRegistrationQuery(qNorm, qLower) ||
-                 (matchedCourse != null && (hasPersonalPronoun || targetStudent != null)) ||
-                 ((targetStudent != null || hasPersonalPronoun) && 
-                    (qNorm.Contains("da dang ky") || qNorm.Contains("dang ky nhung mon") || qNorm.Contains("mon da dang ky") || 
-                     qNorm.Contains("cac mon da dang ky") || qNorm.Contains("phieu dang ky") || qNorm.Contains("ket qua dang ky") || 
-                     qNorm.Contains("hoc mon gi") || qNorm.Contains("hoc nhung mon gi") || qNorm.Contains("dang ky lop") ||
-                     qLower.Contains("registered courses") || qLower.Contains("enrolled courses") ||
-                     ((qLower.Contains("course") || qLower.Contains("class")) && (qLower.Contains("register") || qLower.Contains("enroll")))))
-                );
-
             if (isPersonalSchedule)
             {
                 var effectiveStudent = targetStudent ?? currentStudent;
@@ -2504,21 +2508,117 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                    ((qLower.Contains("course") || qLower.Contains("class")) && (qLower.Contains("register") || qLower.Contains("enroll")));
         }
 
+        private static bool IsRegisteredCoursesIntent(string qNorm, string qLower, bool hasPersonalPronoun, Student? targetStudent)
+        {
+            // Loại trừ các câu hỏi về mở/đóng cổng, thời gian đăng ký hoặc rút môn
+            if (qNorm.Contains("mo cong") || qNorm.Contains("dong cong") || qNorm.Contains("thoi gian mo") ||
+                qNorm.Contains("khi nao mo") || qNorm.Contains("khi nao dong") || qNorm.Contains("dot dang ky") ||
+                qNorm.Contains("han dang ky") || qNorm.Contains("rut mon") || qNorm.Contains("huy mon") ||
+                qNorm.Contains("bo mon") || qNorm.Contains("han muc") || qLower.Contains("registration period"))
+            {
+                return false;
+            }
+
+            bool hasPersonalScope = hasPersonalPronoun || targetStudent != null ||
+                                    qNorm.Contains("cua toi") || qNorm.Contains("cua em") || qNorm.Contains("cua minh") ||
+                                    qNorm.Contains("cho toi") || qNorm.Contains("cho em") || qNorm.Contains("giup toi") ||
+                                    qNorm.Contains("toi ") || qNorm.Contains("minh ") || qNorm.Contains("em ") ||
+                                    qLower.Contains("my ") || qLower.Contains("for me") || qLower.Contains("i have") || qLower.Contains("did i");
+
+            // Hành động: đăng ký, ghi danh, đã chọn, đã lấy, tham gia, xem, học (khi đi kèm đại từ/ngữ cảnh cá nhân)
+            bool hasRegistrationAction =
+                qNorm.Contains("dang ky") || qNorm.Contains("ghi danh") || qNorm.Contains("da lay") ||
+                qNorm.Contains("da chon") || qNorm.Contains("tham gia") || qNorm.Contains("da dk") ||
+                qNorm.Contains("hoc nhung mon") || qNorm.Contains("hoc mon gi") || qNorm.Contains("hoc lop nao") ||
+                qNorm.Contains("hoc nhung lop") ||
+                (hasPersonalScope && (qNorm.Contains("hoc mon") || qNorm.Contains("hoc lop") || qNorm.Contains("hoc nhung") || (qNorm.Contains("em hoc") && qNorm.Contains("mon")) || (qNorm.Contains("toi hoc") && qNorm.Contains("mon")) || (qNorm.Contains("minh hoc") && qNorm.Contains("mon")))) ||
+                qLower.Contains("register") || qLower.Contains("enrolled") || qLower.Contains("signed up");
+
+            // Đối tượng học vụ: môn, lớp, học phần, tín chỉ, subject, course, class
+            bool hasAcademicSubject =
+                qNorm.Contains("mon") || qNorm.Contains("lop") || qNorm.Contains("hoc phan") ||
+                qNorm.Contains("tin chi") || qLower.Contains("course") || qLower.Contains("class") || qLower.Contains("subject");
+
+            // Cách diễn đạt dạng "Danh sách học phần của tôi đâu", "Thời khóa biểu của tôi"
+            bool isListOrSchedule =
+                (qNorm.Contains("danh sach") || qNorm.Contains("thoi khoa bieu") || qNorm.Contains("lich hoc") || qNorm.Contains("phieu dang ky") || qNorm.Contains("ket qua")) &&
+                hasAcademicSubject && (hasPersonalScope || qNorm.Contains("da dang ky") || qNorm.Contains("da ghi danh"));
+
+            if (isListOrSchedule) return true;
+
+            // Dạng hỏi: "Mình đăng ký những lớp gì rồi?", "Tôi đã đăng ký môn nào?", "Kiểm tra giúp tôi các môn đã ghi danh", "học kỳ này em học những môn gì"
+            if (hasRegistrationAction && hasAcademicSubject)
+            {
+                bool isQuestioning = hasPersonalScope || qNorm.Contains("gi") || qNorm.Contains("nao") ||
+                                     qNorm.Contains("dau") || qNorm.Contains("roi") || qNorm.Contains("chua") ||
+                                     qNorm.Contains("kiem tra") || qNorm.Contains("xem") || qNorm.Contains("bao nhieu");
+                if (isQuestioning) return true;
+            }
+
+            if ((qLower.Contains("registered course") || qLower.Contains("enrolled course") || qLower.Contains("registered class") || qLower.Contains("enrolled class") ||
+                 (qLower.Contains("my") && (qLower.Contains("course") || qLower.Contains("class")) && (qLower.Contains("register") || qLower.Contains("enroll")))))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static int? DetectOrdinalPosition(string qNorm, string qLower)
+        {
+            if (qNorm.Contains("dau tien") || qNorm.Contains("thu nhat") || qNorm.Contains("so 1") || qNorm.Contains("dau") ||
+                qLower.Contains("first") || qLower.Contains("1st"))
+            {
+                return 0;
+            }
+
+            if (qNorm.Contains("mon thu hai") || qNorm.Contains("cai thu hai") || qNorm.Contains("lop thu hai") ||
+                qNorm.Contains("mon thu 2") || qNorm.Contains("cai thu 2") || qNorm.Contains("lop thu 2") ||
+                qNorm.Contains("tiep theo") || qLower.Contains("second") || qLower.Contains("2nd") || qLower.Contains("next"))
+            {
+                return 1;
+            }
+
+            if (qNorm.Contains("mon thu ba") || qNorm.Contains("cai thu ba") || qNorm.Contains("mon thu 3") ||
+                qNorm.Contains("lop thu ba") || qNorm.Contains("lop thu 3") || qLower.Contains("third") || qLower.Contains("3rd"))
+            {
+                return 2;
+            }
+
+            if (qNorm.Contains("cuoi cung") || qNorm.Contains("chot") || qLower.Contains("last"))
+            {
+                return -1;
+            }
+
+            return null;
+        }
+
         private static bool IsFollowUpQuestion(string qNorm, string qLower)
         {
+            if (qNorm.Contains("mo cong") || qNorm.Contains("dong cong") || qNorm.Contains("thoi gian mo") ||
+                qNorm.Contains("khi nao mo") || qNorm.Contains("khi nao dong") || qNorm.Contains("dot dang ky") ||
+                qNorm.Contains("han dang ky") || qLower.Contains("registration period"))
+            {
+                return false;
+            }
+
             return qNorm.Contains("mon do") || qNorm.Contains("mon nay") ||
                    qNorm.Contains("lop do") || qNorm.Contains("lop nay") ||
                    qNorm.Contains("thay do") || qNorm.Contains("co do") ||
                    qNorm.Contains("the con") || qNorm.Contains("mon nao co lich") ||
                    qNorm.Contains("cai do") || qNorm.Contains("cai nay") ||
+                   qNorm.Contains("dau tien") || qNorm.Contains("thu nhat") || qNorm.Contains("thu hai") ||
+                   qNorm.Contains("con mon nao") || qNorm.Contains("mon khac") || qNorm.Contains("con gi nua") ||
+                   qNorm.Contains("con lop nao") || qNorm.Contains("cac mon con lai") ||
                    qNorm.Contains("luc may gio") || qNorm.Contains("may gio") || qNorm.Contains("ca may") ||
-                   qNorm.Contains("tiet may") ||
-                   qNorm.Contains("ai day") || qNorm.Contains("thay nao day") ||
-                   qNorm.Contains("phong nao") || qNorm.Contains("o dau") ||
+                   qNorm.Contains("tiet may") || qNorm.Contains("thoi gian hoc") ||
+                   qNorm.Contains("ai day") || qNorm.Contains("thay nao day") || qNorm.Contains("co nao day") ||
+                   qNorm.Contains("phong nao") || qNorm.Contains("o dau") || qNorm.Contains("phong may") ||
                    qLower.Contains("who teaches it") || qLower.Contains("who teaches that") ||
                    qLower.Contains("which of those") || qLower.Contains("which room") ||
                    qLower.Contains("what time") || qLower.Contains("when is it") ||
-                   qLower.Contains("what about");
+                   qLower.Contains("what about") || qLower.Contains("what else") || qLower.Contains("any other") ||
+                   qLower.Contains("first one") || qLower.Contains("second one") || qLower.Contains("last one");
         }
 
         private static bool IsGreetingIntent(string qNorm, string qLower)
@@ -3131,16 +3231,37 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     context.LastReferencedStudent = FindMatchingStudent(contentNorm, contentLower, allStudents);
                 }
 
-                // Trích xuất các mã lớp học phần được nhắc trong câu trả lời gần nhất
+                // Trích xuất các mã lớp học phần được nhắc trong câu trả lời gần nhất theo đúng thứ tự xuất hiện
                 if (!context.LastMentionedSections.Any())
                 {
-                    var matches = Regex.Matches(contentLower, @"\b(web\d{3}_\d{2}|tin\d{3}_\d{2}|csdl\d{3}_\d{2}|ktpm\d{3}_\d{2}|attt\d{3}_\d{2}|toeic_\d{2}|ai\d{3}_\d{2})\b");
+                    var matches = Regex.Matches(content, @"\b([A-Za-z0-9]{2,10}_\d{2})\b");
                     foreach (Match m in matches)
                     {
-                        var s = allSections.FirstOrDefault(sec => sec.SectionCode.Equals(m.Value, StringComparison.OrdinalIgnoreCase));
+                        string code = m.Groups[1].Value;
+                        var s = allSections.FirstOrDefault(sec => sec.SectionCode.Equals(code, StringComparison.OrdinalIgnoreCase));
                         if (s != null && !context.LastMentionedSections.Any(x => x.SectionId == s.SectionId))
                         {
                             context.LastMentionedSections.Add(s);
+                        }
+                    }
+
+                    if (!context.LastMentionedSections.Any())
+                    {
+                        var orderedFound = new List<(int Index, Section Sec)>();
+                        foreach (var sec in allSections)
+                        {
+                            int idx = content.IndexOf(sec.SectionCode, StringComparison.OrdinalIgnoreCase);
+                            if (idx >= 0)
+                            {
+                                orderedFound.Add((idx, sec));
+                            }
+                        }
+                        foreach (var item in orderedFound.OrderBy(x => x.Index))
+                        {
+                            if (!context.LastMentionedSections.Any(x => x.SectionId == item.Sec.SectionId))
+                            {
+                                context.LastMentionedSections.Add(item.Sec);
+                            }
                         }
                     }
                 }

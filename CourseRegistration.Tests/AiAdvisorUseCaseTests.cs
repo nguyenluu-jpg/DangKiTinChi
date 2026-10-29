@@ -975,6 +975,260 @@ namespace CourseRegistration.Tests
         }
 
         #endregion
+
+        #region 13. Kiểm Thử NLU Nâng Cao & Ngữ Cảnh Hội Thoại Nhiều Lượt (Requirement G)
+
+        [Theory]
+        [InlineData("Tôi đã đăng ký môn nào?")]
+        [InlineData("Mình đăng ký những lớp gì rồi?")]
+        [InlineData("Kiểm tra giúp tôi các môn đã ghi danh.")]
+        [InlineData("Danh sách học phần của tôi đâu?")]
+        [InlineData("toi da dang ky mon nao")]
+        [InlineData("kiem tra giup toi cac mon da ghi danh")]
+        [InlineData("danh sach hoc phan cua toi dau")]
+        public async Task Test_Unit_RegisteredCourses_NaturalLanguageVariations_Comprehensive(string query)
+        {
+            // Kiểm thử đa dạng cách diễn đạt tự nhiên tiếng Việt cho cùng một ý định tra cứu môn đã đăng ký
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            var result = await useCase.ExecuteAsync(1, "2026_HK1", query);
+
+            Assert.NotNull(result);
+            Assert.Contains("WEB301_01", result.AiMessage);
+            Assert.Contains("CSDL201_01", result.AiMessage);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+            Assert.Empty(result.RecommendedSections); // Đảm bảo KHÔNG tự ý đề xuất môn khi hỏi môn đã đăng ký
+        }
+
+        [Theory]
+        [InlineData("Mai có học không?")]
+        [InlineData("Ngày mai tôi học gì?")]
+        [InlineData("Cho mình xem lịch ngày mai.")]
+        [InlineData("Ngày mai có tiết nào và học ở đâu?")]
+        [InlineData("mai co hoc khong")]
+        [InlineData("ngay mai toi hoc gi")]
+        public async Task Test_Unit_TomorrowSchedule_NaturalLanguageVariations(string query)
+        {
+            // Kiểm thử các cách hỏi tự nhiên về lịch học ngày mai (kể cả có/không dấu, có/không từ khóa chuẩn)
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            var result = await useCase.ExecuteAsync(1, "2026_HK1", query);
+
+            Assert.NotNull(result);
+            Assert.Contains("Lịch Học Cá Nhân", result.AiMessage);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_MultiTurn_Chain_Ordinals_Room_Time_RemainingCourses()
+        {
+            // Kiểm thử chuỗi hội thoại nhiều lượt:
+            // Lượt 1: "Tôi đã đăng ký những môn nào?" -> Trả về danh sách môn thực tế
+            // Lượt 2: "Môn đầu tiên học ở đâu?" -> Xác định môn đầu tiên và tra phòng học
+            // Lượt 3: "Mấy giờ?" -> Tiếp tục nói về chính môn đó và tra giờ/tiết học
+            // Lượt 4: "Còn môn nào khác?" -> Trả về danh sách các môn còn lại loại trừ môn đang đề cập
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            var history = new List<AiConversationMessage>();
+
+            // Lượt 1
+            var q1 = "Tôi đã đăng ký những môn nào?";
+            var r1 = await useCase.ExecuteAsync(1, "2026_HK1", q1, history);
+            Assert.NotNull(r1);
+            Assert.Contains("WEB301_01", r1.AiMessage);
+            Assert.Contains("CSDL201_01", r1.AiMessage);
+
+            history.Add(new AiConversationMessage { IsUser = true, Content = q1 });
+            history.Add(new AiConversationMessage { IsUser = false, Content = r1.AiMessage });
+
+            // Lượt 2: "Môn đầu tiên học ở đâu?" -> WEB301_01 học ở Lab 402
+            var q2 = "Môn đầu tiên học ở đâu?";
+            var r2 = await useCase.ExecuteAsync(1, "2026_HK1", q2, history);
+            Assert.NotNull(r2);
+            Assert.Contains("WEB301_01", r2.AiMessage);
+            Assert.Contains("Lab 402", r2.AiMessage);
+
+            history.Add(new AiConversationMessage { IsUser = true, Content = q2 });
+            history.Add(new AiConversationMessage { IsUser = false, Content = r2.AiMessage });
+
+            // Lượt 3: "Mấy giờ?" -> Tiếp tục nói về WEB301_01 (Tiết 1 đến Tiết 4)
+            var q3 = "Mấy giờ?";
+            var r3 = await useCase.ExecuteAsync(1, "2026_HK1", q3, history);
+            Assert.NotNull(r3);
+            Assert.Contains("WEB301_01", r3.AiMessage);
+            Assert.Contains("Tiết 1", r3.AiMessage);
+            Assert.Contains("Tiết 4", r3.AiMessage);
+
+            history.Add(new AiConversationMessage { IsUser = true, Content = q3 });
+            history.Add(new AiConversationMessage { IsUser = false, Content = r3.AiMessage });
+
+            // Lượt 4: "Còn môn nào khác?" -> Danh sách các môn còn lại (CSDL201_01, ATTT401_01, TOEIC_01)
+            var q4 = "Còn môn nào khác?";
+            var r4 = await useCase.ExecuteAsync(1, "2026_HK1", q4, history);
+            Assert.NotNull(r4);
+            Assert.Contains("CSDL201_01", r4.AiMessage);
+            Assert.Contains("ATTT401_01", r4.AiMessage);
+            Assert.Contains("TOEIC_01", r4.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_MultiTurn_TopicSwitching_ResetsSectionContext()
+        {
+            // Kiểm thử chuyển chủ đề: Lượt 1 hỏi môn đã đăng ký, Lượt 2 hỏi học phí
+            // AI phải trả lời đúng học phí, không bị nhầm vào ngữ cảnh lớp học phần trước
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            var history = new List<AiConversationMessage>
+            {
+                new AiConversationMessage { IsUser = true, Content = "Tôi đã đăng ký những môn nào?" },
+                new AiConversationMessage { IsUser = false, Content = "Bạn đã đăng ký 4 lớp học phần: WEB301_01, CSDL201_01, ATTT401_01, TOEIC_01." }
+            };
+
+            var result = await useCase.ExecuteAsync(1, "2026_HK1", "Học phí một tín chỉ bao nhiêu tiền?", history);
+
+            Assert.NotNull(result);
+            Assert.Contains("450.000 VNĐ", result.AiMessage);
+            Assert.Contains("MB Bank", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_Ambiguous_Query_WithoutContext_AsksClarification_Naturally()
+        {
+            // Phiên chat mới tinh, hỏi mơ hồ: "Môn đó học ở đâu?" hoặc "Mấy giờ?"
+            // AI phải hỏi lại lịch sự thông tin còn thiếu, không được tự ý dump văn mẫu SQL
+            var useCase = CreateUseCase();
+
+            var resultRoom = await useCase.ExecuteAsync(1, "2026_HK1", "Môn đó học ở đâu?");
+            Assert.NotNull(resultRoom);
+            Assert.Contains("Bạn đang muốn hỏi phòng học của lớp học phần nào?", resultRoom.AiMessage);
+
+            var resultTime = await useCase.ExecuteAsync(1, "2026_HK1", "Mấy giờ?");
+            Assert.NotNull(resultTime);
+            Assert.Contains("Bạn đang muốn hỏi thời gian học của môn học hoặc lớp học phần cụ thể nào?", resultTime.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_OutOfScope_PoliteRedirection()
+        {
+            // Câu hỏi ngoài phạm vi (thời tiết) -> Từ chối lịch sự, hướng về nghiệp vụ trường, không dump câu hỏi mẫu
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(1, "2026_HK1", "Thời tiết hôm nay thế nào?");
+
+            Assert.NotNull(result);
+            Assert.Contains("chuyên trách hỗ trợ học vụ", result.AiMessage);
+            Assert.Contains("Trường Đại học Kinh tế", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_Security_StudentCannotQueryOtherStudentRecords()
+        {
+            // Sinh viên đăng nhập (Student 1) cố gắng tra cứu dữ liệu của sinh viên khác (Student 2)
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            var result = await useCase.ExecuteAsync(1, "2026_HK1", "Sinh viên Trần Thị Mai (SV21002) học môn gì?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Thông Báo Bảo Mật", result.AiMessage);
+            Assert.Contains("quyền riêng tư", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_Security_GuestAccess_PromptsLogin_ForPersonalData()
+        {
+            // Khách chưa đăng nhập hỏi lịch học cá nhân -> Yêu cầu đăng nhập, không bịa dữ liệu
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Ngày mai tôi học gì?");
+
+            Assert.NotNull(result);
+            Assert.True(result.SuggestLogin);
+            Assert.Contains("chế độ Khách", result.AiMessage);
+            Assert.Contains("Đăng nhập", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_EmptyData_StudentWithNoEnrollments_InformsCleanly()
+        {
+            // Sinh viên chưa đăng ký môn nào (Student 99)
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 99,
+                Username = "sv99999",
+                FullName = "Sinh Viên Mới",
+                Role = "Student",
+                StudentId = 99
+            });
+
+            var result = await useCase.ExecuteAsync(99, "2026_HK1", "Tôi đã đăng ký những môn nào?");
+
+            Assert.NotNull(result);
+            Assert.Contains("chưa đăng ký", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_Distinguish_AdvisoryRecommendation_From_OfficialRegistration()
+        {
+            // Phân biệt rõ rệt giữa:
+            // 1. Hỏi môn đã đăng ký -> KHÔNG thêm RecommendedSections
+            // 2. Yêu cầu gợi ý lộ trình -> CÓ thêm RecommendedSections
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            var regResult = await useCase.ExecuteAsync(1, "2026_HK1", "Tôi đã đăng ký những môn nào?");
+            Assert.Empty(regResult.RecommendedSections);
+
+            var recResult = await useCase.ExecuteAsync(1, "2026_HK1", "Gợi ý môn học kỳ này cho tôi");
+            Assert.NotEmpty(recResult.RecommendedSections);
+        }
+
+        #endregion
     }
 
     /// <summary>

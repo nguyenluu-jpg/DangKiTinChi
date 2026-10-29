@@ -886,12 +886,13 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             // Ví dụ: "Ngày mai tôi học gì?", "Thứ 2 tôi học gì?", "Do I have any classes tomorrow?"
             // =========================================================================
             bool isPersonalSchedule =
-                (hasPersonalPronoun || qNorm.Contains("lich cua toi") || qNorm.Contains("thoi khoa bieu") || qNorm.Contains("my schedule") || qNorm.Contains("my classes") || (queriedDay.HasValue && hasPersonalPronoun)) &&
+                (targetStudent != null || hasPersonalPronoun || IsPersonalRegistrationQuery(qNorm, qLower) || qNorm.Contains("lich cua toi") || qNorm.Contains("thoi khoa bieu") || qNorm.Contains("my schedule") || qNorm.Contains("my classes") || (queriedDay.HasValue && hasPersonalPronoun)) &&
                 !qNorm.Contains("diem") && !qNorm.Contains("hoc ba") && !qNorm.Contains("goi y") && !qNorm.Contains("tu van") && !qNorm.Contains("recommend");
 
             if (isPersonalSchedule)
             {
-                if (currentStudent == null)
+                var effectiveStudent = targetStudent ?? currentStudent;
+                if (effectiveStudent == null)
                 {
                     advice.AiMessage = isEnglish
                         ? "👋 **Hello! You are currently in Guest mode (not logged in).**\n\nTo view your personalized schedule and enrolled courses, please log in with your student account."
@@ -900,6 +901,10 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     return;
                 }
 
+                var effectiveRegisteredSections = effectiveStudent.StudentId == currentStudent?.StudentId
+                    ? registeredSections
+                    : GetRegisteredSectionsForStudent(effectiveStudent.StudentId, semester, enrollmentRepository);
+
                 // Sub-case 3.1: Hỏi về một ngày cụ thể (Hôm nay / Ngày mai / Thứ 2 - CN)
                 if (queriedDay.HasValue)
                 {
@@ -907,14 +912,14 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     string dayNameVi = day == 8 ? "Chủ Nhật" : $"Thứ {day}";
                     string dayNameEn = GetDayNameEnglish(day);
 
-                    var daySections = registeredSections.Where(s =>
+                    var daySections = effectiveRegisteredSections.Where(s =>
                         s.Schedules != null && s.Schedules.Any(sch => sch.DayOfWeek == day)).ToList();
 
                     var sb = new StringBuilder();
                     if (isEnglish)
                     {
                         sb.AppendLine($"### 🗓️ Personal Class Schedule for {dayNameEn} (Semester {semester}):");
-                        sb.AppendLine($"Student: **{currentStudent.FullName}** (ID: `{currentStudent.StudentCode}`)");
+                        sb.AppendLine($"Student: **{effectiveStudent.FullName}** (ID: `{effectiveStudent.StudentCode}`)");
                         sb.AppendLine();
 
                         if (daySections.Any())
@@ -942,7 +947,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     else
                     {
                         sb.AppendLine($"### 🗓️ Lịch Học Cá Nhân Vào {dayNameVi} (Học kỳ {semester}):");
-                        sb.AppendLine($"Sinh viên: **{currentStudent.FullName}** (MSSV: `{currentStudent.StudentCode}`)");
+                        sb.AppendLine($"Sinh viên: **{effectiveStudent.FullName}** (MSSV: `{effectiveStudent.StudentCode}`)");
                         sb.AppendLine();
 
                         if (daySections.Any())
@@ -978,12 +983,12 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     var sb = new StringBuilder();
                     if (isEnglish)
                     {
-                        sb.AppendLine($"### 🗓️ Weekly Schedule for Student {currentStudent.FullName} (`{currentStudent.StudentCode}`) — Semester {semester}:");
+                        sb.AppendLine($"### 🗓️ Weekly Schedule for Student {effectiveStudent.FullName} (`{effectiveStudent.StudentCode}`) — Semester {semester}:");
                         sb.AppendLine();
                         for (int d = 2; d <= 8; d++)
                         {
                             string dName = GetDayNameEnglish(d);
-                            var dSecs = registeredSections.Where(s => s.Schedules != null && s.Schedules.Any(sch => sch.DayOfWeek == d)).ToList();
+                            var dSecs = effectiveRegisteredSections.Where(s => s.Schedules != null && s.Schedules.Any(sch => sch.DayOfWeek == d)).ToList();
                             if (dSecs.Any())
                             {
                                 sb.AppendLine($"**{dName}:**");
@@ -1001,12 +1006,12 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     }
                     else
                     {
-                        sb.AppendLine($"### 🗓️ Thời Khóa Biểu Tuần Của Sinh Viên: **{currentStudent.FullName}** (`{currentStudent.StudentCode}`) — Học kỳ {semester}:");
+                        sb.AppendLine($"### 🗓️ Thời Khóa Biểu Tuần Của Sinh Viên: **{effectiveStudent.FullName}** (`{effectiveStudent.StudentCode}`) — Học kỳ {semester}:");
                         sb.AppendLine();
                         for (int d = 2; d <= 8; d++)
                         {
                             string dName = d == 8 ? "Chủ Nhật" : $"Thứ {d}";
-                            var dSecs = registeredSections.Where(s => s.Schedules != null && s.Schedules.Any(sch => sch.DayOfWeek == d)).ToList();
+                            var dSecs = effectiveRegisteredSections.Where(s => s.Schedules != null && s.Schedules.Any(sch => sch.DayOfWeek == d)).ToList();
                             if (dSecs.Any())
                             {
                                 sb.AppendLine($"📅 **{dName}:**");
@@ -1032,16 +1037,16 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     if (isEnglish)
                     {
                         sb.AppendLine($"### 📋 Your Registered Courses for Semester {semester}:");
-                        sb.AppendLine($"Student: **{currentStudent.FullName}** (ID: `{currentStudent.StudentCode}`)");
+                        sb.AppendLine($"Student: **{effectiveStudent.FullName}** (ID: `{effectiveStudent.StudentCode}`)");
                         sb.AppendLine();
 
-                        if (registeredSections.Any())
+                        if (effectiveRegisteredSections.Any())
                         {
-                            int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
-                            sb.AppendLine($"You have successfully enrolled in **{registeredSections.Count} classes** (Total: **{totalRegCredits} Credits**):");
+                            int totalRegCredits = effectiveRegisteredSections.Sum(s => s.Course?.Credits ?? 0);
+                            sb.AppendLine($"You have successfully enrolled in **{effectiveRegisteredSections.Count} classes** (Total: **{totalRegCredits} Credits**):");
                             sb.AppendLine();
 
-                            foreach (var s in registeredSections)
+                            foreach (var s in effectiveRegisteredSections)
                             {
                                 sb.AppendLine($"- **Class `{s.SectionCode}`** — **{s.Course?.CourseName}** (`{s.Course?.CourseCode}` - **{s.Course?.Credits} Credits**):");
                                 sb.AppendLine($"  + Instructor: **{s.Instructor}** | Room: **{s.Room}**");
@@ -1056,16 +1061,16 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     else
                     {
                         sb.AppendLine($"### 📋 Danh Sách Học Phần Đã Đăng Ký Học Kỳ {semester}:");
-                        sb.AppendLine($"Sinh viên: **{currentStudent.FullName}** (MSSV: `{currentStudent.StudentCode}`)");
+                        sb.AppendLine($"Sinh viên: **{effectiveStudent.FullName}** (MSSV: `{effectiveStudent.StudentCode}`)");
                         sb.AppendLine();
 
-                        if (registeredSections.Any())
+                        if (effectiveRegisteredSections.Any())
                         {
-                            int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
-                            sb.AppendLine($"Bạn đã đăng ký thành công **{registeredSections.Count} lớp học phần** (Tổng số: **{totalRegCredits} Tín chỉ**):");
+                            int totalRegCredits = effectiveRegisteredSections.Sum(s => s.Course?.Credits ?? 0);
+                            sb.AppendLine($"Bạn đã đăng ký thành công **{effectiveRegisteredSections.Count} lớp học phần** (Tổng số: **{totalRegCredits} Tín chỉ**):");
                             sb.AppendLine();
 
-                            foreach (var s in registeredSections)
+                            foreach (var s in effectiveRegisteredSections)
                             {
                                 sb.AppendLine($"- **Lớp `{s.SectionCode}`** — **{s.Course?.CourseName}** (`{s.Course?.CourseCode}` - **{s.Course?.Credits} TC**):");
                                 sb.AppendLine($"  + Giảng viên: **{s.Instructor}** | Phòng: **{s.Room}**");
@@ -1361,6 +1366,47 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             }
 
             // =========================================================================
+            // TRƯỜNG HỢP 9.5: TRA CỨU CÁC LỚP HỌC PHẦN ĐANG MỞ TOÀN TRƯỜNG TRONG KỲ
+            // Ví dụ: "Có những lớp học phần nào đang mở?", "Các lớp học phần mở kỳ này"
+            // =========================================================================
+            bool isOpenSectionsQuery =
+                (qNorm.Contains("lop hoc phan") || qNorm.Contains("lop dang mo") || qNorm.Contains("cac lop mo") || qNorm.Contains("mon mo")) &&
+                (qNorm.Contains("dang mo") || qNorm.Contains("mo ky nay") || qNorm.Contains("co nhung lop") || qNorm.Contains("danh sach") || qNorm.Contains("nhung lop nao") || qLower.Contains("open sections") || qLower.Contains("available classes"));
+
+            if (isOpenSectionsQuery)
+            {
+                var openInSemester = sectionsPool.ToList();
+                var sb = new StringBuilder();
+                if (isEnglish)
+                {
+                    sb.AppendLine($"### 🏫 Available Sections in Semester {semester} ({openInSemester.Count} classes):\n");
+                    foreach (var sec in openInSemester)
+                    {
+                        int remain = Math.Max(0, sec.MaxCapacity - sec.CurrentEnrollment);
+                        sb.AppendLine($"- **Class `{sec.SectionCode}`** — **{sec.Course?.CourseName}** ({sec.Course?.Credits} Credits):");
+                        sb.AppendLine($"  + Instructor: **{sec.Instructor}** | Room: **{sec.Room}**");
+                        sb.AppendLine($"  + Schedule: **{FormatScheduleDetailed(sec, true)}**");
+                        sb.AppendLine($"  + Slots left: **{remain}/{sec.MaxCapacity}**");
+                    }
+                }
+                else
+                {
+                    sb.AppendLine($"### 🏫 Danh Sách Các Lớp Học Phần Đang Mở Trong Học Kỳ {semester} ({openInSemester.Count} lớp):\n");
+                    foreach (var sec in openInSemester)
+                    {
+                        int remain = Math.Max(0, sec.MaxCapacity - sec.CurrentEnrollment);
+                        sb.AppendLine($"- **Lớp `{sec.SectionCode}`** — **{sec.Course?.CourseName}** (Mã môn: `{sec.Course?.CourseCode}` - **{sec.Course?.Credits} TC**):");
+                        sb.AppendLine($"  + Giảng viên: **{sec.Instructor}** | Phòng: **{sec.Room}**");
+                        sb.AppendLine($"  + Lịch học: **{FormatScheduleDetailed(sec, false)}**");
+                        sb.AppendLine($"  + Sĩ số: **{sec.CurrentEnrollment}/{sec.MaxCapacity} sinh viên** (Còn trống **{remain} chỗ**)");
+                    }
+                }
+
+                advice.AiMessage = sb.ToString();
+                return;
+            }
+
+            // =========================================================================
             // TRƯỜNG HỢP 10: TRA CỨU MÔN HỌC TOÀN TRƯỜNG (Course)
             // =========================================================================
             if (matchedCourse != null)
@@ -1540,7 +1586,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
             // Trường hợp 11.1: Hỏi về giảng viên nhưng không tìm thấy trong CSDL
             bool isInstructorInquiry =
-                qNorm.Contains("thay ") || qNorm.Contains("co ") || qNorm.Contains("giang vien") ||
+                qNorm.Contains("thay ") || qLower.Contains("cô ") || qNorm.Contains("co giao ") || qNorm.Contains("giang vien") ||
                 qNorm.Contains("ai day") || qNorm.Contains("ai giang day") || qNorm.Contains("ai phu trach") ||
                 qLower.Contains("lecturer") || qLower.Contains("teacher") || qLower.Contains("who teaches");
 
@@ -1864,8 +1910,9 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
         {
             return qNorm.Contains("thoi khoa bieu") || qNorm.Contains("lich hoc cua") ||
                    qNorm.Contains("mon da dang ky") || qNorm.Contains("phieu dang ky") ||
-                   qNorm.Contains("ket qua dang ky") || qLower.Contains("enrolled courses") ||
-                   qLower.Contains("registered courses") || qLower.Contains("my schedule");
+                   qNorm.Contains("ket qua dang ky") || qNorm.Contains("danh sach mon da dang ky") ||
+                   (qNorm.Contains("mon") && qNorm.Contains("da dang ky")) || qNorm.Contains("mon da dk") ||
+                   qLower.Contains("enrolled courses") || qLower.Contains("registered courses") || qLower.Contains("my schedule");
         }
 
         private static bool IsFollowUpQuestion(string qNorm, string qLower)
@@ -1918,15 +1965,16 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
         private static bool IsLoginInstructionIntent(string qNorm, string qLower)
         {
-            bool asksLoginVi = qNorm.Contains("dang nhap") &&
+            bool asksLoginVi = (qNorm.Contains("dang nhap") || qNorm.Contains("login") || qNorm.Contains("log in")) &&
                 (qNorm.Contains("buoc") || qNorm.Contains("nhung buoc") || qNorm.Contains("cac buoc") ||
                  qNorm.Contains("nhu the nao") || qNorm.Contains("the nao") || qNorm.Contains("lam sao") ||
                  qNorm.Contains("cach") || qNorm.Contains("huong dan") || qNorm.Contains("o dau") ||
                  qNorm.Contains("muon") || qNorm.Contains("khong biet") || qNorm.Contains("cho nao") ||
-                 qNorm.Contains("vao he thong"));
+                 qNorm.Contains("vao he thong") || qNorm.Contains("chi toi") || qNorm.Contains("chi giup") ||
+                 qNorm.Contains("vao") || qNorm.Contains("ntn"));
 
-            bool asksSystemAccessVi = (qNorm.Contains("vao he thong") || qNorm.Contains("truy cap he thong")) &&
-                (qNorm.Contains("lam sao") || qNorm.Contains("the nao") || qNorm.Contains("cach") || qNorm.Contains("huong dan") || qNorm.Contains("buoc"));
+            bool asksSystemAccessVi = (qNorm.Contains("vao he thong") || qNorm.Contains("truy cap he thong") || qNorm.Contains("vao tai khoan")) &&
+                (qNorm.Contains("lam sao") || qNorm.Contains("the nao") || qNorm.Contains("cach") || qNorm.Contains("huong dan") || qNorm.Contains("buoc") || qNorm.Contains("ntn") || qNorm.Contains("muon"));
 
             bool asksLoginEn = qLower.Contains("how do i log in") || qLower.Contains("how to log in") ||
                                qLower.Contains("how to login") || qLower.Contains("how can i log in") ||
@@ -2234,7 +2282,11 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 return dow == DayOfWeek.Sunday ? 8 : ((int)dow + 1);
             }
 
-            if (qNorm.Contains("ngay mai") || qNorm.Contains("mai") || qLower.Contains("tomorrow"))
+            bool isNameMai = qNorm.Contains("thi mai") || qNorm.Contains("tran mai") || qNorm.Contains("nguyen mai") || qNorm.Contains("le mai");
+            bool isTomorrowWord = qNorm.Contains("ngay mai") || qLower.Contains("tomorrow") ||
+                                  (!isNameMai && Regex.IsMatch(qNorm, @"\b(mai|sang mai|chieu mai|toi mai)\b"));
+
+            if (isTomorrowWord)
             {
                 DayOfWeek dow = DateTime.Today.AddDays(1).DayOfWeek;
                 return dow == DayOfWeek.Sunday ? 8 : ((int)dow + 1);

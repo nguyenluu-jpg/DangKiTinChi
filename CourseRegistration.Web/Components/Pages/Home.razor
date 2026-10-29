@@ -150,20 +150,6 @@
                             </div>
                         </div>
                     }
-
-                    <div class="pt-2 border-top border-white border-opacity-25">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <label class="small text-white-50 mb-0 text-nowrap me-2">Kiểm tra SV:</label>
-                            <select class="form-select form-select-sm bg-dark text-white border-secondary w-auto" @onchange="OnStudentChange">
-                                @foreach (var s in students)
-                                {
-                                    <option value="@s.StudentId" selected="@(s.StudentId == selectedStudentId)">
-                                        @s.StudentCode - @s.FullName
-                                    </option>
-                                }
-                            </select>
-                        </div>
-                    </div>
                 </div>
             }
             else
@@ -584,15 +570,6 @@
         currentStudent = students.FirstOrDefault(s => s.StudentId == selectedStudentId);
     }
 
-    private async Task OnStudentChange(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out int id))
-        {
-            selectedStudentId = id;
-            currentStudent = students.FirstOrDefault(s => s.StudentId == selectedStudentId);
-            await CurrentUserStateStore.SetCurrentStudentIdAsync(id);
-        }
-    }
 
     private async void HandleUserChange()
     {

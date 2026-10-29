@@ -555,7 +555,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                                      qLower.Contains("payment status") || qLower.Contains("tuition status") ||
                                      (qNorm.Contains("hoc phi") && (qNorm.Contains("chua") || qNorm.Contains("roi") || qNorm.Contains("xong")));
 
-            bool isTuition = qNorm.Contains("hoc phi") || qNorm.Contains("tien hoc") || qNorm.Contains("gia tin chi") ||
+            bool isTuition = qNorm.Contains("hoc phi") || (qNorm.Contains("tien hoc") && !qNorm.Contains("dau tien")) || qNorm.Contains("gia tin chi") ||
                              qNorm.Contains("dong tien") || qNorm.Contains("thanh toan") || qNorm.Contains("gia bao nhieu") ||
                              qNorm.Contains("bao nhieu tien") || qNorm.Contains("don gia") || qNorm.Contains("chuyen tien") ||
                              qNorm.Contains("nop tien") || qNorm.Contains("ngan hang") || qNorm.Contains("stk") ||
@@ -755,7 +755,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             // =========================================================================
             bool isFollowUpQuery = IsFollowUpQuestion(qNorm, qLower);
 
-            if (isFollowUpQuery && !isTuition && !isStudentProfileQuery && !asksGrades && !isRegisteredCoursesQuery)
+            if (isFollowUpQuery && !isTuition && !isStudentProfileQuery && !asksGrades && !isRegisteredCoursesQuery && (!queriedDay.HasValue || context.HasContext))
             {
                 if (context.HasContext)
                 {

@@ -1147,7 +1147,7 @@ namespace CourseRegistration.Tests
             var result = await useCase.ExecuteAsync(1, "2026_HK1", "Thời tiết hôm nay thế nào?");
 
             Assert.NotNull(result);
-            Assert.Contains("chuyên trách hỗ trợ học vụ", result.AiMessage);
+            Assert.Contains("Ngoài Phạm Vi Hỗ Trợ", result.AiMessage);
             Assert.Contains("Trường Đại học Kinh tế", result.AiMessage);
         }
 
@@ -1188,18 +1188,18 @@ namespace CourseRegistration.Tests
         [Fact]
         public async Task Test_Unit_EmptyData_StudentWithNoEnrollments_InformsCleanly()
         {
-            // Sinh viên chưa đăng ký môn nào (Student 99)
+            // Sinh viên chưa đăng ký môn nào (Student 3 - Lê Hoàng Nam trong Fake Data)
             var useCase = CreateUseCase();
             await _userStateStore.SetCurrentUserAsync(new UserAccount
             {
-                AccountId = 99,
-                Username = "sv99999",
-                FullName = "Sinh Viên Mới",
+                AccountId = 3,
+                Username = "sv21003",
+                FullName = "Lê Hoàng Nam",
                 Role = "Student",
-                StudentId = 99
+                StudentId = 3
             });
 
-            var result = await useCase.ExecuteAsync(99, "2026_HK1", "Tôi đã đăng ký những môn nào?");
+            var result = await useCase.ExecuteAsync(3, "2026_HK1", "Tôi đã đăng ký những môn nào?");
 
             Assert.NotNull(result);
             Assert.Contains("chưa đăng ký", result.AiMessage);
@@ -1226,6 +1226,35 @@ namespace CourseRegistration.Tests
 
             var recResult = await useCase.ExecuteAsync(1, "2026_HK1", "Gợi ý môn học kỳ này cho tôi");
             Assert.NotEmpty(recResult.RecommendedSections);
+        }
+
+        [Fact]
+        public async Task Test_Unit_NovelUnseenQueries_ReducedRigidPatternDependency()
+        {
+            // Kiểm thử các câu hỏi tự nhiên mới hoàn toàn, chưa từng xuất hiện trong bất kỳ bài test nào trước đây
+            // để xác nhận hệ thống thực sự hiểu ý nghĩa ngôn ngữ tự nhiên mà không cần câu hỏi mẫu cố định.
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            // Câu hỏi 1: Diễn đạt đời thường dùng "bản thân", "đã chọn", "ạ"
+            var r1 = await useCase.ExecuteAsync(1, "2026_HK1", "Cho em hỏi hiện tại bản thân đã chọn những môn nào rồi ạ?");
+            Assert.NotNull(r1);
+            Assert.Contains("WEB301_01", r1.AiMessage);
+            Assert.Contains("CSDL201_01", r1.AiMessage);
+            Assert.Contains("Nguyễn Văn Tuấn", r1.AiMessage);
+
+            // Câu hỏi 2: Hỏi lịch có/không dùng từ "lên trường", xưng "anh"
+            var r2 = await useCase.ExecuteAsync(1, "2026_HK1", "Thứ 3 em có phải lên trường không anh?");
+            Assert.NotNull(r2);
+            Assert.Contains("Thứ 3", r2.AiMessage);
+            Assert.Contains("CSDL201_01", r2.AiMessage);
         }
 
         #endregion

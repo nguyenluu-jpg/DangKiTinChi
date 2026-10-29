@@ -868,6 +868,113 @@ namespace CourseRegistration.Tests
         }
 
         #endregion
+
+        #region 12. Kiểm Tra Học Phí (Đã Đóng / Chưa Đóng) & Hồ Sơ Sinh Viên Từ CSDL
+
+        [Fact]
+        public async Task Test_Unit_TuitionPaymentStatus_NguyenVanTuan_Unpaid_ExplicitNo()
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Sinh viên Nguyễn Văn Tuấn đã đóng học phí chưa?");
+
+            Assert.NotNull(result);
+            Assert.Contains("CHƯA ĐÓNG", result.AiMessage);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+            Assert.Contains("450.000", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_TuitionPaymentStatus_LeHoangNam_Paid_ExplicitYes()
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Sinh viên Lê Hoàng Nam đã đóng học phí chưa?");
+
+            Assert.NotNull(result);
+            Assert.Contains("ĐÃ ĐÓNG", result.AiMessage);
+            Assert.Contains("Lê Hoàng Nam", result.AiMessage);
+            Assert.Contains("VietQR", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_TuitionDebt_NguyenVanTuan_OwesDebt_ExplicitYes()
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Sinh viên Nguyễn Văn Tuấn có nợ học phí không?");
+
+            Assert.NotNull(result);
+            Assert.Contains("CÓ.", result.AiMessage);
+            Assert.Contains("nợ học phí", result.AiMessage);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_TuitionDebt_LeHoangNam_NoDebt_ExplicitNo()
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Sinh viên Lê Hoàng Nam có nợ học phí không?");
+
+            Assert.NotNull(result);
+            Assert.Contains("KHÔNG.", result.AiMessage);
+            Assert.Contains("Lê Hoàng Nam", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_Tuition_LoggedInStudent_PronounQuery()
+        {
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            var result = await useCase.ExecuteAsync(1, "2026_HK1", "Tôi đã đóng học phí chưa?");
+
+            Assert.NotNull(result);
+            Assert.Contains("CHƯA ĐÓNG", result.AiMessage);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_StudentProfile_MajorLookup()
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Sinh viên Nguyễn Văn Tuấn học ngành gì?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+            Assert.Contains("Công nghệ Thông tin", result.AiMessage);
+            Assert.Contains("K21", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_StudentProfile_CodeLookup()
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Thông tin sinh viên SV21001");
+
+            Assert.NotNull(result);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+            Assert.Contains("SV21001", result.AiMessage);
+            Assert.Contains("Công nghệ Thông tin", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_RegisteredSections_ExplicitStudent()
+        {
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Sinh viên Nguyễn Văn Tuấn đã đăng ký những môn nào?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+            Assert.Contains("WEB301_01", result.AiMessage);
+            Assert.Contains("CSDL201_01", result.AiMessage);
+        }
+
+        #endregion
     }
 
     /// <summary>
@@ -1049,9 +1156,43 @@ namespace CourseRegistration.Tests
 
     public class FakeEnrollmentRepository : IEnrollmentRepository
     {
-        public Task<Enrollment?> GetEnrollmentByIdAsync(int enrollmentId) => Task.FromResult<Enrollment?>(null);
-        public Task<IEnumerable<Enrollment>> GetEnrollmentsByStudentIdAsync(int studentId) => Task.FromResult<IEnumerable<Enrollment>>(new List<Enrollment>());
-        public Task<IEnumerable<Enrollment>> GetEnrollmentsBySemesterAsync(string semester) => Task.FromResult<IEnumerable<Enrollment>>(new List<Enrollment>());
+        private readonly List<Enrollment> _enrollments = new List<Enrollment>
+        {
+            new Enrollment
+            {
+                EnrollmentId = 1,
+                StudentId = 1,
+                Semester = "2026_HK1",
+                Status = "Confirmed",
+                PaymentStatus = "Unpaid",
+                Student = new Student { StudentId = 1, StudentCode = "SV21001", FullName = "Nguyễn Văn Tuấn", Major = "Công nghệ Thông tin", AcademicYear = "K21" }
+            },
+            new Enrollment
+            {
+                EnrollmentId = 2,
+                StudentId = 2,
+                Semester = "2026_HK1",
+                Status = "Confirmed",
+                PaymentStatus = "Unpaid",
+                Student = new Student { StudentId = 2, StudentCode = "SV21002", FullName = "Trần Thị Mai", Major = "Hệ thống Thông tin", AcademicYear = "K21" }
+            },
+            new Enrollment
+            {
+                EnrollmentId = 3,
+                StudentId = 3,
+                Semester = "2026_HK1",
+                Status = "Confirmed",
+                PaymentStatus = "Paid",
+                PaymentDate = new DateTime(2026, 10, 25, 20, 11, 10),
+                PaymentMethod = "VietQR Napas247",
+                TransactionReference = "VQR-2026-928174",
+                Student = new Student { StudentId = 3, StudentCode = "SV21003", FullName = "Lê Hoàng Nam", Major = "Kỹ thuật Phần mềm", AcademicYear = "K21" }
+            }
+        };
+
+        public Task<Enrollment?> GetEnrollmentByIdAsync(int enrollmentId) => Task.FromResult(_enrollments.FirstOrDefault(e => e.EnrollmentId == enrollmentId));
+        public Task<IEnumerable<Enrollment>> GetEnrollmentsByStudentIdAsync(int studentId) => Task.FromResult<IEnumerable<Enrollment>>(_enrollments.Where(e => e.StudentId == studentId));
+        public Task<IEnumerable<Enrollment>> GetEnrollmentsBySemesterAsync(string semester) => Task.FromResult<IEnumerable<Enrollment>>(_enrollments.Where(e => e.Semester == semester));
 
         public Task<IEnumerable<Section>> GetRegisteredSectionsByStudentAsync(int studentId, string semester)
         {

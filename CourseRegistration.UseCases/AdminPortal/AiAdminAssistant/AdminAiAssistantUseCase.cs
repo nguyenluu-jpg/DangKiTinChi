@@ -45,6 +45,7 @@ namespace CourseRegistration.UseCases.AdminPortal.AiAdminAssistant
             var allStudents = (await _studentRepository.GetAllStudentsAsync()).ToList();
             var allCourses = (await _courseRepository.GetAllCoursesAsync()).ToList();
             var allPrerequisites = (await _courseRepository.GetAllPrerequisitesAsync()).ToList();
+            var allSemesterEnrollments = (await _enrollmentRepository.GetEnrollmentsBySemesterAsync(semester)).ToList();
 
             // 2. Thử nghiệm qua LLM nếu IChatClient sẵn sàng
             bool aiSuccess = false;
@@ -131,7 +132,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                 result.ModelUsed = "Động Cơ Tri Thức & Phân Tích Dữ Liệu SQL Thời Gian Thực";
                 result.WarningMessage = "💡 Trợ lý AI đang chạy ở chế độ Động cơ Tri Thức & Tra cứu Học vụ Trực tiếp từ CSDL thời gian thực.";
 
-                await ExecuteUniversalKnowledgeQueryAsync(result, query, allSections, allStudents, allCourses, allPrerequisites, semester, allSectionsAcrossSemesters);
+                await ExecuteUniversalKnowledgeQueryAsync(result, query, allSections, allStudents, allCourses, allPrerequisites, semester, allSectionsAcrossSemesters, allSemesterEnrollments);
             }
 
             return result;
@@ -145,7 +146,8 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
             List<Course> allCourses,
             List<Prerequisite> allPrerequisites,
             string semester,
-            List<Section>? allSectionsAcrossSemesters = null)
+            List<Section>? allSectionsAcrossSemesters = null,
+            List<Enrollment>? allSemesterEnrollments = null)
         {
             string qRaw = query.Trim();
             string qLower = qRaw.ToLowerInvariant();
@@ -295,7 +297,16 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                 qNorm.Contains("so tai khoan") ||
                 qNorm.Contains("vietqr") ||
                 qNorm.Contains("mb bank") ||
-                qNorm.Contains("chuyen khoan");
+                qNorm.Contains("chuyen khoan") ||
+                qNorm.Contains("dong chua") ||
+                qNorm.Contains("nop chua") ||
+                qNorm.Contains("thanh toan chua") ||
+                qNorm.Contains("da dong") ||
+                qNorm.Contains("chua dong") ||
+                qNorm.Contains("da nop") ||
+                qNorm.Contains("chua nop") ||
+                qNorm.Contains("con no") ||
+                qNorm.Contains("no hoc phi");
 
             bool isRegistrationPeriodIntent =
                 qNorm.Contains("thoi gian mo cong") ||
@@ -757,22 +768,91 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
             // -------------------------------------------------------------------------
             else if (isTuitionIntent)
             {
-                result.Category = "Quy Định Mức Thu Học Phí & Thanh Toán";
-                result.AnswerSummary = "Thông tin về học phí và thanh toán học kỳ " + semester + " tại Trường Đại học Kinh tế Huế:\n\n" +
-                    "- **Mức thu chuẩn:** **450.000 VNĐ / tín chỉ**.\n" +
-                    "- **Ví dụ cụ thể:**\n" +
-                    "  + Môn học 3 tín chỉ: **1.350.000 VNĐ**\n" +
-                    "  + Môn học 4 tín chỉ: **1.800.000 VNĐ**\n" +
-                    "  + Kỳ học tiêu chuẩn (14 tín chỉ): **6.300.000 VNĐ**\n\n" +
-                    "- **Thông tin tài khoản thu học phí nhà trường:**\n" +
-                    "  + Số tài khoản: **101705201967**\n" +
-                    "  + Ngân hàng: **MB Bank (Ngân hàng TMCP Quân Đội)**\n" +
-                    "  + Đơn vị thụ hưởng: **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**\n" +
-                    "- **Cơ chế thanh toán VietQR Napas247:** Sinh viên có thể vào mục 'Học phí' quét mã VietQR tự động điền đúng số tiền và cú pháp `[MSSV] HP 2026_HK1`, gạch nợ tức thì 24/7.\n" +
-                    "- **Thời hạn nộp học phí:** Trong vòng 15 ngày kể từ ngày gửi phiếu đăng ký học phần.";
+                result.Category = "Học Phí & Quản Lý Công Nợ";
 
-                result.ActionableSuggestions.Add("Cán bộ có thể theo dõi danh sách sinh viên đã nộp và chưa nộp học phí tại menu 'Quản lý Học phí'.");
-                result.ActionableSuggestions.Add("Sinh viên có thể tra cứu và gạch nợ trực tiếp bằng quét mã VietQR.");
+                if (matchedStudent != null)
+                {
+                    var enrollment = allSemesterEnrollments?.FirstOrDefault(e => e.StudentId == matchedStudent.StudentId && (e.Semester == semester || (semester == "2026_HK1" && e.Semester == "2025_HK1")) && e.Status != "Cancelled")
+                                     ?? allSemesterEnrollments?.FirstOrDefault(e => e.StudentId == matchedStudent.StudentId && e.Status != "Cancelled");
+                    var registeredSections = (await _enrollmentRepository.GetRegisteredSectionsByStudentAsync(matchedStudent.StudentId, semester)).ToList();
+                    int totalCr = registeredSections.Sum(s => s.Course?.Credits ?? 0);
+                    if (totalCr == 0 && enrollment != null && enrollment.TotalCredits > 0) totalCr = enrollment.TotalCredits;
+                    long tuitionAmount = (long)totalCr * 450000;
+                    if (tuitionAmount == 0 && enrollment != null && enrollment.TuitionFee > 0) tuitionAmount = (long)enrollment.TuitionFee;
+
+                    bool isPaid = enrollment?.IsPaid == true;
+                    if (isPaid)
+                    {
+                        result.AnswerSummary = $"✅ **ĐÃ ĐÓNG.** Sinh viên **{matchedStudent.FullName}** (MSSV: `{matchedStudent.StudentCode}`) đã hoàn tất thanh toán học phí học kỳ **{semester}**!\n\n" +
+                            $"- **Số tín chỉ đã đăng ký:** **{totalCr} Tín chỉ**\n" +
+                            $"- **Số tiền học phí đã nộp:** **{tuitionAmount:N0} VNĐ** (Đơn giá 450.000 VNĐ / tín chỉ)\n" +
+                            $"- **Thời gian thanh toán:** **{(enrollment?.PaymentDate.HasValue == true ? enrollment.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm:ss") : "Đã xác nhận")}**\n" +
+                            $"- **Phương thức:** **{(!string.IsNullOrEmpty(enrollment?.PaymentMethod) ? enrollment.PaymentMethod : "VietQR Napas247")}**\n" +
+                            $"- **Mã tham chiếu GD:** **{(!string.IsNullOrEmpty(enrollment?.TransactionReference) ? enrollment.TransactionReference : "VQR-CONFIRMED")}**\n" +
+                            $"- **Trạng thái phiếu:** **{(enrollment?.Status ?? "Confirmed")}**";
+                        result.ActionableSuggestions.Add($"Sinh viên {matchedStudent.FullName} đã hoàn tất nghĩa vụ học phí.");
+                    }
+                    else
+                    {
+                        result.AnswerSummary = $"❌ **CHƯA ĐÓNG.** Sinh viên **{matchedStudent.FullName}** (MSSV: `{matchedStudent.StudentCode}`) hiện **chưa thanh toán** học phí học kỳ **{semester}**!\n\n" +
+                            $"- **Số tín chỉ đã đăng ký:** **{totalCr} Tín chỉ**\n" +
+                            $"- **Tổng số tiền học phí còn nợ:** **{tuitionAmount:N0} VNĐ** (Đơn giá 450.000 VNĐ / tín chỉ)\n" +
+                            $"- **Trạng thái công nợ:** **Chưa thanh toán (Unpaid)**\n" +
+                            $"- **Kênh nộp tiền:** VietQR MB Bank STK **101705201967** (TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ), cú pháp `[{matchedStudent.StudentCode}] HP {semester}`";
+                        result.ActionableSuggestions.Add($"Gửi email đôn đốc đóng học phí tới sinh viên ({matchedStudent.Email}).");
+                        result.ActionableSuggestions.Add("Sinh viên có thể quét mã VietQR tự động tại trang cá nhân để gạch nợ 24/7.");
+                    }
+                }
+                else if ((qNorm.Contains("danh sach") || qNorm.Contains("bao nhieu") || qNorm.Contains("thong ke") || qNorm.Contains("chua dong") || qNorm.Contains("no hoc phi")) && allSemesterEnrollments != null)
+                {
+                    int paidCount = allSemesterEnrollments.Count(e => e.IsPaid);
+                    int unpaidCount = allSemesterEnrollments.Count(e => !e.IsPaid);
+                    long totalCollected = allSemesterEnrollments.Where(e => e.IsPaid).Sum(e => (long)e.TuitionFee);
+                    long totalDebt = allSemesterEnrollments.Where(e => !e.IsPaid).Sum(e => (long)e.TuitionFee);
+
+                    var unpaidStudents = allSemesterEnrollments
+                        .Where(e => !e.IsPaid && e.Student != null)
+                        .Select(e => $"- **{e.Student!.FullName}** (`{e.Student.StudentCode}`): Còn nợ **{e.TuitionFee:N0} VNĐ** ({e.TotalCredits} tín chỉ)")
+                        .Take(10)
+                        .ToList();
+
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"📊 **Thống Kê Tình Hình Thu Học Phí Học Kỳ {semester}:**\n");
+                    sb.AppendLine($"- **Tổng số sinh viên đăng ký:** **{allSemesterEnrollments.Count} sinh viên**");
+                    sb.AppendLine($"- **Đã hoàn tất thanh toán (Paid):** **{paidCount} sinh viên** (Tổng thu: **{totalCollected:N0} VNĐ**)");
+                    sb.AppendLine($"- **Chưa thanh toán (Unpaid):** **{unpaidCount} sinh viên** (Tổng nợ: **{totalDebt:N0} VNĐ**)");
+                    sb.AppendLine();
+                    if (unpaidStudents.Any())
+                    {
+                        sb.AppendLine($"**Danh sách sinh viên chưa nộp học phí (Top {unpaidStudents.Count}):**");
+                        foreach (var u in unpaidStudents)
+                        {
+                            sb.AppendLine(u);
+                        }
+                    }
+
+                    result.AnswerSummary = sb.ToString();
+                    result.ActionableSuggestions.Add("Xuất báo cáo danh sách công nợ học phí sang file Excel.");
+                    result.ActionableSuggestions.Add("Gửi thông báo đôn đốc hoàn tất học phí trước thời hạn đóng cổng.");
+                }
+                else
+                {
+                    result.AnswerSummary = "Thông tin về học phí và thanh toán học kỳ " + semester + " tại Trường Đại học Kinh tế Huế:\n\n" +
+                        "- **Mức thu chuẩn:** **450.000 VNĐ / tín chỉ**.\n" +
+                        "- **Ví dụ cụ thể:**\n" +
+                        "  + Môn học 3 tín chỉ: **1.350.000 VNĐ**\n" +
+                        "  + Môn học 4 tín chỉ: **1.800.000 VNĐ**\n" +
+                        "  + Kỳ học tiêu chuẩn (14 tín chỉ): **6.300.000 VNĐ**\n\n" +
+                        "- **Thông tin tài khoản thu học phí nhà trường:**\n" +
+                        "  + Số tài khoản: **101705201967**\n" +
+                        "  + Ngân hàng: **MB Bank (Ngân hàng TMCP Quân Đội)**\n" +
+                        "  + Đơn vị thụ hưởng: **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**\n" +
+                        "- **Cơ chế thanh toán VietQR Napas247:** Sinh viên có thể vào mục 'Học phí' quét mã VietQR tự động điền đúng số tiền và cú pháp `[MSSV] HP 2026_HK1`, gạch nợ tức thì 24/7.\n" +
+                        "- **Thời hạn nộp học phí:** Trong vòng 15 ngày kể từ ngày gửi phiếu đăng ký học phần.";
+
+                    result.ActionableSuggestions.Add("Cán bộ có thể theo dõi danh sách sinh viên đã nộp và chưa nộp học phí tại menu 'Quản lý Học phí'.");
+                    result.ActionableSuggestions.Add("Sinh viên có thể tra cứu và gạch nợ trực tiếp bằng quét mã VietQR.");
+                }
             }
             // -------------------------------------------------------------------------
             // NHÁNH 12: KẾ HOẠCH & THỜI GIAN MỞ CỔNG ĐĂNG KÝ HỌC PHẦN

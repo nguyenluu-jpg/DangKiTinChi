@@ -188,7 +188,7 @@ namespace CourseRegistration.Web
                 return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"ThoiKhoaBieu_{student.StudentCode}_{enrollment.Semester}.xlsx");
             });
 
-            app.MapRazorComponents<App>()
+            app.MapRazorComponents<CourseRegistration.Web.Components.App>()
                 .AddInteractiveServerRenderMode();
 
             app.Run();

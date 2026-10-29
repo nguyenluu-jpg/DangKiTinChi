@@ -460,6 +460,61 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                 }
             }
             // -------------------------------------------------------------------------
+            // NHÁNH 2.5: ĐỐI CHIẾU SINH VIÊN VỚI GIẢNG VIÊN (STUDENT + INSTRUCTOR)
+            // Ví dụ: "Sinh viên Nguyễn Văn Tuấn có đăng ký môn nào của thầy Hà Ngọc Long không?"
+            // -------------------------------------------------------------------------
+            else if (matchedStudent != null && matchedInstructor != null && matchedInstructor.Value.Sections.Any())
+            {
+                result.Category = "Đối Chiếu Học Vụ Sinh Viên & Giảng Viên";
+                var (instName, _) = matchedInstructor.Value;
+                var studentSections = (await _enrollmentRepository.GetRegisteredSectionsByStudentAsync(matchedStudent.StudentId, semester)).ToList();
+
+                var crossSections = studentSections.Where(s =>
+                    !string.IsNullOrEmpty(s.Instructor) &&
+                    (s.Instructor.Equals(instName, StringComparison.OrdinalIgnoreCase) ||
+                     CleanAcademicTitle(s.Instructor).Contains(CleanAcademicTitle(instName), StringComparison.OrdinalIgnoreCase) ||
+                     CleanAcademicTitle(instName).Contains(CleanAcademicTitle(s.Instructor), StringComparison.OrdinalIgnoreCase))
+                ).ToList();
+
+                result.Students.Add(new AdminAiStudentItem
+                {
+                    StudentId = matchedStudent.StudentId,
+                    StudentCode = matchedStudent.StudentCode,
+                    FullName = matchedStudent.FullName,
+                    Major = matchedStudent.Major,
+                    RegisteredCredits = studentSections.Sum(r => r.Course?.Credits ?? 0),
+                    RegisteredCoursesCount = studentSections.Count,
+                    Status = crossSections.Any() ? "Có môn khớp" : "Không có môn khớp"
+                });
+
+                foreach (var s in crossSections)
+                {
+                    result.Sections.Add(CreateSectionItem(s));
+                }
+
+                if (crossSections.Any())
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Cố vấn AI đã đối chiếu dữ liệu SQL Server thời gian thực:\n");
+                    sb.AppendLine($"Sinh viên **{matchedStudent.FullName}** (MSSV: `{matchedStudent.StudentCode}` — Ngành {matchedStudent.Major}) hiện **CÓ ĐĂNG KÝ {crossSections.Count} lớp học phần** do **{instName}** phụ trách trong học kỳ **{semester}**:\n");
+                    foreach (var s in crossSections)
+                    {
+                        sb.AppendLine($"- **{s.Course?.CourseName}** (Mã lớp: `{s.SectionCode}` — **{s.Course?.Credits} Tín chỉ**):");
+                        sb.AppendLine($"  + Giảng viên: **{s.Instructor}**");
+                        sb.AppendLine($"  + Lịch học: **{FormatSchedules(s)}** | Phòng: **{s.Room ?? "Chưa xếp phòng"}**");
+                        sb.AppendLine($"  + Sĩ số hiện tại: **{s.CurrentEnrollment}/{s.MaxCapacity} sinh viên**");
+                    }
+                    result.AnswerSummary = sb.ToString();
+                    result.ActionableSuggestions.Add($"Cán bộ có thể mở 'Quản lý Đăng ký & Rút môn SV' để xem chi tiết phiếu đăng ký của sinh viên {matchedStudent.StudentCode}.");
+                }
+                else
+                {
+                    result.AnswerSummary = $"Sinh viên **{matchedStudent.FullName}** (MSSV: `{matchedStudent.StudentCode}`) **KHÔNG ĐĂNG KÝ môn học/lớp học phần nào** do **{instName}** phụ trách trong học kỳ **{semester}**.\n\n" +
+                        $"*(Hiện tại sinh viên {matchedStudent.FullName} đang theo học {studentSections.Count} lớp khác: {string.Join(", ", studentSections.Select(s => $"`{s.SectionCode}` ({s.Course?.CourseName} - GV {s.Instructor})"))})*";
+                    result.ActionableSuggestions.Add($"Nếu sinh viên có nguyện vọng học lớp của {instName}, Cán bộ có thể sử dụng chức năng 'Thêm môn cứu xét' tại phân hệ Quản lý Đăng ký.");
+                }
+            }
+            // -------------------------------------------------------------------------
             // NHÁNH 3: HỎI VỀ GIẢNG VIÊN (VD: "Thầy Hùng dạy bao nhiêu sinh viên", "Thầy Dũng")
             // -------------------------------------------------------------------------
             else if (matchedInstructor != null && matchedInstructor.Value.Sections.Any())
@@ -1115,8 +1170,8 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
 
             foreach (var st in allStudents)
             {
-                var nameNorm = RemoveDiacritics(st.FullName);
-                if (qNorm.Contains(nameNorm))
+                var nameNorm = RemoveDiacritics(st.FullName).ToLowerInvariant();
+                if (!string.IsNullOrEmpty(nameNorm) && qNorm.Contains(nameNorm))
                 {
                     return st;
                 }

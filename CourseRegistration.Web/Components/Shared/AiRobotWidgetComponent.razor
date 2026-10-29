@@ -452,10 +452,11 @@
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[AiRobotWidget Error] {ex.GetType().Name}: {ex.Message}");
             chatMessages.Add(new ChatMessageModel
             {
                 IsUser = false,
-                Content = "Cố vấn AI đang bận xử lý, vui lòng thử lại hoặc mở trang chi tiết để kiểm tra: " + ex.Message,
+                Content = "Dịch vụ AI hiện chưa khả dụng hoặc đang bận xử lý. Vui lòng thử lại sau giây lát nhé!",
                 Timestamp = DateTime.Now
             });
         }

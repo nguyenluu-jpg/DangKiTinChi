@@ -760,12 +760,14 @@
     private string guestQuery = string.Empty;
     private bool isGuestLoading = false;
     private AdminAiQueryResult? guestResult;
+    private List<AiConversationMessage> guestChatHistory = new List<AiConversationMessage>();
 
     private List<Student> studentList = new List<Student>();
     private string userPrompt = string.Empty;
     private bool isLoading = false;
     private string successMessage = string.Empty;
     private AiCourseAdvice? currentAdvice;
+    private List<AiConversationMessage> studentChatHistory = new List<AiConversationMessage>();
 
     private int SelectedCredits => currentAdvice?.RecommendedSections.Where(s => s.IsSelected).Sum(s => s.Credits) ?? 0;
 
@@ -778,7 +780,15 @@
         // Khởi tạo giao diện chào mừng từ AI
         if (!isAuthenticated)
         {
-            guestResult = await AdminAiAssistantUseCase.ExecuteAsync("chào", "2026_HK1");
+            var initAdvice = await GetAiAdviceUseCase.ExecuteAsync(0, "2026_HK1", "");
+            guestResult = new AdminAiQueryResult
+            {
+                Query = string.Empty,
+                Category = "Cố Vấn Học Thuật AI",
+                AnswerSummary = initAdvice.AiMessage,
+                ModelUsed = initAdvice.ModelUsed,
+                WarningMessage = initAdvice.WarningMessage
+            };
             guestQuery = string.Empty;
         }
         else if (currentRole == "Admin")
@@ -806,22 +816,67 @@
     {
         if (string.IsNullOrWhiteSpace(guestQuery) || isGuestLoading) return;
 
+        string question = guestQuery.Trim();
+        guestQuery = string.Empty;
+
         isGuestLoading = true;
         StateHasChanged();
 
-        await Task.Delay(250);
+        await Task.Delay(100);
 
         try
         {
-            guestResult = await AdminAiAssistantUseCase.ExecuteAsync(guestQuery.Trim(), "2026_HK1");
+            guestChatHistory.Add(new AiConversationMessage
+            {
+                IsUser = true,
+                Content = question,
+                Timestamp = DateTime.Now
+            });
+
+            var advice = await GetAiAdviceUseCase.ExecuteAsync(0, "2026_HK1", question, guestChatHistory);
+
+            guestResult = new AdminAiQueryResult
+            {
+                Query = question,
+                Category = advice.IsAiGenerated ? "Trợ Lý AI (LLM)" : "Cố Vấn Học Thuật AI",
+                AnswerSummary = advice.AiMessage,
+                IsAiGenerated = advice.IsAiGenerated,
+                ModelUsed = advice.ModelUsed,
+                WarningMessage = advice.WarningMessage
+            };
+
+            if (advice.RecommendedSections.Any())
+            {
+                foreach (var s in advice.RecommendedSections)
+                {
+                    guestResult.Sections.Add(new AdminAiSectionItem
+                    {
+                        SectionId = s.SectionId,
+                        SectionCode = s.SectionCode,
+                        CourseName = s.CourseName,
+                        Instructor = s.Instructor,
+                        CurrentEnrollment = 0,
+                        MaxCapacity = 50,
+                        Note = s.RecommendationReason
+                    });
+                }
+            }
+
+            guestChatHistory.Add(new AiConversationMessage
+            {
+                IsUser = false,
+                Content = advice.AiMessage,
+                Timestamp = DateTime.Now
+            });
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[AiAdvisor Guest Error] {ex.GetType().Name}: {ex.Message}");
             guestResult = new AdminAiQueryResult
             {
-                Query = guestQuery,
-                Category = "Lỗi xử lý",
-                AnswerSummary = "Đã xảy ra lỗi khi phân tích câu hỏi: " + ex.Message
+                Query = question,
+                Category = "Dịch Vụ AI",
+                AnswerSummary = "Dịch vụ AI hiện chưa khả dụng. Ứng dụng vẫn hoạt động bình thường, vui lòng thử lại sau giây lát."
             };
         }
         finally
@@ -833,6 +888,8 @@
 
     private async void HandleUserStateChange()
     {
+        studentChatHistory.Clear();
+        guestChatHistory.Clear();
         await RefreshUserState();
         await InvokeAsync(StateHasChanged);
     }
@@ -887,11 +944,12 @@
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[AiAdvisor Admin Error] {ex.GetType().Name}: {ex.Message}");
             adminResult = new AdminAiQueryResult
             {
                 Query = adminQuery,
-                Category = "Lỗi Xử Lý",
-                AnswerSummary = $"Đã xảy ra lỗi khi tra cứu: {ex.Message}. Ứng dụng vẫn hoạt động bình thường.",
+                Category = "Dịch Vụ AI",
+                AnswerSummary = "Dịch vụ AI hiện chưa khả dụng. Ứng dụng vẫn hoạt động bình thường, vui lòng thử lại sau giây lát.",
                 IsAiGenerated = false,
                 ModelUsed = "Hệ thống Tự Động"
             };
@@ -929,6 +987,7 @@
                 currentMajor = student.Major;
                 currentAcademicYear = student.AcademicYear;
                 currentAdvice = null;
+                studentChatHistory.Clear();
                 successMessage = string.Empty;
                 StateHasChanged();
             }
@@ -937,7 +996,10 @@
 
     private async Task AskAiAdvisor()
     {
-        if (activeStudentId <= 0) return;
+        if (activeStudentId <= 0 || string.IsNullOrWhiteSpace(userPrompt)) return;
+
+        string question = userPrompt.Trim();
+        userPrompt = string.Empty;
 
         isLoading = true;
         currentAdvice = null;
@@ -946,10 +1008,28 @@
 
         try
         {
-            currentAdvice = await GetAiAdviceUseCase.ExecuteAsync(activeStudentId, "2026_HK1", userPrompt);
+            studentChatHistory.Add(new AiConversationMessage
+            {
+                IsUser = true,
+                Content = question,
+                Timestamp = DateTime.Now
+            });
+
+            currentAdvice = await GetAiAdviceUseCase.ExecuteAsync(activeStudentId, "2026_HK1", question, studentChatHistory);
+
+            if (currentAdvice != null && !string.IsNullOrEmpty(currentAdvice.AiMessage))
+            {
+                studentChatHistory.Add(new AiConversationMessage
+                {
+                    IsUser = false,
+                    Content = currentAdvice.AiMessage,
+                    Timestamp = DateTime.Now
+                });
+            }
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[AiAdvisor Student Error] {ex.GetType().Name}: {ex.Message}");
             currentAdvice = new AiCourseAdvice
             {
                 StudentId = activeStudentId,
@@ -957,7 +1037,7 @@
                 StudentName = currentStudentName,
                 Semester = "2026_HK1",
                 IsAiGenerated = false,
-                WarningMessage = $"Đã xảy ra lỗi: {ex.Message}. Ứng dụng vẫn hoạt động bình thường."
+                WarningMessage = "Dịch vụ AI hiện chưa khả dụng. Ứng dụng và các chức năng đăng ký tín chỉ vẫn hoạt động bình thường, vui lòng thử lại sau giây lát."
             };
         }
         finally
@@ -980,6 +1060,7 @@
     private void ClearAdvice()
     {
         currentAdvice = null;
+        studentChatHistory.Clear();
         successMessage = string.Empty;
     }
 

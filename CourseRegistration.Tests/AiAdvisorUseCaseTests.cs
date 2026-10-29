@@ -305,6 +305,7 @@ namespace CourseRegistration.Tests
             var toeicCourse = new Course { CourseId = 8, CourseCode = "TOEIC", CourseName = "Tiếng Anh chuyên ngành CNTT", Credits = 2 };
             var tin102Course = new Course { CourseId = 2, CourseCode = "TIN102", CourseName = "Lập trình Hướng đối tượng", Credits = 3 };
             var web302Course = new Course { CourseId = 9, CourseCode = "WEB302", CourseName = "Phát triển Web Nâng cao", Credits = 4 };
+            var ktpmCourse = new Course { CourseId = 6, CourseCode = "KTPM302", CourseName = "Kỹ thuật Phần mềm", Credits = 3 };
 
             _sections = new List<Section>
             {
@@ -343,6 +344,12 @@ namespace CourseRegistration.Tests
                     SectionId = 6, SectionCode = "WEB302_01", CourseId = 9, Course = web302Course,
                     Instructor = "TS. Hà Ngọc Long", Room = "Lab 402", MaxCapacity = 50, CurrentEnrollment = 0, Semester = "2026_HK2",
                     Schedules = new List<SectionSchedule> { new SectionSchedule { ScheduleId = 6, SectionId = 6, DayOfWeek = 3, StartPeriod = 1, EndPeriod = 4, Room = "Lab 402" } }
+                },
+                new Section
+                {
+                    SectionId = 7, SectionCode = "KTPM302_01", CourseId = 6, Course = ktpmCourse,
+                    Instructor = "ThS. Đặng Thị Kim Giao", Room = "Phòng C301", MaxCapacity = 45, CurrentEnrollment = 5, Semester = "2026_HK1",
+                    Schedules = new List<SectionSchedule> { new SectionSchedule { ScheduleId = 7, SectionId = 7, DayOfWeek = 5, StartPeriod = 1, EndPeriod = 3, Room = "Phòng C301" } }
                 }
             };
         }

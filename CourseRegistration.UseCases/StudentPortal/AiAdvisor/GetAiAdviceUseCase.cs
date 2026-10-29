@@ -2071,6 +2071,9 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 if (context.HasContext) break;
             }
 
+            return context;
+        }
+
         #region Specialized Role-Based System Prompts
 
         /// <summary>

@@ -692,10 +692,105 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             // =========================================================================
             bool isFollowUpQuery = IsFollowUpQuestion(qNorm, qLower);
 
-            if (isFollowUpQuery)
+            if (isFollowUpQuery && !isTuition && !isStudentProfileQuery && !asksGrades)
             {
                 if (context.HasContext)
                 {
+                    int? ordinal = DetectOrdinalPosition(qNorm, qLower);
+                    Section? targetSec = null;
+                    if (ordinal.HasValue && context.LastMentionedSections.Any())
+                    {
+                        if (ordinal.Value == -1)
+                        {
+                            targetSec = context.LastMentionedSections.Last();
+                        }
+                        else if (ordinal.Value < context.LastMentionedSections.Count)
+                        {
+                            targetSec = context.LastMentionedSections[ordinal.Value];
+                        }
+                    }
+
+                    if (targetSec == null)
+                    {
+                        targetSec = matchedSection 
+                                    ?? context.LastReferencedSection
+                                    ?? (context.LastMentionedSections.Count == 1 ? context.LastMentionedSections.First() : null);
+                    }
+
+                    // Ca 2.0: Hỏi về các môn học khác ("Còn môn nào khác?", "Các môn còn lại?", "What else?", "Any other courses?")
+                    bool asksOtherCourses = qNorm.Contains("con mon nao") || qNorm.Contains("mon khac") || 
+                                            qNorm.Contains("cac mon con lai") || qNorm.Contains("con gi nua") ||
+                                            qNorm.Contains("con lop nao") || qNorm.Contains("nhung mon con lai") ||
+                                            qLower.Contains("what else") || qLower.Contains("any other");
+
+                    if (asksOtherCourses)
+                    {
+                        var studentReg = (currentStudent != null && registeredSections.Any())
+                            ? registeredSections
+                            : context.LastMentionedSections;
+
+                        var otherSecs = (targetSec != null)
+                            ? studentReg.Where(s => s.SectionId != targetSec.SectionId).ToList()
+                            : studentReg;
+
+                        var sb = new StringBuilder();
+                        if (isEnglish)
+                        {
+                            sb.AppendLine("### 📋 Other Registered Courses in Your Timetable:");
+                            if (targetSec != null)
+                            {
+                                sb.AppendLine($"Besides **{targetSec.Course?.CourseName}** (`{targetSec.SectionCode}`), you have **{otherSecs.Count} other enrolled class(es)** for semester {semester}:");
+                            }
+                            else
+                            {
+                                sb.AppendLine($"You have **{otherSecs.Count} other enrolled class(es)** for semester {semester}:");
+                            }
+                            sb.AppendLine();
+                            if (otherSecs.Any())
+                            {
+                                foreach (var s in otherSecs)
+                                {
+                                    sb.AppendLine($"- **Class `{s.SectionCode}`** — **{s.Course?.CourseName}** ({s.Course?.Credits} Credits):");
+                                    sb.AppendLine($"  + Instructor: **{s.Instructor}** | Room: **{s.Room}**");
+                                    sb.AppendLine($"  + Schedule: **{FormatScheduleDetailed(s, true)}**");
+                                }
+                            }
+                            else
+                            {
+                                sb.AppendLine("- *No other courses found.*");
+                            }
+                        }
+                        else
+                        {
+                            sb.AppendLine($"### 📋 Các Môn Học Phần Khác Trong Thời Khóa Biểu Của Bạn:");
+                            if (targetSec != null)
+                            {
+                                sb.AppendLine($"Ngoài lớp **{targetSec.Course?.CourseName}** (`{targetSec.SectionCode}`), bạn còn có **{otherSecs.Count} lớp học phần khác** đã đăng ký trong học kỳ {semester}:");
+                            }
+                            else
+                            {
+                                sb.AppendLine($"Bạn còn có **{otherSecs.Count} lớp học phần khác** đã đăng ký trong học kỳ {semester}:");
+                            }
+                            sb.AppendLine();
+                            if (otherSecs.Any())
+                            {
+                                foreach (var s in otherSecs)
+                                {
+                                    sb.AppendLine($"- **Lớp `{s.SectionCode}`** — **{s.Course?.CourseName}** ({s.Course?.Credits} TC):");
+                                    sb.AppendLine($"  + Giảng viên: **{s.Instructor}** | Phòng: **{s.Room}**");
+                                    sb.AppendLine($"  + Lịch học: **{FormatScheduleDetailed(s, false)}**");
+                                }
+                            }
+                            else
+                            {
+                                sb.AppendLine("- *Không còn môn học phần nào khác trong danh sách.*");
+                            }
+                        }
+
+                        advice.AiMessage = sb.ToString();
+                        return;
+                    }
+
                     // Ca 2.1: Hỏi môn nào có lịch ngày mai / thứ cụ thể trong số các môn đã nói trước
                     if (queriedDay.HasValue && (context.LastMentionedSections.Any() || registeredSections.Any()))
                     {
@@ -762,13 +857,11 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     bool asksWhoTeaches = qNorm.Contains("ai day") || qNorm.Contains("thay nao") || qNorm.Contains("co nao") ||
                                           qLower.Contains("who teaches") || qLower.Contains("who is the teacher") || qLower.Contains("who is the instructor");
 
-                    if (asksWhoTeaches && (context.LastReferencedSection != null || context.LastReferencedCourse != null || context.LastMentionedSections.Any()))
+                    if (asksWhoTeaches && (targetSec != null || context.LastReferencedCourse != null || context.LastMentionedSections.Any()))
                     {
-                        var targetSec = context.LastReferencedSection
-                                        ?? (context.LastMentionedSections.Count == 1 ? context.LastMentionedSections.First() : null);
-
                         if (targetSec != null)
                         {
+                            context.LastReferencedSection = targetSec;
                             advice.AiMessage = isEnglish
                                 ? $"### 👨‍🏫 Instructor Information for `{targetSec.SectionCode}`:\n\n" +
                                   $"- Course: **{targetSec.Course?.CourseName}** (`{targetSec.Course?.CourseCode}` - {targetSec.Course?.Credits} Credits)\n" +
@@ -798,17 +891,16 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                         }
                     }
 
-                    // Ca 2.3: "Cái đó học lúc mấy giờ?", "Môn đó học ca mấy?", "What time does that class start?"
+                    // Ca 2.3: "Cái đó học lúc mấy giờ?", "Môn đó học ca mấy?", "Mấy giờ?", "What time does that class start?"
                     bool asksTimeOfClass = qNorm.Contains("luc may gio") || qNorm.Contains("may gio") || qNorm.Contains("ca may") ||
-                                           qNorm.Contains("tiet may") || qLower.Contains("what time") || qLower.Contains("when is it") || qLower.Contains("which period");
+                                           qNorm.Contains("tiet may") || qNorm.Contains("thoi gian") ||
+                                           qLower.Contains("what time") || qLower.Contains("when is it") || qLower.Contains("which period");
 
-                    if (asksTimeOfClass && (context.LastReferencedSection != null || context.LastReferencedCourse != null || context.LastMentionedSections.Any()))
+                    if (asksTimeOfClass && (targetSec != null || context.LastReferencedCourse != null || context.LastMentionedSections.Any()))
                     {
-                        var targetSec = context.LastReferencedSection
-                                        ?? (context.LastMentionedSections.Count == 1 ? context.LastMentionedSections.First() : null);
-
                         if (targetSec != null)
                         {
+                            context.LastReferencedSection = targetSec;
                             advice.AiMessage = isEnglish
                                 ? $"### ⏰ Timetable for `{targetSec.SectionCode}` ({targetSec.Course?.CourseName}):\n\n" +
                                   $"- Schedule: **{FormatScheduleDetailed(targetSec, true)}**\n" +
@@ -837,14 +929,13 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     }
 
                     // Ca 2.4: "Học ở đâu?", "Phòng nào vậy?", "Which room?"
-                    bool asksRoomOfClass = qNorm.Contains("o dau") || qNorm.Contains("phong nao") || qLower.Contains("which room") || qLower.Contains("where is it");
-                    if (asksRoomOfClass && (context.LastReferencedSection != null || context.LastReferencedCourse != null || context.LastMentionedSections.Any()))
+                    bool asksRoomOfClass = qNorm.Contains("o dau") || qNorm.Contains("phong nao") || qNorm.Contains("phong may") ||
+                                           qLower.Contains("which room") || qLower.Contains("where is it") || qLower.Contains("where do i study");
+                    if (asksRoomOfClass && (targetSec != null || context.LastReferencedCourse != null || context.LastMentionedSections.Any()))
                     {
-                        var targetSec = context.LastReferencedSection
-                                        ?? (context.LastMentionedSections.Count == 1 ? context.LastMentionedSections.First() : null);
-
                         if (targetSec != null)
                         {
+                            context.LastReferencedSection = targetSec;
                             advice.AiMessage = isEnglish
                                 ? $"### 🏫 Room Information for `{targetSec.SectionCode}` ({targetSec.Course?.CourseName}):\n\n- Room: **{targetSec.Room ?? "TBD"}**\n- Schedule: **{FormatScheduleDetailed(targetSec, true)}**\n- Lecturer: **{targetSec.Instructor}**"
                                 : $"### 🏫 Phòng Học Của Lớp `{targetSec.SectionCode}` ({targetSec.Course?.CourseName}):\n\n- Phòng học: **{targetSec.Room ?? "Chưa xếp phòng"}**\n- Lịch học: **{FormatScheduleDetailed(targetSec, false)}**\n- Giảng viên: **{targetSec.Instructor}**";

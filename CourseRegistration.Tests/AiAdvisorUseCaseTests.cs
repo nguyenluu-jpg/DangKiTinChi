@@ -264,6 +264,213 @@ namespace CourseRegistration.Tests
             Assert.All(result.RecommendedSections, s => Assert.True(s.IsSelected));
             Assert.Contains("Xác nhận", result.AiMessage);
         }
+
+        #region Prompt Section 8 Mandatory Tests (A - K)
+
+        [Fact]
+        public async Task Test_A_Greeting_ReturnsNaturalGreeting_NoSqlTemplateList()
+        {
+            // A. "Chào bạn." -> Lời chào tự nhiên, không kèm danh sách câu hỏi SQL mẫu
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Chào bạn.");
+
+            Assert.NotNull(result);
+            Assert.Contains("Chào", result.AiMessage);
+            Assert.DoesNotContain("Ngày mai tôi học gì?", result.AiMessage);
+            Assert.DoesNotContain("Môn WEB301 có mấy lớp?", result.AiMessage);
+            Assert.DoesNotContain("Thầy Long dạy môn gì?", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_B_LoginInstructions_MatchesRealUI_NoSqlTemplateList()
+        {
+            // B. "Muốn đăng nhập tài khoản gồm những bước nào?" -> Hướng dẫn đăng nhập theo giao diện thật
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Muốn đăng nhập tài khoản gồm những bước nào?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Đăng nhập", result.AiMessage);
+            Assert.Contains("Bước 1", result.AiMessage);
+            Assert.Contains("Bước 2", result.AiMessage);
+            Assert.Contains("Bước 3", result.AiMessage);
+            Assert.True(result.SuggestLogin);
+            // Must NOT dump SQL templates
+            Assert.DoesNotContain("Ngày mai tôi học gì?", result.AiMessage);
+            Assert.DoesNotContain("Môn WEB301 có mấy lớp?", result.AiMessage);
+            Assert.DoesNotContain("Thầy Long dạy môn gì?", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_C_LogoutInstructions_MatchesRealUI()
+        {
+            // C. "Làm sao để đăng xuất?" -> Hướng dẫn dựa trên chức năng thực tế
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Làm sao để đăng xuất?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Đăng xuất", result.AiMessage);
+            Assert.Contains("avatar", result.AiMessage, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Ngày mai tôi học gì?", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_D_EnrolledCourses_CurrentStudent_QueriesSqlData()
+        {
+            // D. "Tôi đã đăng ký những môn nào?" -> Xác định đúng tài khoản sinh viên hiện tại và truy vấn SQL
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            var result = await useCase.ExecuteAsync(1, "2026_HK1", "Tôi đã đăng ký những môn nào?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+            Assert.Contains("WEB301_01", result.AiMessage);
+            Assert.Contains("CSDL201_01", result.AiMessage);
+            Assert.DoesNotContain("Ngày mai tôi học gì?", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_E_CrossQuery_Student_And_Lecturer()
+        {
+            // E. "Sinh viên Nguyễn Văn Tuấn có đăng ký môn nào của thầy Hà Ngọc Long không?"
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 1,
+                Username = "admin",
+                FullName = "Admin",
+                Role = "Admin"
+            });
+
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Sinh viên Nguyễn Văn Tuấn có đăng ký môn nào của thầy Hà Ngọc Long không?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+            Assert.Contains("Hà Ngọc Long", result.AiMessage);
+            Assert.Contains("WEB301_01", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_F_TomorrowSchedule_CurrentStudent()
+        {
+            // F. "Ngày mai tôi học gì?" -> Xác định ngày phù hợp, sinh viên hiện tại và lịch học thực tế
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            var result = await useCase.ExecuteAsync(1, "2026_HK1", "Ngày mai tôi học gì?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Lịch Học", result.AiMessage);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_G_LecturerLookup_IdentifiesInstructor()
+        {
+            // G. "Thầy Long dạy môn gì?" -> Xác định đúng giảng viên từ dữ liệu
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Thầy Long dạy môn gì?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Hà Ngọc Long", result.AiMessage);
+            Assert.Contains("WEB301_01", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_H_English_LoginGuidance()
+        {
+            // H. "How do I log in?" -> Trả lời bằng tiếng Anh phù hợp
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "How do I log in?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Step 1", result.AiMessage);
+            Assert.Contains("Step 2", result.AiMessage);
+            Assert.Contains("Step 3", result.AiMessage);
+            Assert.True(result.SuggestLogin);
+            Assert.DoesNotContain("Ngày mai tôi học gì?", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_I1_FollowUp_WithContext_ResolvesTime()
+        {
+            // I. "Cái đó học lúc mấy giờ?" -> có ngữ cảnh trước đó
+            var useCase = CreateUseCase();
+            var history = new List<AiConversationMessage>
+            {
+                new AiConversationMessage { IsUser = true, Content = "Môn Lập trình Ứng dụng Web học phòng nào?" },
+                new AiConversationMessage { IsUser = false, Content = "Lớp WEB301_01 học tại phòng Lab 402." }
+            };
+
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Cái đó học lúc mấy giờ?", history);
+
+            Assert.NotNull(result);
+            Assert.Contains("WEB301_01", result.AiMessage);
+            Assert.Contains("Tiết 1", result.AiMessage);
+            Assert.Contains("Tiết 4", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_I2_FollowUp_WithoutContext_AsksBackNaturally_NoSqlTemplateList()
+        {
+            // I. "Cái đó học lúc mấy giờ?" -> chưa có ngữ cảnh, hỏi lại tự nhiên
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Cái đó học lúc mấy giờ?");
+
+            Assert.NotNull(result);
+            Assert.Contains("Bạn đang muốn hỏi thời gian học của môn học", result.AiMessage);
+            Assert.DoesNotContain("Ngày mai tôi học gì?", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_J_OutOfScopeQuery_PoliteResponse_NoSqlTemplateList()
+        {
+            // J. Một câu hỏi ngoài phạm vi hệ thống -> phản hồi tự nhiên, không đưa danh sách mẫu câu hỏi mặc định
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Thời tiết hôm nay thế nào?");
+
+            Assert.NotNull(result);
+            Assert.Contains("thời tiết", result.AiMessage.ToLower());
+            Assert.Contains("chuyên trách", result.AiMessage);
+            Assert.DoesNotContain("Ngày mai tôi học gì?", result.AiMessage);
+            Assert.DoesNotContain("Môn WEB301 có mấy lớp?", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_K_DatabaseOrApiException_ReturnsSafeMessage_DoesNotCrash()
+        {
+            // K. Một câu hỏi chưa đủ dữ liệu hoặc SQL/API gặp lỗi -> thông báo đúng tình trạng, không bịa kết quả và không làm ứng dụng bị dừng
+            var faultyStudentRepo = new FaultyStudentRepository();
+            var useCase = new GetAiAdviceUseCase(
+                faultyStudentRepo,
+                _sectionRepo,
+                _enrollmentRepo,
+                _courseRepo,
+                chatClient: null,
+                currentUserStateStore: _userStateStore,
+                registrationPeriodService: _periodService);
+
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "Tôi đã đăng ký môn nào?");
+
+            Assert.NotNull(result);
+            Assert.Contains("gián đoạn kết nối", result.AiMessage);
+        }
+
+        #endregion
     }
 
     #region Fake Repositories for Testing
@@ -486,6 +693,16 @@ namespace CourseRegistration.Tests
         public Task<IEnumerable<Prerequisite>> GetAllPrerequisitesAsync() => Task.FromResult<IEnumerable<Prerequisite>>(_prereqs);
         public Task AddPrerequisiteAsync(Prerequisite prerequisite) => Task.CompletedTask;
         public Task DeletePrerequisiteAsync(int prerequisiteId) => Task.CompletedTask;
+    }
+
+    public class FaultyStudentRepository : IStudentRepository
+    {
+        public Task<IEnumerable<Student>> GetAllStudentsAsync() => throw new InvalidOperationException("Simulated SQL connection failure");
+        public Task<Student?> GetStudentByIdAsync(int studentId) => throw new InvalidOperationException("Simulated SQL connection failure");
+        public Task<Student?> GetStudentByCodeAsync(string studentCode) => throw new InvalidOperationException("Simulated SQL connection failure");
+        public Task AddStudentAsync(Student student) => throw new InvalidOperationException("Simulated SQL connection failure");
+        public Task UpdateStudentAsync(Student student) => throw new InvalidOperationException("Simulated SQL connection failure");
+        public Task<IEnumerable<CompletedCourse>> GetCompletedCoursesByStudentIdAsync(int studentId) => throw new InvalidOperationException("Simulated SQL connection failure");
     }
 
     #endregion

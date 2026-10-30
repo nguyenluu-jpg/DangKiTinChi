@@ -5,6 +5,7 @@
 @inject ILoginModalService LoginModalService
 @inject IChangePasswordModalService ChangePasswordModalService
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <!-- Dropdown Backdrop Overlay (Tự động đóng tất cả dropdown khi bấm ra ngoài bất kỳ đâu) -->
@@ -473,6 +474,11 @@
     private async Task HandleLogout()
     {
         CloseAllDropdowns();
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "courseReg_username");
+        }
+        catch { }
         await CurrentUserStateStore.LogoutAsync();
         NavigationManager.NavigateTo("/");
     }

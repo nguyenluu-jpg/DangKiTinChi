@@ -1,0 +1,109 @@
+@startuml
+autonumber
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI", Arial, sans-serif
+skinparam responseMessageBelowArrow true
+skinparam boxPadding 10
+skinparam participantPadding 10
+
+actor "Sinh viên" as Student
+box "Tầng WebApp (Presentation)" #E8F4FD
+participant "CartUI\n(RegistrationCartComponent)" as UI
+end box
+
+box "Tầng UseCases (Application)" #FFF9E6
+participant "UseCase\n(PlaceEnrollmentUseCase)" as UseCase
+participant "CartStore\n(RegistrationCart)" as Cart
+participant "CartStateStore\n(RegistrationCartStateStore)" as StateStore
+end box
+
+box "Tầng CoreBusiness (Domain)" #E6FFE6
+participant "DomainService\n(EnrollmentValidationService)" as ValidationService
+end box
+
+box "Tầng Plugins (DataStore)" #F5E6FF
+participant "SectionRepo\n(SectionRepository)" as SectionRepo
+participant "EnrollmentRepo\n(EnrollmentRepository)" as EnrollmentRepo
+database "SQL Server\n(DangKyTinChi)" as DB
+end box
+
+Student -> UI : 1. Nhấn nút "Gửi phiếu đăng ký"
+activate UI
+
+UI -> UseCase : 2. ExecuteAsync(studentId, semester)
+activate UseCase
+
+UseCase -> Cart : 3. GetRegistrationCartAsync()
+activate Cart
+Cart --> UseCase : 4. Trả về cart (danh sách EnrollmentLines)
+deactivate Cart
+
+UseCase -> UseCase : 5. Nạp CompletedCourses & Prerequisites
+UseCase -> EnrollmentRepo : 6. GetRegisteredSectionsByStudentAsync(studentId, semester)
+activate EnrollmentRepo
+EnrollmentRepo -> DB : SELECT các lớp đã đăng ký
+DB --> EnrollmentRepo : Trả về danh sách lớp
+EnrollmentRepo --> UseCase : Trả về registeredSections
+deactivate EnrollmentRepo
+
+== BƯỚC 1: KIỂM TRA LUẬT NGHIỆP VỤ 1 (TIÊN QUYẾT, TRÙNG LỊCH, TÍN CHỈ TỐI ĐA) ==
+
+loop Duyệt qua từng lớp học phần trong giỏ
+    UseCase -> ValidationService : 7. ValidateEnrollment(section, accumulatedSections, completedCourses, prereqs, maxCredits)
+    activate ValidationService
+    ValidationService -> ValidationService : Kiểm tra tiên quyết (Prerequisites)
+    ValidationService -> ValidationService : Kiểm tra trùng lịch (ConflictsWith)
+    ValidationService -> ValidationService : Kiểm tra vượt số tín chỉ tối đa
+    ValidationService --> UseCase : 8. Trả về danh sách ruleErrors
+    deactivate ValidationService
+end
+
+alt Có vi phạm Luật 1 (allErrors.Any())
+    UseCase --> UI : 9. Trả về EnrollmentResult(IsSuccess = false, Errors)
+    UI -> UI : Hiển thị ValidationAlertComponent (thông báo lỗi thân thiện)
+    UI --> Student : 10. Thông báo từ chối giao dịch kèm lý do cụ thể
+else Hợp lệ toàn bộ Luật 1
+
+    == BƯỚC 2: KIỂM TRA & GIỮ CHỖ NGUYÊN TỬ (LUẬT 2 - CONCURRENCY TRANH CHẤP CHỖ CUỐI) ==
+
+    loop Duyệt từng lớp trong giỏ để giữ chỗ nguyên tử
+        UseCase -> SectionRepo : 11. IncrementEnrollmentCountAsync(sectionId)
+        activate SectionRepo
+        SectionRepo -> DB : 12. UPDATE Sections SET CurrentEnrollment = CurrentEnrollment + 1\nWHERE SectionId = @id AND CurrentEnrollment < MaxCapacity
+        DB --> SectionRepo : 13. affectedRows (1 = thành công, 0 = hết chỗ)
+        SectionRepo --> UseCase : 14. acquired (true/false)
+        deactivate SectionRepo
+
+        alt acquired == false (Lớp vừa hết chỗ do sinh viên khác đăng ký trước)
+            UseCase -> SectionRepo : 15. DecrementEnrollmentCountAsync(đã tạm giữ)
+            activate SectionRepo
+            SectionRepo -> DB : Hoàn trả lại các chỗ đã tạm giữ
+            deactivate SectionRepo
+            UseCase --> UI : 16. Trả về EnrollmentResult(IsSuccess = false, "Lớp vừa hết chỗ...")
+            UI --> Student : Thông báo tranh chấp chỗ cuối, giao dịch hủy an toàn
+        end
+    end
+
+    == BƯỚC 3: LƯU HEADER - LINE TRONG TRANSACTION CƠ SỞ DỮ LIỆU ==
+
+    UseCase -> EnrollmentRepo : 17. CreateEnrollmentAsync(newEnrollment)
+    activate EnrollmentRepo
+    EnrollmentRepo -> DB : 18. Database.BeginTransactionAsync()
+    EnrollmentRepo -> DB : 19. INSERT INTO Enrollments (Header)
+    EnrollmentRepo -> DB : 20. INSERT INTO EnrollmentLines (Lines)
+    EnrollmentRepo -> DB : 21. transaction.CommitAsync()
+    DB --> EnrollmentRepo : 22. Trả về new EnrollmentId
+    EnrollmentRepo --> UseCase : 23. enrollmentId
+    deactivate EnrollmentRepo
+
+    UseCase -> Cart : 24. ClearCartAsync()
+    UseCase -> StateStore : 25. BroadcastStateChange()
+    UseCase --> UI : 26. Trả về EnrollmentResult(IsSuccess = true, EnrollmentId)
+    deactivate UseCase
+
+    UI -> UI : 27. Chuyển hướng sang /enrollment/{id} (Phiếu đăng ký thành công)
+    UI --> Student : 28. Hiển thị phiếu chính thức & nút nộp học phí VietQR / In / Tải PDF
+    deactivate UI
+end
+
+@enduml

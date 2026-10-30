@@ -19,10 +19,10 @@
     <div class="d-flex align-items-center gap-1.5 gap-sm-2 flex-nowrap overflow-x-auto py-1" style="scrollbar-width: none;">
         @if (currentEnrollmentId.HasValue && currentEnrollmentId.Value > 0)
         {
-            <a href="/api/reports/student-enrollment/excel?enrollmentId=@currentEnrollmentId.Value" class="btn btn-sm btn-outline-success fw-bold shadow-sm text-nowrap" target="_blank" download>
+            <a href="/api/reports/student-enrollment/excel?enrollmentId=@currentEnrollmentId.Value&studentCode=@(currentStudent?.StudentCode ?? "")" class="btn btn-sm btn-outline-success fw-bold shadow-sm text-nowrap" target="_blank" download>
                 <i class="bi bi-file-earmark-excel me-1"></i> Xuất Excel
             </a>
-            <a href="/api/reports/student-enrollment/pdf?enrollmentId=@currentEnrollmentId.Value" class="btn btn-sm btn-outline-danger fw-bold shadow-sm text-nowrap" target="_blank">
+            <a href="/api/reports/student-enrollment/pdf?enrollmentId=@currentEnrollmentId.Value&studentCode=@(currentStudent?.StudentCode ?? "")" class="btn btn-sm btn-outline-danger fw-bold shadow-sm text-nowrap" target="_blank">
                 <i class="bi bi-file-earmark-pdf me-1"></i> Xuất PDF
             </a>
         }

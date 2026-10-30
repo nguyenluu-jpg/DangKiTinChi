@@ -321,6 +321,13 @@
 
     private async Task ProceedAfterLoginSuccess(UserAccount account)
     {
+        // Lưu phiên đăng nhập bền vững vào localStorage để không bị văng khi F5
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "courseReg_username", account.Username);
+        }
+        catch { }
+
         // Kích hoạt thông báo lưu mật khẩu của Google Chrome (duy nhất Chrome quản lý)
         try
         {

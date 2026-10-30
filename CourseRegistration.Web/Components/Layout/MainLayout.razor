@@ -1,5 +1,8 @@
 @inherits LayoutComponentBase
 @namespace CourseRegistration.Web.Components.Layout
+@inject IJSRuntime JSRuntime
+@inject CourseRegistration.UseCases.PluginInterfaces.StateStore.ICurrentUserStateStore CurrentUserStateStore
+@inject CourseRegistration.UseCases.PluginInterfaces.DataStore.IUserAccountRepository UserAccountRepository
 
 <div class="page d-flex flex-column min-vh-100 bg-light">
     <header>
@@ -31,3 +34,30 @@
     <a href="" class="reload">Tải lại</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                bool isAuth = await CurrentUserStateStore.IsAuthenticatedAsync();
+                if (!isAuth)
+                {
+                    var savedUsername = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "courseReg_username");
+                    if (!string.IsNullOrWhiteSpace(savedUsername))
+                    {
+                        var user = await UserAccountRepository.GetByUsernameAsync(savedUsername);
+                        if (user != null)
+                        {
+                            await CurrentUserStateStore.SetCurrentUserAsync(user);
+                            StateHasChanged();
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+    }
+}

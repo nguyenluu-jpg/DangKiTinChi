@@ -188,23 +188,31 @@ namespace CourseRegistration.Web
                 return Results.File(bytes, "application/pdf", $"DanhSach_Lop_{section.SectionCode}.pdf");
             });
 
-            app.MapGet("/api/reports/student-enrollment/pdf", async (int enrollmentId, IEnrollmentRepository enrRepo, IStudentRepository stuRepo, ISectionRepository secRepo, IReportExportService exportService) =>
+            app.MapGet("/api/reports/student-enrollment/pdf", async (int enrollmentId, string? studentCode, IEnrollmentRepository enrRepo, IStudentRepository stuRepo, ISectionRepository secRepo, IReportExportService exportService) =>
             {
                 var enrollment = await enrRepo.GetEnrollmentByIdAsync(enrollmentId);
                 if (enrollment == null) return Results.NotFound("Không tìm thấy phiếu đăng ký.");
                 var student = await stuRepo.GetStudentByIdAsync(enrollment.StudentId);
                 if (student == null) return Results.NotFound("Không tìm thấy sinh viên.");
+                if (!string.IsNullOrWhiteSpace(studentCode) && !string.Equals(student.StudentCode, studentCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.Problem(statusCode: 403, detail: "Từ chối truy cập: Mã sinh viên không khớp với phiếu đăng ký.");
+                }
                 var sections = (await enrRepo.GetRegisteredSectionsByStudentAsync(student.StudentId, enrollment.Semester)).ToList();
                 var bytes = exportService.GenerateStudentEnrollmentPdf(student, enrollment, sections);
                 return Results.File(bytes, "application/pdf", $"PhieuDangKy_{student.StudentCode}_{enrollment.Semester}.pdf");
             });
 
-            app.MapGet("/api/reports/student-enrollment/excel", async (int enrollmentId, IEnrollmentRepository enrRepo, IStudentRepository stuRepo, ISectionRepository secRepo, IReportExportService exportService) =>
+            app.MapGet("/api/reports/student-enrollment/excel", async (int enrollmentId, string? studentCode, IEnrollmentRepository enrRepo, IStudentRepository stuRepo, ISectionRepository secRepo, IReportExportService exportService) =>
             {
                 var enrollment = await enrRepo.GetEnrollmentByIdAsync(enrollmentId);
                 if (enrollment == null) return Results.NotFound("Không tìm thấy phiếu đăng ký.");
                 var student = await stuRepo.GetStudentByIdAsync(enrollment.StudentId);
                 if (student == null) return Results.NotFound("Không tìm thấy sinh viên.");
+                if (!string.IsNullOrWhiteSpace(studentCode) && !string.Equals(student.StudentCode, studentCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.Problem(statusCode: 403, detail: "Từ chối truy cập: Mã sinh viên không khớp với phiếu đăng ký.");
+                }
                 var sections = (await enrRepo.GetRegisteredSectionsByStudentAsync(student.StudentId, enrollment.Semester)).ToList();
                 var bytes = exportService.GenerateStudentEnrollmentExcel(student, enrollment, sections);
                 return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"ThoiKhoaBieu_{student.StudentCode}_{enrollment.Semester}.xlsx");

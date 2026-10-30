@@ -297,11 +297,11 @@
                     <!-- Action Buttons -->
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-3 border-top">
                         <div class="d-flex gap-2">
-                            <a href="/api/reports/student-enrollment/pdf?enrollmentId=@enrollment.EnrollmentId" 
+                            <a href="/api/reports/student-enrollment/pdf?enrollmentId=@enrollment.EnrollmentId&studentCode=@enrollment.Student?.StudentCode" 
                                class="btn btn-outline-danger shadow-sm fw-semibold" target="_blank">
                                 <i class="bi bi-file-earmark-pdf me-1"></i> Xuất Phiếu PDF
                             </a>
-                            <a href="/api/reports/student-enrollment/excel?enrollmentId=@enrollment.EnrollmentId" 
+                            <a href="/api/reports/student-enrollment/excel?enrollmentId=@enrollment.EnrollmentId&studentCode=@enrollment.Student?.StudentCode" 
                                class="btn btn-outline-success shadow-sm fw-semibold" target="_blank" download>
                                 <i class="bi bi-file-earmark-excel me-1"></i> Xuất Excel
                             </a>

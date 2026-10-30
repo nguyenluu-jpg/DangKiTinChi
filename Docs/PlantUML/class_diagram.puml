@@ -1,0 +1,200 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI", Arial, sans-serif
+skinparam packageStyle frame
+
+package "CourseRegistration.CoreBusiness.Models" {
+    class Course {
+        +int CourseId
+        +string CourseCode
+        +string CourseName
+        +int Credits
+        +string Description
+        +List<Prerequisite> Prerequisites
+    }
+
+    class Prerequisite {
+        +int PrerequisiteId
+        +int CourseId
+        +int PrerequisiteCourseId
+        +Course Course
+        +Course PrerequisiteCourse
+    }
+
+    class Student {
+        +int StudentId
+        +string StudentCode
+        +string FullName
+        +string Major
+        +string AcademicYear
+        +int MaxCreditsPerSemester
+        +string Email
+        +string PhoneNumber
+        +List<CompletedCourse> CompletedCourses
+        +List<Enrollment> Enrollments
+    }
+
+    class CompletedCourse {
+        +int CompletedCourseId
+        +int StudentId
+        +int CourseId
+        +decimal Grade
+        +string SemesterCompleted
+        +Student Student
+        +Course Course
+    }
+
+    class Section {
+        +int SectionId
+        +string SectionCode
+        +int CourseId
+        +string Instructor
+        +int MaxCapacity
+        +int CurrentEnrollment
+        +string Semester
+        +string Room
+        +Course Course
+        +List<SectionSchedule> Schedules
+        +int AvailableSlots
+        +bool IsFull
+    }
+
+    class SectionSchedule {
+        +int ScheduleId
+        +int SectionId
+        +int DayOfWeek
+        +int StartPeriod
+        +int EndPeriod
+        +string Room
+        +string DayOfWeekName
+        +bool ConflictsWith(SectionSchedule other)
+    }
+
+    class Enrollment <<Header>> {
+        +int EnrollmentId
+        +int StudentId
+        +DateTime? DateRegistered
+        +string Semester
+        +string Status
+        +DateTime? DateCancelled
+        +string UniqueId
+        +string PaymentStatus
+        +DateTime? PaymentDate
+        +string PaymentMethod
+        +string TransactionReference
+        +Student Student
+        +List<EnrollmentLine> EnrollmentLines
+        +int TotalCredits
+        +decimal TuitionFee
+        +bool IsPaid
+        +void AddSection(int sectionId, Section section)
+    }
+
+    class EnrollmentLine <<Line>> {
+        +int EnrollmentLineId
+        +int? EnrollmentId
+        +int SectionId
+        +Enrollment Enrollment
+        +Section Section
+    }
+
+    class UserAccount {
+        +int AccountId
+        +string Username
+        +string Password
+        +string FullName
+        +string Role
+        +int? StudentId
+        +Student Student
+    }
+}
+
+package "CourseRegistration.CoreBusiness.Services" {
+    interface IEnrollmentValidationService {
+        +List<string> ValidateEnrollment(Section section, List<Section> registered, List<CompletedCourse> completed, List<Prerequisite> prereqs, int maxCredits)
+    }
+
+    class EnrollmentValidationService implements IEnrollmentValidationService {
+        +List<string> ValidateEnrollment(...)
+        -void ValidatePrerequisites(...)
+        -void ValidateScheduleConflict(...)
+        -void ValidateMaxCredits(...)
+        -void ValidateDuplicateCourse(...)
+    }
+
+    interface IRegistrationPeriodService {
+        +string CurrentSemesterCode
+        +List<SemesterInfo> GetAllSemesters()
+        +RegistrationPhaseInfo GetActivePhase(string semester)
+    }
+}
+
+package "CourseRegistration.UseCases.PluginInterfaces.DataStore" {
+    interface ICourseRepository {
+        +Task<IEnumerable<Course>> GetAllCoursesAsync()
+        +Task<Course?> GetCourseByIdAsync(int id)
+        +Task<IEnumerable<Prerequisite>> GetAllPrerequisitesAsync()
+        +Task AddCourseAsync(Course course)
+    }
+
+    interface ISectionRepository {
+        +Task<IEnumerable<Section>> GetAllSectionsAsync()
+        +Task<Section?> GetSectionByIdAsync(int id)
+        +Task<IEnumerable<Section>> SearchSectionsAsync(string keyword, string semester)
+        +Task<bool> IncrementEnrollmentCountAsync(int sectionId)
+        +Task DecrementEnrollmentCountAsync(int sectionId)
+    }
+
+    interface IStudentRepository {
+        +Task<Student?> GetStudentByIdAsync(int id)
+        +Task<IEnumerable<Student>> GetAllStudentsAsync()
+        +Task<IEnumerable<CompletedCourse>> GetCompletedCoursesByStudentIdAsync(int studentId)
+    }
+
+    interface IEnrollmentRepository {
+        +Task<int> CreateEnrollmentAsync(Enrollment enrollment)
+        +Task<Enrollment?> GetEnrollmentByIdAsync(int id)
+        +Task<IEnumerable<Enrollment>> GetEnrollmentsByStudentIdAsync(int studentId)
+        +Task<IEnumerable<Section>> GetRegisteredSectionsByStudentAsync(int studentId, string semester)
+        +Task<bool> DropSectionForStudentAsync(int studentId, int sectionId, string? reason)
+        +Task CancelEnrollmentAsync(int id)
+    }
+
+    interface IUserAccountRepository {
+        +Task<UserAccount?> AuthenticateAsync(string username, string password)
+        +Task<UserAccount?> GetByUsernameAsync(string username)
+    }
+}
+
+package "CourseRegistration.UseCases.StudentPortal" {
+    class PlaceEnrollmentUseCase {
+        -IRegistrationCart _cart
+        -IEnrollmentValidationService _validationService
+        -IEnrollmentRepository _enrollmentRepo
+        -ISectionRepository _sectionRepo
+        +Task<EnrollmentResult> ExecuteAsync(int studentId, string semester)
+    }
+
+    class ViewEnrollmentUseCase {
+        -IEnrollmentRepository _enrollmentRepo
+        +Task<Enrollment?> ExecuteAsync(int enrollmentId)
+        +Task<bool> DropSectionAsync(int studentId, int sectionId)
+    }
+}
+
+' Quan hệ giữa các lớp
+Course "1" *-- "0..*" Prerequisite : requires >
+Course "1" *-- "0..*" Section : has open classes >
+Section "1" *-- "1..*" SectionSchedule : scheduled at >
+Student "1" *-- "0..*" CompletedCourse : achieved >
+Student "1" *-- "0..*" Enrollment : registers >
+Enrollment "1" *-- "1..*" EnrollmentLine : contains >
+Section "1" <-- "0..*" EnrollmentLine : references <
+UserAccount "0..1" o-- "0..1" Student : maps to >
+
+PlaceEnrollmentUseCase --> IEnrollmentValidationService : uses
+PlaceEnrollmentUseCase --> IEnrollmentRepository : saves
+PlaceEnrollmentUseCase --> ISectionRepository : acquires seats
+
+@enduml

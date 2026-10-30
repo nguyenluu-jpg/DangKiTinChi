@@ -1,0 +1,90 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam roundcorner 10
+skinparam actorStyle awesome
+skinparam defaultFontName "Segoe UI", Arial, sans-serif
+
+actor "Sinh viên" as Student
+actor "Cán bộ Phòng Đào Tạo" as Admin
+actor "Trợ lý AI (IChatClient)" as AI
+
+rectangle "Hệ Thống Đăng Ký Học Phần Trực Tuyến (Course Registration)" {
+
+    ' Nhóm Xác Thực & Tài Khoản
+    package "Xác Thực & Tài Khoản" {
+        usecase "UC01: Đăng nhập hệ thống" as UC_Login
+        usecase "UC02: Đăng xuất hệ thống" as UC_Logout
+        usecase "UC03: Đổi mật khẩu tài khoản" as UC_ChangePwd
+    }
+
+    ' Phân Hệ Sinh Viên
+    package "Cổng Dịch Vụ Sinh Viên" {
+        usecase "UC04: Tra cứu học phần & lớp mở" as UC_SearchSections
+        usecase "UC05: Xem thông tin chi tiết & lịch học lớp" as UC_ViewSectionDetail
+        usecase "UC06: Thêm lớp học phần vào giỏ" as UC_AddToCart
+        usecase "UC07: Quản lý giỏ đăng ký" as UC_ManageCart
+        usecase "UC08: Xác nhận gửi phiếu đăng ký" as UC_PlaceEnrollment
+        usecase "UC09: Hủy học phần đã đăng ký" as UC_DropSection
+        usecase "UC10: Xem Thời khóa biểu (Tuần/Agenda)" as UC_ViewSchedule
+        usecase "UC11: Thanh toán học phí VietQR Napas247" as UC_Payment
+        usecase "UC12: Cố vấn kế hoạch học tập AI" as UC_AiAdvisor
+    }
+
+    ' Luật Nghiệp Vụ (Include)
+    package "Kiểm Tra Luật Nghiệp Vụ" {
+        usecase "Kiểm tra môn tiên quyết (Luật 1)" as Rule_Prereq
+        usecase "Kiểm tra trùng lịch học (Luật 1)" as Rule_ScheduleConflict
+        usecase "Kiểm tra hạn mức tín chỉ kỳ (Luật 1)" as Rule_MaxCredits
+        usecase "Kiểm tra & giữ sĩ số lớp nguyên tử (Luật 2)" as Rule_Capacity
+    }
+
+    ' Phân Hệ Phòng Đào Tạo
+    package "Phân Hệ Quản Lý Phòng Đào Tạo" {
+        usecase "UC13: Quản lý danh mục học phần" as UC_ManageCourses
+        usecase "UC14: Quản lý lớp học phần mở" as UC_ManageSections
+        usecase "UC15: Quản lý danh sách SV đăng ký lớp" as UC_ViewEnrollments
+        usecase "UC16: Hủy/Rút môn học vụ & nhả chỉ tiêu" as UC_AdminDrop
+        usecase "UC17: Quản lý học vụ học phí & chế tài thi" as UC_ManageTuition
+        usecase "UC18: Xuất danh sách lớp (Excel/PDF)" as UC_ExportReports
+        usecase "UC19: Trợ lý điều hành học vụ AI" as UC_AdminAi
+    }
+}
+
+' Liên kết Sinh viên
+Student --> UC_Login
+Student --> UC_Logout
+Student --> UC_ChangePwd
+Student --> UC_SearchSections
+Student --> UC_ViewSectionDetail
+Student --> UC_AddToCart
+Student --> UC_ManageCart
+Student --> UC_PlaceEnrollment
+Student --> UC_DropSection
+Student --> UC_ViewSchedule
+Student --> UC_Payment
+Student --> UC_AiAdvisor
+
+' Liên kết Phòng Đào Tạo
+Admin --> UC_Login
+Admin --> UC_Logout
+Admin --> UC_ChangePwd
+Admin --> UC_ManageCourses
+Admin --> UC_ManageSections
+Admin --> UC_ViewEnrollments
+Admin --> UC_AdminDrop
+Admin --> UC_ManageTuition
+Admin --> UC_ExportReports
+Admin --> UC_AdminAi
+
+' Include quan hệ luật nghiệp vụ
+UC_PlaceEnrollment ..> Rule_Prereq : <<include>>
+UC_PlaceEnrollment ..> Rule_ScheduleConflict : <<include>>
+UC_PlaceEnrollment ..> Rule_MaxCredits : <<include>>
+UC_PlaceEnrollment ..> Rule_Capacity : <<include>>
+
+' AI tương tác
+UC_AiAdvisor --> AI
+UC_AdminAi --> AI
+
+@enduml

@@ -81,17 +81,33 @@ window.triggerBrowserSavePassword = async function (username, password) {
     } catch (e) { }
 
     // 3. Chuẩn Credential Management API của W3C / Chromium (Google Chrome & Edge)
-    // Giúp Google Chrome nhận diện đăng nhập thành công và bật thông báo "Save password?"
+    // Giúp Google Chrome nhận diện form đăng nhập và bật thông báo "Save password?"
+    var form = document.getElementById('loginForm');
     var credentialStored = false;
     if (window.PasswordCredential && navigator.credentials && navigator.credentials.store) {
         try {
-            var cred = new PasswordCredential({
-                id: username,
-                password: password,
-                name: username
-            });
-            await navigator.credentials.store(cred);
-            credentialStored = true;
+            var cred = null;
+            if (form) {
+                try {
+                    cred = new PasswordCredential(form);
+                } catch (formErr) {
+                    cred = new PasswordCredential({
+                        id: username,
+                        password: password,
+                        name: username
+                    });
+                }
+            } else {
+                cred = new PasswordCredential({
+                    id: username,
+                    password: password,
+                    name: username
+                });
+            }
+            if (cred) {
+                await navigator.credentials.store(cred);
+                credentialStored = true;
+            }
         } catch (e) {
             console.debug('Credential store status:', e);
         }

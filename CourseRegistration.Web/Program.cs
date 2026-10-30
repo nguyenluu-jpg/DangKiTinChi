@@ -96,9 +96,14 @@ namespace CourseRegistration.Web
 
             // Cấu hình AI IChatClient (Microsoft.Extensions.AI + Ollama / OpenAI / Gemini)
             // - API Key được đọc từ User Secrets hoặc Biến Môi Trường (an toàn tuyệt đối, không commit Git)
-            // - Hỗ trợ chuyển đổi linh hoạt: "Ollama" (local miễn phí), "OpenAI" (gpt-4o-mini), "Gemini" (gemini-1.5-flash)
+            // - Hỗ trợ chuyển đổi linh hoạt: "Ollama" (local miễn phí), "OpenAI" (gpt-4o-mini), "Gemini" (gemini-3.8-flash)
+            // - AI:TimeoutSeconds (mặc định 45): thời gian chờ LLM trước khi tự động fallback sang động cơ tra cứu SQL Server
             var aiSection = builder.Configuration.GetSection("AI");
             var aiProvider = (aiSection["Provider"] ?? "Ollama").Trim();
+
+            // Timeout dùng chung cho GetAiAdviceUseCase & AdminAiAssistantUseCase (không hard-code trong UseCase)
+            int aiTimeoutSeconds = aiSection.GetValue<int?>("TimeoutSeconds") ?? CourseRegistration.UseCases.StudentPortal.AiAdvisor.AiAdvisorSettings.DefaultTimeoutSeconds;
+            builder.Services.AddSingleton(new CourseRegistration.UseCases.StudentPortal.AiAdvisor.AiAdvisorSettings { TimeoutSeconds = aiTimeoutSeconds });
 
             string defaultEndpoint = "http://localhost:11434/v1";
             string defaultModel = "llama3";
@@ -112,7 +117,10 @@ namespace CourseRegistration.Web
             {
                 // Endpoint tương thích chuẩn OpenAI của Google Gemini API
                 defaultEndpoint = "https://generativelanguage.googleapis.com/v1beta/openai/";
-                defaultModel = "gemini-1.5-flash";
+                // Lưu ý: gemini-1.5-flash đã bị Google ngừng hỗ trợ (không còn trong danh sách model của Gemini API,
+                // xem https://ai.google.dev/gemini-api/docs/deprecations). Tài liệu hiện tại khuyến nghị dự án mới dùng
+                // gemini-3.8-flash hoặc gemini-3.5-flash-lite. Có thể ghi đè bằng AI:ModelId.
+                defaultModel = "gemini-3.8-flash";
             }
 
             var aiEndpoint = !string.IsNullOrWhiteSpace(aiSection["Endpoint"]) ? aiSection["Endpoint"] : defaultEndpoint;
@@ -125,9 +133,17 @@ namespace CourseRegistration.Web
 
             if (string.IsNullOrWhiteSpace(aiApiKey))
             {
-                aiApiKey = aiProvider.Equals("Ollama", StringComparison.OrdinalIgnoreCase)
-                    ? "ollama-local-key"
-                    : "missing-key-fallback";
+                if (aiProvider.Equals("Ollama", StringComparison.OrdinalIgnoreCase))
+                {
+                    aiApiKey = "ollama-local-key";
+                }
+                else
+                {
+                    // Thiếu API key cho provider cloud: LLM chắc chắn sẽ lỗi 401 và hệ thống sẽ chạy ở chế độ fallback.
+                    Console.WriteLine($"[AI Warning] Provider '{aiProvider}' cần API key nhưng chưa cấu hình (AI:ApiKey / biến môi trường AI__ApiKey, OPENAI_API_KEY, GEMINI_API_KEY). " +
+                                      "Cố vấn AI sẽ chạy ở chế độ fallback tra cứu SQL Server cho tới khi cấu hình key.");
+                    aiApiKey = "missing-key-fallback";
+                }
             }
 
             try

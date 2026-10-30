@@ -28,6 +28,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
         private readonly ICourseRepository _courseRepository;
         private readonly ICurrentUserStateStore? _currentUserStateStore;
         private readonly IRegistrationPeriodService? _registrationPeriodService;
+        private readonly AiAdvisorSettings _aiSettings;
 
         public GetAiAdviceUseCase(
             IStudentRepository studentRepository,
@@ -36,7 +37,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             ICourseRepository courseRepository,
             IChatClient? chatClient = null,
             ICurrentUserStateStore? currentUserStateStore = null,
-            IRegistrationPeriodService? registrationPeriodService = null)
+            IRegistrationPeriodService? registrationPeriodService = null,
+            AiAdvisorSettings? aiSettings = null)
         {
             _studentRepository = studentRepository;
             _sectionRepository = sectionRepository;
@@ -45,6 +47,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             _chatClient = chatClient;
             _currentUserStateStore = currentUserStateStore;
             _registrationPeriodService = registrationPeriodService;
+            // Timeout đọc từ cấu hình AI:TimeoutSeconds (mặc định 45s), không hard-code
+            _aiSettings = aiSettings ?? new AiAdvisorSettings();
         }
 
         public async Task<AiCourseAdvice> ExecuteAsync(
@@ -117,6 +121,11 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 }
 
                 string userPrompt = string.IsNullOrWhiteSpace(studentGoalPrompt) ? string.Empty : studentGoalPrompt.Trim();
+
+                // Nơi gọi (trang /ai-advisor, chat box) có thể đã thêm câu hỏi hiện tại vào lịch sử TRƯỚC khi gọi UseCase.
+                // Bỏ phần tử cuối nếu trùng để câu hỏi không bị gửi hai lần cho LLM / không làm lệch ngữ cảnh hội thoại.
+                conversationHistory = RemoveTrailingDuplicateUserPrompt(conversationHistory, userPrompt);
+
                 bool isExplicitRec = IsExplicitRecommendationRequest(userPrompt);
 
                 // 3. Lọc danh sách lớp ứng viên hợp lệ cho đề xuất học phần (chỉ khi có yêu cầu gợi ý rõ ràng)
@@ -141,8 +150,10 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
                 // 4. THỬ NGHIỆM GỌI MÔ HÌNH AI (IChatClient - OpenAI / Ollama Local)
                 bool aiSuccess = false;
+                bool llmFailed = false;
                 if (_chatClient != null && !string.IsNullOrWhiteSpace(userPrompt))
                 {
+                    using var llmCts = new CancellationTokenSource();
                     try
                     {
                         // Phân quyền System Prompt chuyên biệt theo 3 vai trò: Khách, Sinh viên, Quản trị
@@ -184,9 +195,9 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
                         messages.Add(new ChatMessage(ChatRole.User, userPrompt));
 
-                        // Đặt timeout 3 giây để đảm bảo trải nghiệm siêu nhanh nếu API chậm / offline
-                        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                        var response = await _chatClient.GetResponseAsync(messages, new ChatOptions { Temperature = 0.2f }, cts.Token);
+                        // Timeout lấy từ cấu hình AI:TimeoutSeconds (LLM local như Ollama cần nhiều giây để phản hồi)
+                        llmCts.CancelAfter(_aiSettings.Timeout);
+                        var response = await _chatClient.GetResponseAsync(messages, new ChatOptions { Temperature = 0.2f }, llmCts.Token);
                         var responseText = response.Text?.Trim() ?? string.Empty;
 
                         if (!string.IsNullOrWhiteSpace(responseText))
@@ -228,9 +239,10 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     catch (Exception ex)
                     {
                         // Ngoại lệ API / Hết hạn mức / Mất kết nối / Timeout -> Tự động chuyển fallback an toàn
-                        // Tuyệt đối không log thông tin nhạy cảm hoặc API key
-                        Console.WriteLine($"[AiAdvisor] IChatClient fallback: {ex.GetType().Name} - {ex.Message}");
+                        // Tuyệt đối không log thông tin nhạy cảm hoặc API key (chỉ log loại lỗi + message đã cắt ngắn)
+                        AiDiagnostics.LogLlmFailure("AiAdvisor", ex, llmCts.IsCancellationRequested, _aiSettings.Timeout);
                         aiSuccess = false;
+                        llmFailed = true;
                     }
                 }
 
@@ -241,6 +253,10 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     advice.IsAiGenerated = false;
                     advice.ModelUsed = "Động Cơ Tri Thức SQL Server Chuyên Sâu";
                     advice.WarningMessage = "💡 Cố vấn AI đang hoạt động ở chế độ Động cơ Tri thức Học thuật Chuyên sâu (truy vấn trực tiếp dữ liệu thực tế từ SQL Server). Kết quả được trích xuất chính xác theo thời gian thực.";
+                    if (llmFailed)
+                    {
+                        advice.WarningMessage += " (Mô hình AI không phản hồi kịp hoặc không kết nối được nên hệ thống tự động dùng chế độ dự phòng này.)";
+                    }
 
                     ExecuteAcademicAdvisorEngine(
                         advice,
@@ -1435,7 +1451,11 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             // =========================================================================
             // TRƯỜNG HỢP 5: YÊU CẦU GỢI Ý / TƯ VẤN LỘ TRÌNH ĐĂNG KÝ HỌC PHẦN (CHỈ KHI YÊU CẦU)
             // =========================================================================
-            if (isAdvisoryRequest)
+            // Khi câu hỏi nhắc tới MỘT MÔN CỤ THỂ (vd "tư vấn môn lập trình web") thì trả lời về đúng môn đó,
+            // không rơi vào gói gợi ý nhiều môn chung chung. Khách (chưa đăng nhập) sẽ được TRƯỜNG HỢP 10 tra cứu môn.
+            bool isCourseSpecificAdvisory = isAdvisoryRequest && matchedCourse != null;
+
+            if (isAdvisoryRequest && !(isCourseSpecificAdvisory && currentStudent == null))
             {
                 if (currentStudent == null)
                 {
@@ -1446,6 +1466,23 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     return;
                 }
 
+                if (isCourseSpecificAdvisory)
+                {
+                    GenerateCourseSpecificAdvice(
+                        advice,
+                        currentStudent,
+                        matchedCourse!,
+                        sectionsPool.Where(s => s.Semester == semester).ToList(),
+                        allCourses,
+                        allPrerequisites,
+                        completedCourses,
+                        registeredSections,
+                        remainingCreditsAllowed,
+                        semester,
+                        isEnglish);
+                    return;
+                }
+
                 GenerateCourseRecommendations(
                     advice,
                     currentStudent,
@@ -1453,7 +1490,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     remainingCreditsAllowed,
                     qNorm,
                     semester,
-                    isEnglish);
+                    isEnglish,
+                    qRaw);
                 return;
             }
 
@@ -2363,7 +2401,8 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             int remainingCreditsAllowed,
             string qNorm,
             string semester,
-            bool isEnglish)
+            bool isEnglish,
+            string? userPrompt = null)
         {
             int targetCredits = 14;
             if (qNorm.Contains("toi da") || qNorm.Contains("nhieu") || qNorm.Contains("max"))
@@ -2381,7 +2420,14 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
             bool avoidMondayMorning = qNorm.Contains("tranh sang thu 2") || qNorm.Contains("tranh tiet som") || qNorm.Contains("tranh thu 2") || qNorm.Contains("avoid monday");
 
-            var scored = new List<(Section Section, double Score, string Reason)>();
+            // Nhận diện chủ đề cụ thể người dùng nêu (web / cơ sở dữ liệu / an toàn thông tin).
+            // Có chủ đề -> chỉ gợi ý lớp đúng chủ đề, KHÔNG lấp thêm môn không liên quan cho đủ tín chỉ.
+            bool wantsWeb = qNorm.Contains("web");
+            bool wantsDatabase = qNorm.Contains("csdl") || qNorm.Contains("co so du lieu");
+            bool wantsSecurity = qNorm.Contains("an toan") || qNorm.Contains("bao mat");
+            bool hasSpecificTopic = wantsWeb || wantsDatabase || wantsSecurity;
+
+            var scored = new List<(Section Section, double Score, string Reason, bool OnTopic)>();
             foreach (var sec in candidateSections)
             {
                 if (sec.Course == null) continue;
@@ -2390,19 +2436,24 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
                 var courseNameNorm = RemoveDiacritics(sec.Course.CourseName.ToLowerInvariant());
 
-                if (qNorm.Contains("web") && courseNameNorm.Contains("web"))
+                bool onTopic = false;
+
+                if (wantsWeb && courseNameNorm.Contains("web"))
                 {
                     score += 50;
+                    onTopic = true;
                     reasons.Add(isEnglish ? "Matches your Web Programming interest" : "Khớp mục tiêu chuyên sâu Lập trình Web");
                 }
-                if (qNorm.Contains("csdl") && courseNameNorm.Contains("du lieu"))
+                if (wantsDatabase && courseNameNorm.Contains("co so du lieu"))
                 {
                     score += 45;
+                    onTopic = true;
                     reasons.Add(isEnglish ? "Matches Database goal" : "Khớp nguyện vọng Cơ sở dữ liệu");
                 }
-                if (qNorm.Contains("an toan") && courseNameNorm.Contains("an toan"))
+                if (wantsSecurity && courseNameNorm.Contains("an toan"))
                 {
                     score += 50;
+                    onTopic = true;
                     reasons.Add(isEnglish ? "Matches Security specialization" : "Khớp chuyên ngành An toàn thông tin");
                 }
 
@@ -2417,7 +2468,12 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
                 int slotsLeft = sec.MaxCapacity - sec.CurrentEnrollment;
                 reasons.Add(isEnglish ? $"Prerequisites met, {slotsLeft} slots available" : $"Đạt chuẩn tiên quyết, lớp còn {slotsLeft} chỗ trống");
-                scored.Add((sec, score, string.Join("; ", reasons)));
+                scored.Add((sec, score, string.Join("; ", reasons), onTopic));
+            }
+
+            if (hasSpecificTopic)
+            {
+                scored = scored.Where(x => x.OnTopic).ToList();
             }
 
             var sorted = scored.OrderByDescending(x => x.Score).ToList();
@@ -2454,22 +2510,202 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 if (accumulated >= targetCredits) break;
             }
 
+            // Lời mở đầu phản ánh đúng câu hỏi: trích lại yêu cầu + mô tả mục tiêu gợi ý thực sự áp dụng
+            string quoted = QuoteUserPrompt(userPrompt);
+            var focusVi = new List<string>();
+            var focusEn = new List<string>();
+            if (wantsWeb) { focusVi.Add("chủ đề Web"); focusEn.Add("Web topic"); }
+            if (wantsDatabase) { focusVi.Add("chủ đề Cơ sở dữ liệu"); focusEn.Add("Database topic"); }
+            if (wantsSecurity) { focusVi.Add("chủ đề An toàn thông tin"); focusEn.Add("Security topic"); }
+            if (avoidMondayMorning) { focusVi.Add("tránh sáng Thứ 2"); focusEn.Add("avoid Monday morning"); }
+            if (!hasSpecificTopic) { focusVi.Add($"mục tiêu khoảng {targetCredits} tín chỉ"); focusEn.Add($"target of about {targetCredits} credits"); }
+
+            if (advice.RecommendedSections.Count == 0)
+            {
+                advice.AiMessage = isEnglish
+                    ? $"### 🎯 Course suggestions for your request\n\n" +
+                      (quoted.Length > 0 ? $"You asked: *\"{quoted}\"*.\n\n" : string.Empty) +
+                      $"- I could not find any open section in semester {semester} that matches ({string.Join(", ", focusEn)}) and also satisfies your prerequisites, schedule and remaining credit limit."
+                    : $"### 🎯 Gợi ý học phần theo yêu cầu của bạn\n\n" +
+                      (quoted.Length > 0 ? $"Bạn đã hỏi: *\"{quoted}\"*.\n\n" : string.Empty) +
+                      $"- Hiện chưa có lớp học phần nào trong học kỳ {semester} vừa khớp yêu cầu ({string.Join(", ", focusVi)}) vừa đạt điều kiện tiên quyết, không trùng lịch và còn trong hạn mức tín chỉ.";
+                return;
+            }
+
             if (isEnglish)
             {
-                advice.AiMessage = $"### 🎯 Optimal Course Registration Recommendation:\n\n" +
+                advice.AiMessage = (hasSpecificTopic ? $"### 🎯 Course suggestions for your request\n\n" : $"### 🎯 Course package suggestion for semester {semester}\n\n") +
                                    $"Hello **{student.FullName}** (`{student.StudentCode}` - Major: {student.Major})!\n\n" +
+                                   (quoted.Length > 0 ? $"- You asked: *\"{quoted}\"* -> focus: {string.Join(", ", focusEn)}.\n" : string.Empty) +
                                    $"- Based on your completed courses and academic goals, the AI Advisor recommends **{advice.RecommendedSections.Count} course(s) ({advice.TotalCredits} Credits)** for semester {semester}.\n" +
                                    $"- **Academic Safety Guarantee:** 100% of recommended courses meet all prerequisites and **have zero schedule conflicts**.\n" +
                                    $"- **User Confirmation Required:** This recommendation is an advisory suggestion. Please review the items below, select desired courses, and click **'Confirm & Add to Cart'** to proceed.";
             }
             else
             {
-                advice.AiMessage = $"### 🎯 Đề Xuất Lộ Trình Học Tập Tối Ưu Cho Sinh Viên:\n\n" +
+                advice.AiMessage = (hasSpecificTopic ? $"### 🎯 Gợi ý học phần theo yêu cầu của bạn\n\n" : $"### 🎯 Gói học phần gợi ý cho học kỳ {semester}\n\n") +
                                    $"Chào bạn **{student.FullName}** (`{student.StudentCode}` - Ngành {student.Major})!\n\n" +
+                                   (quoted.Length > 0 ? $"- Bạn đã hỏi: *\"{quoted}\"* -> trọng tâm gợi ý: {string.Join(", ", focusVi)}.\n" : string.Empty) +
                                    $"- Dựa trên hồ sơ học bạ và nguyện vọng của bạn, Cố vấn AI đề xuất gói học phần gồm **{advice.RecommendedSections.Count} môn ({advice.TotalCredits} Tín chỉ)** trong học kỳ {semester}.\n" +
                                    $"- **Cam kết an toàn học vụ:** 100% môn đề xuất đã thỏa mãn điều kiện tiên quyết và **tuyệt đối không bị trùng lịch học**.\n" +
                                    $"- **Xác nhận người dùng:** Dữ liệu do AI đề xuất dưới đây là gợi ý. Bạn hãy rà soát danh sách bên dưới, chọn các môn mong muốn và bấm nút **'Xác Nhận & Thêm Vào Giỏ Đăng Ký'** để lưu vào giỏ hàng.";
             }
+        }
+
+        /// <summary>
+        /// Tư vấn đúng MỘT MÔN cụ thể sinh viên nhắc tới (vd "tư vấn môn lập trình web"):
+        /// thông tin môn, tiên quyết & trạng thái của sinh viên, các lớp đang mở (GV, lịch, phòng, chỗ còn), lớp trùng lịch.
+        /// RecommendedSections chỉ chứa lớp của môn này và chỉ gồm lớp sinh viên THỰC SỰ đăng ký được;
+        /// sinh viên vẫn phải xác nhận trước khi thêm vào giỏ (AI chỉ gợi ý).
+        /// </summary>
+        private static void GenerateCourseSpecificAdvice(
+            AiCourseAdvice advice,
+            Student student,
+            Course course,
+            List<Section> semesterSections,
+            List<Course> allCourses,
+            List<Prerequisite> allPrerequisites,
+            List<CompletedCourse> completedCourses,
+            List<Section> registeredSections,
+            int remainingCreditsAllowed,
+            string semester,
+            bool isEnglish)
+        {
+            var passedCourseIds = completedCourses.Where(c => c.Grade >= 5.0).Select(c => c.CourseId).ToHashSet();
+            bool alreadyPassed = passedCourseIds.Contains(course.CourseId);
+            bool alreadyRegistered = registeredSections.Any(r => r.CourseId == course.CourseId);
+
+            var prereqCourses = allPrerequisites
+                .Where(p => p.CourseId == course.CourseId)
+                .Select(p => allCourses.FirstOrDefault(c => c.CourseId == p.PrerequisiteCourseId))
+                .Where(c => c != null)
+                .Select(c => c!)
+                .ToList();
+            var missingPrereqs = prereqCourses.Where(c => !passedCourseIds.Contains(c.CourseId)).ToList();
+
+            var openSections = semesterSections.Where(s => s.CourseId == course.CourseId).ToList();
+            bool exceedsCredits = course.Credits > remainingCreditsAllowed;
+            bool eligible = !alreadyPassed && !alreadyRegistered && !missingPrereqs.Any();
+
+            var sb = new StringBuilder();
+            if (isEnglish)
+            {
+                sb.AppendLine($"### 📘 Advice for **{course.CourseName}** (`{course.CourseCode}`)");
+                sb.AppendLine();
+                sb.AppendLine($"- **Credits:** {course.Credits}");
+                sb.AppendLine($"- **Prerequisites:** {(prereqCourses.Any() ? string.Join(", ", prereqCourses.Select(c => $"{c.CourseName} ({c.CourseCode}) - {(passedCourseIds.Contains(c.CourseId) ? "passed" : "NOT passed")}")) : "None")}");
+                sb.AppendLine($"- **Your status ({student.FullName}):** {(alreadyPassed ? "you have already passed this course" : alreadyRegistered ? $"already registered in {semester}" : missingPrereqs.Any() ? "prerequisites NOT satisfied, registration would be blocked" : "eligible to register")}");
+                sb.AppendLine($"- **Remaining credit limit:** {remainingCreditsAllowed} credits");
+            }
+            else
+            {
+                sb.AppendLine($"### 📘 Tư vấn môn **{course.CourseName}** (`{course.CourseCode}`)");
+                sb.AppendLine();
+                sb.AppendLine($"- **Số tín chỉ:** {course.Credits}");
+                sb.AppendLine($"- **Học phần tiên quyết:** {(prereqCourses.Any() ? string.Join(", ", prereqCourses.Select(c => $"{c.CourseName} ({c.CourseCode}) - {(passedCourseIds.Contains(c.CourseId) ? "đã đạt" : "CHƯA đạt")}")) : "Không yêu cầu")}");
+                sb.AppendLine($"- **Tình trạng của bạn ({student.FullName}):** {(alreadyPassed ? "bạn đã hoàn thành môn này" : alreadyRegistered ? $"bạn đã đăng ký môn này trong học kỳ {semester}" : missingPrereqs.Any() ? "CHƯA đủ tiên quyết, hệ thống sẽ chặn nếu đăng ký" : "đủ điều kiện đăng ký")}");
+                sb.AppendLine($"- **Hạn mức tín chỉ còn lại:** {remainingCreditsAllowed} tín chỉ");
+            }
+            sb.AppendLine();
+
+            if (!openSections.Any())
+            {
+                sb.AppendLine(isEnglish
+                    ? $"- No section of this course is open in semester {semester}."
+                    : $"- Học kỳ {semester} hiện chưa mở lớp học phần nào cho môn này.");
+            }
+            else
+            {
+                sb.AppendLine(isEnglish
+                    ? $"**Open sections in {semester} ({openSections.Count}):**"
+                    : $"**Các lớp đang mở trong học kỳ {semester} ({openSections.Count} lớp):**");
+
+                foreach (var s in openSections)
+                {
+                    int remain = Math.Max(0, s.MaxCapacity - s.CurrentEnrollment);
+                    bool isFull = remain == 0;
+                    var conflictCodes = registeredSections
+                        .Where(r => r.SectionId != s.SectionId && HasScheduleConflict(s, r))
+                        .Select(r => r.SectionCode)
+                        .ToList();
+
+                    string note;
+                    if (isFull) note = isEnglish ? "FULL" : "HẾT CHỎ";
+                    else if (conflictCodes.Any()) note = isEnglish ? $"CONFLICTS with {string.Join(", ", conflictCodes)}" : $"TRÙNG LỊCH với {string.Join(", ", conflictCodes)}";
+                    else note = isEnglish ? "no conflict" : "không trùng lịch";
+
+                    sb.AppendLine(isEnglish
+                        ? $"- `{s.SectionCode}`: {s.Instructor} | {FormatScheduleDetailed(s, true)} | Room {s.Room} | {remain}/{s.MaxCapacity} slots left | {note}"
+                        : $"- `{s.SectionCode}`: GV {s.Instructor} | {FormatScheduleDetailed(s, false)} | Phòng {s.Room} | còn {remain}/{s.MaxCapacity} chỗ | {note}");
+
+                    // Chỉ đề xuất lớp sinh viên thực sự đăng ký được (đủ điều kiện, còn chỗ, không trùng lịch, trong hạn mức)
+                    if (eligible && !isFull && !conflictCodes.Any() && !exceedsCredits)
+                    {
+                        advice.RecommendedSections.Add(new AiRecommendedSection
+                        {
+                            SectionId = s.SectionId,
+                            SectionCode = s.SectionCode,
+                            CourseId = s.CourseId,
+                            CourseCode = course.CourseCode,
+                            CourseName = course.CourseName,
+                            Credits = course.Credits,
+                            Instructor = s.Instructor,
+                            Room = s.Room,
+                            ScheduleSummary = FormatSchedule(s),
+                            RecommendationReason = isEnglish
+                                ? $"Matches the course you asked about; prerequisites met, {remain} slots left, no schedule conflict"
+                                : $"Đúng môn bạn hỏi; đạt tiên quyết, còn {remain} chỗ, không trùng lịch",
+                            IsSelected = true
+                        });
+                    }
+                }
+            }
+
+            sb.AppendLine();
+            if (advice.RecommendedSections.Any())
+            {
+                sb.AppendLine(isEnglish
+                    ? "- **User Confirmation Required:** this is only a suggestion. Review the section(s) below and click **'Confirm & Add to Cart'** to continue."
+                    : "- **Xác nhận người dùng:** đây chỉ là gợi ý. Bạn hãy rà soát lớp bên dưới và bấm **'Xác Nhận & Thêm Vào Giỏ Đăng Ký'** để tiếp tục.");
+            }
+            else
+            {
+                string reason;
+                if (alreadyPassed) reason = isEnglish ? "you have already passed this course" : "bạn đã hoàn thành môn này";
+                else if (alreadyRegistered) reason = isEnglish ? "you are already registered for it" : "bạn đã đăng ký môn này rồi";
+                else if (missingPrereqs.Any()) reason = isEnglish ? $"you still need: {string.Join(", ", missingPrereqs.Select(c => c.CourseName))}" : $"bạn còn thiếu học phần tiên quyết: {string.Join(", ", missingPrereqs.Select(c => c.CourseName))}";
+                else if (exceedsCredits) reason = isEnglish ? "it would exceed your remaining credit limit" : "sẽ vượt hạn mức tín chỉ còn lại";
+                else if (!openSections.Any()) reason = isEnglish ? "no section is open this semester" : "học kỳ này chưa mở lớp";
+                else reason = isEnglish ? "every open section is full or conflicts with your schedule" : "các lớp đang mở đều hết chỗ hoặc trùng lịch của bạn";
+                sb.AppendLine(isEnglish
+                    ? $"- No section is suggested for cart right now because {reason}."
+                    : $"- Chưa đề xuất lớp nào để thêm vào giỏ vì {reason}.");
+            }
+
+            advice.AiMessage = sb.ToString();
+        }
+
+        /// <summary>Làm sạch câu hỏi người dùng để trích dẫn vào lời mở đầu (bỏ ký tự markdown, cắt ngắn).</summary>
+        private static string QuoteUserPrompt(string? prompt)
+        {
+            if (string.IsNullOrWhiteSpace(prompt)) return string.Empty;
+            var s = Regex.Replace(prompt.Trim(), @"[\r\n\*`_]+", " ");
+            return s.Length > 120 ? s.Substring(0, 120) + "..." : s;
+        }
+
+        /// <summary>
+        /// Bỏ tin nhắn cuối của lịch sử nếu nó chính là câu hỏi hiện tại (nơi gọi đã thêm trước). Không sửa danh sách gốc của nơi gọi.
+        /// </summary>
+        private static List<AiConversationMessage>? RemoveTrailingDuplicateUserPrompt(List<AiConversationMessage>? history, string userPrompt)
+        {
+            if (history == null || history.Count == 0 || string.IsNullOrWhiteSpace(userPrompt)) return history;
+
+            var last = history[history.Count - 1];
+            if (last.IsUser && string.Equals(last.Content?.Trim(), userPrompt, StringComparison.Ordinal))
+            {
+                return history.Take(history.Count - 1).ToList();
+            }
+            return history;
         }
 
         #region Helper Extraction & Matching Methods
@@ -2954,7 +3190,7 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             {
                 return allCourses.FirstOrDefault(c => c.CourseCode == "TOEIC");
             }
-            if (qNorm.Contains("tri tue nhan tao") || qNorm.Contains("hoc may") || qLower.Contains("machine learning") || qNorm.Contains("ai401") || (qNorm.Contains("ai") && qNorm.Contains("mon")))
+            if (qNorm.Contains("tri tue nhan tao") || qNorm.Contains("hoc may") || qLower.Contains("machine learning") || qNorm.Contains("ai401") || (Regex.IsMatch(qNorm, @"\bai\b") && qNorm.Contains("mon")))
             {
                 return allCourses.FirstOrDefault(c => c.CourseCode == "AI401");
             }

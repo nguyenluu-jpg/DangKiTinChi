@@ -16,19 +16,23 @@ namespace CourseRegistration.UseCases.AdminPortal.AiAdminAssistant
         private readonly IStudentRepository _studentRepository;
         private readonly IEnrollmentRepository _enrollmentRepository;
         private readonly ICourseRepository _courseRepository;
+        private readonly CourseRegistration.UseCases.StudentPortal.AiAdvisor.AiAdvisorSettings _aiSettings;
 
         public AdminAiAssistantUseCase(
             ISectionRepository sectionRepository,
             IStudentRepository studentRepository,
             IEnrollmentRepository enrollmentRepository,
             ICourseRepository courseRepository,
-            IChatClient? chatClient = null)
+            IChatClient? chatClient = null,
+            CourseRegistration.UseCases.StudentPortal.AiAdvisor.AiAdvisorSettings? aiSettings = null)
         {
             _sectionRepository = sectionRepository;
             _studentRepository = studentRepository;
             _enrollmentRepository = enrollmentRepository;
             _courseRepository = courseRepository;
             _chatClient = chatClient;
+            // Timeout đọc từ cấu hình AI:TimeoutSeconds (mặc định 45s), không hard-code
+            _aiSettings = aiSettings ?? new CourseRegistration.UseCases.StudentPortal.AiAdvisor.AiAdvisorSettings();
         }
 
         public async Task<AdminAiQueryResult> ExecuteAsync(string query, string semester = "2026_HK1")
@@ -51,6 +55,7 @@ namespace CourseRegistration.UseCases.AdminPortal.AiAdminAssistant
             bool aiSuccess = false;
             if (_chatClient != null && (allSections.Any() || allSectionsAcrossSemesters.Any()))
             {
+                using var llmCts = new CancellationTokenSource();
                 try
                 {
                     var sectionsBrief = string.Join("\n", allSectionsAcrossSemesters.Select(s =>
@@ -82,8 +87,9 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                         new ChatMessage(ChatRole.User, prompt)
                     };
 
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(4));
-                    var response = await _chatClient.GetResponseAsync(messages, new ChatOptions { Temperature = 0.2f }, cts.Token);
+                    // Timeout lấy từ cấu hình AI:TimeoutSeconds
+                    llmCts.CancelAfter(_aiSettings.Timeout);
+                    var response = await _chatClient.GetResponseAsync(messages, new ChatOptions { Temperature = 0.2f }, llmCts.Token);
                     var text = response.Text ?? string.Empty;
 
                     var jsonContent = ExtractJson(text);
@@ -119,8 +125,10 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ:
                         }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    // Ghi log chẩn đoán (không chứa API key / nội dung nhạy cảm) rồi rơi vào fallback an toàn
+                    CourseRegistration.UseCases.StudentPortal.AiAdvisor.AiDiagnostics.LogLlmFailure("AdminAiAssistant", ex, llmCts.IsCancellationRequested, _aiSettings.Timeout);
                     aiSuccess = false;
                 }
             }

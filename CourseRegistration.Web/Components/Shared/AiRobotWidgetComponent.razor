@@ -65,6 +65,20 @@
                                 <div class="ai-msg-bubble bot-bubble shadow-sm flex-grow-1">
                                     <div class="ai-msg-text">@((MarkupString)FormatMarkdown(msg.Content))</div>
 
+                                    @if (!string.IsNullOrEmpty(msg.ModelUsed))
+                                    {
+                                        <div class="mt-1">
+                                            <span class="badge @(msg.IsAiGenerated ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary")" style="font-size: 0.66rem;">
+                                                <i class="bi @(msg.IsAiGenerated ? "bi-stars" : "bi-database")"></i>
+                                                @(msg.IsAiGenerated ? "Trả lời bởi AI (LLM)" : "Chế độ dự phòng (tra cứu SQL Server)")
+                                            </span>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(msg.WarningMessage))
+                                    {
+                                        <div class="mt-1 small text-muted fst-italic" style="font-size: 0.7rem;">@msg.WarningMessage</div>
+                                    }
+
                                     @if (msg.ShowLoginButton)
                                     {
                                         <div class="mt-2">
@@ -83,12 +97,18 @@
                                                 <i class="bi bi-stars"></i> Gợi ý @msg.RecommendedSections.Count môn học kỳ này:
                                             </div>
                                             <div class="d-flex flex-column gap-1">
-                                                @foreach (var sec in msg.RecommendedSections.Take(3))
+                                                @foreach (var sec in (msg.ShowAllSections ? msg.RecommendedSections : msg.RecommendedSections.Take(3)))
                                                 {
                                                     <div class="p-1 px-2 rounded bg-white border small d-flex justify-content-between align-items-center">
                                                         <span class="fw-semibold text-truncate me-1">@sec.CourseName (@sec.SectionCode)</span>
                                                         <span class="badge bg-primary-subtle text-primary flex-shrink-0">@sec.Credits TC</span>
                                                     </div>
+                                                }
+                                                @if (!msg.ShowAllSections && msg.RecommendedSections.Count > 3)
+                                                {
+                                                    <button type="button" class="btn btn-link btn-sm p-0 text-start small fw-semibold" style="font-size: 0.72rem;" @onclick="() => msg.ShowAllSections = true">
+                                                        Xem thêm @(msg.RecommendedSections.Count - 3) lớp
+                                                    </button>
                                                 }
                                             </div>
                                             <div class="mt-2 text-end">
@@ -429,7 +449,9 @@
                 {
                     studentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
                 }
+                // Lịch sử chỉ gồm các lượt TRƯỚC câu hỏi hiện tại (câu hỏi vừa thêm ở trên được bỏ đi để LLM không nhận câu hỏi hai lần)
                 var history = chatMessages
+                    .Take(chatMessages.Count - 1)
                     .Select(m => new AiConversationMessage
                     {
                         IsUser = m.IsUser,
@@ -446,6 +468,9 @@
                     Content = advice.AiMessage,
                     RecommendedSections = advice.RecommendedSections,
                     ShowLoginButton = advice.SuggestLogin,
+                    IsAiGenerated = advice.IsAiGenerated,
+                    ModelUsed = advice.ModelUsed,
+                    WarningMessage = advice.WarningMessage,
                     Timestamp = DateTime.Now
                 });
             }
@@ -534,5 +559,9 @@
         public DateTime Timestamp { get; set; } = DateTime.Now;
         public List<AiRecommendedSection>? RecommendedSections { get; set; }
         public bool ShowLoginButton { get; set; } = false;
+        public bool IsAiGenerated { get; set; }
+        public string? ModelUsed { get; set; }
+        public string? WarningMessage { get; set; }
+        public bool ShowAllSections { get; set; }
     }
 }

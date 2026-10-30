@@ -1288,7 +1288,208 @@ namespace CourseRegistration.Tests
         }
     }
 
+    /// <summary>
+    /// Test cho đợt sửa lỗi Cố vấn AI: định tuyến ý định theo môn cụ thể, timeout cấu hình, log/fallback an toàn, bỏ trùng câu hỏi.
+    /// Tất cả chạy với Fake in-memory, không gọi LLM thật.
+    /// </summary>
+    public class AiAdvisorRoutingAndLlmTests
+    {
+        private readonly FakeStudentRepository _studentRepo = new FakeStudentRepository();
+        private readonly FakeSectionRepository _sectionRepo = new FakeSectionRepository();
+        private readonly FakeEnrollmentRepository _enrollmentRepo = new FakeEnrollmentRepository();
+        private readonly FakeCourseRepository _courseRepo = new FakeCourseRepository();
+        private readonly CurrentUserStateStore _userStateStore = new CurrentUserStateStore();
+        private readonly RegistrationPeriodService _periodService = new RegistrationPeriodService();
+
+        private GetAiAdviceUseCase CreateUseCase(IChatClient? chatClient = null, AiAdvisorSettings? settings = null) =>
+            new GetAiAdviceUseCase(_studentRepo, _sectionRepo, _enrollmentRepo, _courseRepo,
+                chatClient: chatClient,
+                currentUserStateStore: _userStateStore,
+                registrationPeriodService: _periodService,
+                aiSettings: settings);
+
+        private Task LoginStudent3() => _userStateStore.SetCurrentUserAsync(new UserAccount
+        {
+            AccountId = 3, Username = "sv21003", FullName = "Lê Hoàng Nam", Role = "Student", StudentId = 3
+        });
+
+        private Task LoginStudent1() => _userStateStore.SetCurrentUserAsync(new UserAccount
+        {
+            AccountId = 2, Username = "sv21001", FullName = "Nguyễn Văn Tuấn", Role = "Student", StudentId = 1
+        });
+
+        [Fact]
+        public async Task Advisory_WithSpecificCourse_Web_AnswersAboutThatCourseOnly()
+        {
+            // SV3 đã đạt TIN102 (tiên quyết của WEB301) và chưa đăng ký môn nào
+            await LoginStudent3();
+            var result = await CreateUseCase(chatClient: null).ExecuteAsync(3, "2026_HK1", "tư vấn môn lập trình web");
+
+            Assert.False(result.IsAiGenerated);
+            Assert.Contains("Lập trình Ứng dụng Web", result.AiMessage);
+            Assert.Contains("WEB301", result.AiMessage);
+            Assert.DoesNotContain("Đề Xuất Lộ Trình", result.AiMessage);
+            // Không nhắc tới lớp của môn khác
+            Assert.DoesNotContain("CSDL201_01", result.AiMessage);
+            Assert.DoesNotContain("ATTT401_01", result.AiMessage);
+
+            Assert.NotEmpty(result.RecommendedSections);
+            Assert.All(result.RecommendedSections, r => Assert.Equal("WEB301", r.CourseCode));
+            Assert.All(result.RecommendedSections, r => Assert.True(r.IsSelected));
+        }
+
+        [Fact]
+        public async Task Advisory_WithSpecificCourse_AlreadyRegistered_ReportsStatus_NoRecommendedSections()
+        {
+            // SV1 đã đăng ký WEB301_01 -> trả lời đúng môn nhưng không đề xuất thêm lớp
+            await LoginStudent1();
+            var result = await CreateUseCase(chatClient: null).ExecuteAsync(1, "2026_HK1", "tư vấn môn lập trình web");
+
+            Assert.Contains("Lập trình Ứng dụng Web", result.AiMessage);
+            Assert.Contains("đã đăng ký", result.AiMessage);
+            Assert.Empty(result.RecommendedSections);
+        }
+
+        [Fact]
+        public async Task Advisory_WithSpecificCourse_MissingPrerequisite_ExplainsAndDoesNotRecommend()
+        {
+            // SV2 chưa đạt TIN102 -> không được đề xuất WEB301, phải nói rõ thiếu tiên quyết
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 4, Username = "sv21002", FullName = "Trần Thị Mai", Role = "Student", StudentId = 2
+            });
+            var result = await CreateUseCase(chatClient: null).ExecuteAsync(2, "2026_HK1", "tư vấn môn lập trình web");
+
+            Assert.Contains("Lập trình Hướng đối tượng", result.AiMessage);
+            Assert.Contains("CHƯA", result.AiMessage);
+            Assert.Empty(result.RecommendedSections);
+        }
+
+        [Fact]
+        public async Task Advisory_GeneralRequest_StillReturnsMultiCoursePackage()
+        {
+            await LoginStudent3();
+            var result = await CreateUseCase(chatClient: null).ExecuteAsync(3, "2026_HK1", "gợi ý môn học kỳ này cho tôi");
+
+            Assert.NotEmpty(result.RecommendedSections);
+            Assert.True(result.RecommendedSections.Select(r => r.CourseCode).Distinct().Count() >= 2);
+            Assert.Contains("Xác Nhận", result.AiMessage);
+            // Lời mở đầu phản ánh câu hỏi thật, không còn câu mẫu cố định
+            Assert.Contains("gợi ý môn học kỳ này cho tôi", result.AiMessage);
+            Assert.DoesNotContain("Đề Xuất Lộ Trình Học Tập Tối Ưu", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Llm_OperationCanceledOrTimeout_FallsBackWithoutCrash()
+        {
+            foreach (Exception ex in new Exception[] { new OperationCanceledException(), new TaskCanceledException() })
+            {
+                var result = await CreateUseCase(chatClient: new FakeChatClient(ex)).ExecuteAsync(0, "2026_HK1", "Thầy Long dạy môn gì?");
+
+                Assert.False(result.IsAiGenerated);
+                Assert.Contains("Hà Ngọc Long", result.AiMessage);
+                Assert.Contains("WEB301_01", result.AiMessage);
+                Assert.False(string.IsNullOrWhiteSpace(result.WarningMessage));
+            }
+        }
+
+        [Fact]
+        public async Task Llm_ConfiguredTimeout_IsHonored_ThenFallsBack()
+        {
+            // Client treo vô hạn: phải bị hủy sau đúng AI:TimeoutSeconds (1s) rồi fallback
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var result = await CreateUseCase(new HangingChatClient(), new AiAdvisorSettings { TimeoutSeconds = 1 })
+                .ExecuteAsync(0, "2026_HK1", "Thầy Long dạy môn gì?");
+            sw.Stop();
+
+            Assert.False(result.IsAiGenerated);
+            Assert.Contains("Hà Ngọc Long", result.AiMessage);
+            Assert.InRange(sw.Elapsed.TotalSeconds, 0.5, 20);
+        }
+
+        [Fact]
+        public void AiAdvisorSettings_DefaultsTo45Seconds_AndIgnoresInvalidValues()
+        {
+            Assert.Equal(TimeSpan.FromSeconds(45), new AiAdvisorSettings().Timeout);
+            Assert.Equal(TimeSpan.FromSeconds(45), new AiAdvisorSettings { TimeoutSeconds = 0 }.Timeout);
+            Assert.Equal(TimeSpan.FromSeconds(10), new AiAdvisorSettings { TimeoutSeconds = 10 }.Timeout);
+        }
+
+        [Fact]
+        public async Task Llm_CurrentQuestion_AppearsExactlyOnce_WhenCallerAlreadyAddedItToHistory()
+        {
+            const string question = "Chào bạn, bạn có thể giúp gì?";
+            var recorder = new RecordingChatClient("Xin chào!");
+            var history = new List<AiConversationMessage>
+            {
+                new AiConversationMessage { IsUser = false, Content = "Xin chào, tôi là cố vấn AI." },
+                new AiConversationMessage { IsUser = true, Content = question } // nơi gọi đã thêm câu hỏi hiện tại
+            };
+
+            var result = await CreateUseCase(recorder).ExecuteAsync(0, "2026_HK1", question, history);
+
+            Assert.True(result.IsAiGenerated);
+            Assert.Equal(1, recorder.LastMessages.Count(m => m.Role == ChatRole.User && m.Text == question));
+            // Lịch sử gốc của nơi gọi không bị sửa
+            Assert.Equal(2, history.Count);
+        }
+
+        [Fact]
+        public async Task Llm_CurrentQuestion_AppearsExactlyOnce_WhenHistoryDoesNotContainIt()
+        {
+            const string question = "Chào bạn, bạn có thể giúp gì?";
+            var recorder = new RecordingChatClient("Xin chào!");
+            var history = new List<AiConversationMessage>
+            {
+                new AiConversationMessage { IsUser = true, Content = "Câu hỏi trước đó" },
+                new AiConversationMessage { IsUser = false, Content = "Trả lời trước đó" }
+            };
+
+            await CreateUseCase(recorder).ExecuteAsync(0, "2026_HK1", question, history);
+
+            Assert.Equal(1, recorder.LastMessages.Count(m => m.Role == ChatRole.User && m.Text == question));
+            Assert.Contains(recorder.LastMessages, m => m.Role == ChatRole.User && m.Text == "Câu hỏi trước đó");
+        }
+    }
+
     #region In-Memory Fake Repositories & Clients For Isolated Unit Testing
+
+    /// <summary>Ghi lại danh sách messages gửi cho LLM để kiểm tra nội dung prompt.</summary>
+    public class RecordingChatClient : IChatClient
+    {
+        private readonly string _response;
+        public List<ChatMessage> LastMessages { get; private set; } = new List<ChatMessage>();
+
+        public RecordingChatClient(string response) { _response = response; }
+
+        public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> chatMessages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            LastMessages = chatMessages.ToList();
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, _response)));
+        }
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> chatMessages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+            => throw new NotImplementedException();
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+        public void Dispose() { }
+    }
+
+    /// <summary>Client không bao giờ trả lời; chỉ kết thúc khi bị hủy (mô phỏng LLM local quá chậm).</summary>
+    public class HangingChatClient : IChatClient
+    {
+        public async Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> chatMessages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            return new ChatResponse(new ChatMessage(ChatRole.Assistant, "unreachable"));
+        }
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> chatMessages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+            => throw new NotImplementedException();
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+        public void Dispose() { }
+    }
 
     public class FakeChatClient : IChatClient
     {
@@ -1347,7 +1548,8 @@ namespace CourseRegistration.Tests
         {
             new CompletedCourse { CompletedCourseId = 1, StudentId = 1, CourseId = 1, Grade = 8.0, Semester = "2024_HK1" }, // Đã qua TIN101
             new CompletedCourse { CompletedCourseId = 2, StudentId = 1, CourseId = 2, Grade = 7.5, Semester = "2024_HK2" }, // Đã qua TIN102
-            new CompletedCourse { CompletedCourseId = 3, StudentId = 2, CourseId = 1, Grade = 6.5, Semester = "2025_HK1" }
+            new CompletedCourse { CompletedCourseId = 3, StudentId = 2, CourseId = 1, Grade = 6.5, Semester = "2025_HK1" },
+            new CompletedCourse { CompletedCourseId = 4, StudentId = 3, CourseId = 2, Grade = 7.0, Semester = "2025_HK2" } // SV3 đã đạt TIN102 (tiên quyết của WEB301)
         };
 
         public Task<IEnumerable<Student>> GetAllStudentsAsync() => Task.FromResult<IEnumerable<Student>>(_students);

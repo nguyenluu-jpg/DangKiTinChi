@@ -1,23 +1,177 @@
 @namespace CourseRegistration.Web.Components.Shared
 
-<div class="d-flex justify-content-between align-items-center mb-3 flex-nowrap gap-2">
-    <!-- View Mode Switcher -->
+<style>
+    /* Bảng thời khóa biểu ma trận theo tuần - Thiết kế hiện đại */
+    .schedule-matrix-wrapper {
+        position: relative;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .schedule-matrix-table {
+        table-layout: fixed;
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+        min-width: 900px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        background-color: #ffffff;
+    }
+
+    .schedule-head-row {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        color: #ffffff;
+    }
+
+    .schedule-head-row th {
+        border-color: rgba(255, 255, 255, 0.12) !important;
+        padding: 12px 8px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        vertical-align: middle;
+        text-align: center;
+    }
+
+    .day-header-col.today-col {
+        background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+        box-shadow: inset 0 0 0 2px #93c5fd;
+    }
+
+    .period-cell {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+        vertical-align: middle;
+        min-width: 95px;
+        width: 100px;
+    }
+
+    .schedule-empty-cell {
+        background-color: #fafbfc;
+        border-color: #edf2f7 !important;
+        transition: background-color 0.15s ease;
+    }
+
+    .schedule-empty-cell:hover {
+        background-color: #f1f5f9;
+    }
+
+    .schedule-slot-cell {
+        border-color: #e2e8f0 !important;
+        vertical-align: top;
+        padding: 4px !important;
+    }
+
+    .schedule-card {
+        cursor: pointer;
+        transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
+        position: relative;
+    }
+
+    .schedule-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -3px rgba(15, 23, 42, 0.12), 0 4px 6px -2px rgba(15, 23, 42, 0.06);
+        z-index: 3;
+    }
+
+    .course-legend-chip {
+        transition: all 0.2s ease;
+    }
+
+    .course-legend-chip:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.07);
+    }
+
+    .legend-color-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+    }
+
+    .text-truncate-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .morning-last-row td {
+        border-bottom: 2px solid #cbd5e1 !important;
+    }
+
+    @@media print {
+        .btn-group, .schedule-view-switcher, .course-legend-bar {
+            display: none !important;
+        }
+        .schedule-matrix-table {
+            border: 1px solid #333 !important;
+        }
+    }
+</style>
+
+<!-- Thanh điều hướng chế độ xem (View Mode Switcher) -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 schedule-view-switcher">
     <div class="btn-group btn-group-sm shadow-sm flex-nowrap" role="group">
-        <button type="button" class="btn text-nowrap @(viewMode == "Agenda" ? "btn-primary" : "btn-outline-primary")" 
-                @onclick="@(() => viewMode = "Agenda")">
-            <i class="bi bi-view-list me-1"></i> Lịch học theo ngày
-        </button>
-        <button type="button" class="btn text-nowrap @(viewMode == "Grid" ? "btn-primary" : "btn-outline-primary")" 
+        <button type="button" class="btn text-nowrap @(viewMode == "Grid" ? "btn-primary fw-bold" : "btn-outline-primary")" 
                 @onclick="@(() => viewMode = "Grid")">
-            <i class="bi bi-grid-3x3 me-1"></i> Lịch học theo tuần
+            <i class="bi bi-grid-3x3-gap-fill me-1"></i> Lịch học theo tuần
+        </button>
+        <button type="button" class="btn text-nowrap @(viewMode == "Agenda" ? "btn-primary fw-bold" : "btn-outline-primary")" 
+                @onclick="@(() => viewMode = "Agenda")">
+            <i class="bi bi-calendar2-week me-1"></i> Lịch học theo ngày
         </button>
     </div>
 
-    <div class="text-muted small text-nowrap d-none d-md-block">
-        <i class="bi bi-info-circle me-1"></i>
-        <span>@(viewMode == "Agenda" ? "Xem chi tiết giờ học từng ngày" : "Bảng lưới tổng quan toàn tuần")</span>
+    <div class="text-muted small text-nowrap d-none d-md-flex align-items-center gap-2">
+        <span class="badge bg-light text-secondary border px-2.5 py-1.5">
+            <i class="bi bi-info-circle me-1 text-primary"></i>
+            @(viewMode == "Grid" ? "Bảng lưới tổng quan toàn tuần - Phân biệt theo màu môn học" : "Xem chi tiết giờ học từng ngày")
+        </span>
     </div>
 </div>
+
+@{
+    var uniqueCourses = GetUniqueCourses();
+}
+
+<!-- Bảng chú thích màu sắc các môn học (Course Color Legend) -->
+@if (uniqueCourses.Any())
+{
+    <div class="card border-0 shadow-sm p-3 mb-3 bg-white rounded-4 course-legend-bar">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary p-2 rounded-circle">
+                    <i class="bi bi-palette-fill"></i>
+                </span>
+                <span class="fw-bold text-dark">Chú thích màu sắc môn học (@uniqueCourses.Count môn)</span>
+            </div>
+            <div class="small text-muted">
+                <i class="bi bi-eye me-1"></i>Mỗi môn học được gán một dải màu riêng biệt giúp dễ dàng nhận biết
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var course in uniqueCourses)
+            {
+                var theme = GetThemeForCourse(course.Key);
+                <div class="course-legend-chip d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill"
+                     style="background: @theme.BgGradient; border: 1px solid @theme.BorderColor;">
+                    <span class="legend-color-dot" style="background-color: @theme.AccentColor;"></span>
+                    <span class="fw-bold small" style="color: @theme.TextColor;">@course.CourseName</span>
+                    <span class="badge rounded-pill" style="background-color: @theme.BadgeBg; color: @theme.BadgeText; font-size: 0.7rem;">
+                        @course.SectionCode
+                    </span>
+                    <span class="small text-muted">(@course.Credits TC)</span>
+                </div>
+            }
+        </div>
+    </div>
+}
 
 @if (viewMode == "Agenda")
 {
@@ -29,10 +183,15 @@
             {
                 int currentDay = day;
                 int countOnDay = GetItemsForDay(currentDay).Count();
+                bool isToday = (currentDay == currentDayOfWeek);
                 <button type="button" 
                         class="agenda-day-pill d-flex align-items-center gap-1 @(selectedDay == currentDay ? "active" : "")" 
                         @onclick="@(() => selectedDay = currentDay)">
                     <span>@GetDayName(currentDay)</span>
+                    @if (isToday)
+                    {
+                        <span class="badge bg-warning text-dark rounded-pill" style="font-size: 0.65rem;">Nay</span>
+                    }
                     @if (countOnDay > 0)
                     {
                         <span class="badge @(selectedDay == currentDay ? "bg-white text-primary" : "bg-primary text-white") rounded-pill ms-1" style="font-size: 0.7rem;">
@@ -51,6 +210,10 @@
         <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-nowrap gap-2">
             <h5 class="fw-bold mb-0 text-dark text-nowrap">
                 <i class="bi bi-calendar2-day text-primary me-2"></i>Lịch học: @GetDayName(selectedDay)
+                @if (selectedDay == currentDayOfWeek)
+                {
+                    <span class="badge bg-warning text-dark rounded-pill ms-2 fs-6">Hôm nay</span>
+                }
             </h5>
             <span class="badge bg-light text-dark border text-nowrap">
                 @dayItems.Count buổi học
@@ -70,27 +233,32 @@
             <div class="d-flex flex-column gap-3">
                 @foreach (var item in dayItems.OrderBy(i => i.Schedule.StartPeriod))
                 {
-                    <div class="agenda-card">
-                        <!-- Hàng trên: Mã lớp & Tín chỉ (trái) + Tiết học (phải) luôn trên 1 dòng, không tràn rớt dòng -->
+                    var theme = GetThemeForCourse(item.Section.Course?.CourseCode ?? item.Section.SectionCode);
+                    <div class="agenda-card rounded-4 p-3 shadow-xs"
+                         style="background: @theme.BgGradient; border: 1px solid @theme.BorderColor; border-left: 5px solid @theme.AccentColor;"
+                         @onclick="@(() => HandleSectionClick(item.Section))">
+                        <!-- Hàng trên: Mã lớp & Tín chỉ (trái) + Tiết học (phải) -->
                         <div class="d-flex justify-content-between align-items-center mb-2 flex-nowrap gap-2">
                             <div class="d-flex align-items-center gap-1.5 flex-nowrap overflow-hidden">
-                                <span class="badge bg-primary-subtle text-primary fw-bold text-nowrap">
+                                <span class="badge rounded-pill fw-bold text-nowrap" style="background-color: @theme.BadgeBg; color: @theme.BadgeText;">
                                     @item.Section.SectionCode
                                 </span>
-                                <span class="badge bg-secondary text-nowrap">@(item.Section.Course?.Credits ?? 0) TC</span>
+                                <span class="badge rounded-pill text-nowrap" style="background-color: @theme.TagBg; color: @theme.TextColor; border: 1px solid @theme.BorderColor;">
+                                    @(item.Section.Course?.Credits ?? 0) TC
+                                </span>
                             </div>
-                            <div class="period-pill text-nowrap flex-shrink-0 ms-auto">
-                                <i class="bi bi-clock me-1"></i>
-                                <span>Tiết @item.Schedule.StartPeriod-@item.Schedule.EndPeriod</span>
+                            <div class="period-pill text-nowrap flex-shrink-0 ms-auto px-2.5 py-1 rounded-pill bg-white border" style="border-color: @theme.BorderColor !important;">
+                                <i class="bi bi-clock me-1" style="color: @theme.AccentColor;"></i>
+                                <span class="fw-bold" style="color: @theme.TextColor;">Tiết @item.Schedule.StartPeriod - @item.Schedule.EndPeriod</span>
                                 <span class="d-none d-sm-inline ms-1 fw-normal text-muted">(@GetPeriodTime(item.Schedule.StartPeriod, item.Schedule.EndPeriod))</span>
                             </div>
                         </div>
 
-                        <h6 class="fw-bold mb-2 text-dark text-truncate">@(item.Section.Course?.CourseName)</h6>
+                        <h6 class="fw-bold mb-2 text-truncate" style="color: @theme.TextColor;">@(item.Section.Course?.CourseName)</h6>
 
-                        <!-- Hàng dưới: Giảng viên (trái) + Phòng học (phải) luôn trên 1 dòng, không tràn rớt dòng -->
-                        <div class="d-flex justify-content-between align-items-center text-muted small flex-nowrap gap-2 pt-1 border-top border-light-subtle">
-                            <div class="text-truncate">
+                        <!-- Hàng dưới: Giảng viên (trái) + Phòng học (phải) -->
+                        <div class="d-flex justify-content-between align-items-center text-muted small flex-nowrap gap-2 pt-2 border-top" style="border-color: @theme.BorderColor !important;">
+                            <div class="text-truncate" style="color: @theme.TextColor;">
                                 <i class="bi bi-person-badge text-primary me-1"></i><span class="d-none d-sm-inline">Giảng viên: </span><strong>@item.Section.Instructor</strong>
                             </div>
                             <div class="text-nowrap flex-shrink-0 ms-auto">
@@ -105,48 +273,134 @@
 }
 else
 {
-    <!-- Desktop Weekly Matrix Table View -->
-    <div class="table-responsive shadow-sm rounded-4 border bg-white p-2">
-        <table class="table table-bordered text-center align-middle mb-0 schedule-table">
-            <thead class="table-primary">
-                <tr>
-                    <th style="width: 80px;">Tiết</th>
-                    <th>Thứ 2</th>
-                    <th>Thứ 3</th>
-                    <th>Thứ 4</th>
-                    <th>Thứ 5</th>
-                    <th>Thứ 6</th>
-                    <th>Thứ 7</th>
-                    <th>Chủ nhật</th>
+    <!-- Bảng Thời Khóa Biểu Lưới Theo Tuần (Weekly Matrix Grid) -->
+    <div class="table-responsive shadow-sm rounded-4 border bg-white p-2 schedule-matrix-wrapper">
+        <table class="table table-bordered text-center align-middle mb-0 schedule-matrix-table">
+            <thead>
+                <tr class="schedule-head-row">
+                    <th class="period-header-col" style="width: 105px;">
+                        <div class="d-flex flex-column align-items-center py-1">
+                            <span class="fw-bold"><i class="bi bi-clock me-1"></i>Tiết học</span>
+                            <span class="small text-white-50" style="font-size: 0.7rem;">(Khung giờ)</span>
+                        </div>
+                    </th>
+                    @for (int day = 2; day <= 8; day++)
+                    {
+                        bool isToday = (day == currentDayOfWeek);
+                        <th class="day-header-col @(isToday ? "today-col" : "")">
+                            <div class="d-flex flex-column align-items-center py-1">
+                                <span class="fw-bold">@GetDayName(day)</span>
+                                @if (isToday)
+                                {
+                                    <span class="badge bg-warning text-dark rounded-pill mt-1 px-2 py-0.5 fw-bold" style="font-size: 0.65rem;">
+                                        HÔM NAY
+                                    </span>
+                                }
+                            </div>
+                        </th>
+                    }
                 </tr>
             </thead>
             <tbody>
-                @for (int period = 1; period <= 10; period++)
+                @{
+                    int maxPeriod = GetMaxPeriod();
+                    bool canShowLunchDivider = !HasAnyCrossNoonSchedule();
+                }
+
+                @for (int period = 1; period <= maxPeriod; period++)
                 {
                     int currentPeriod = period;
-                    <tr>
-                        <td class="fw-bold bg-light">Tiết @currentPeriod</td>
+                    bool isMorningEnd = (currentPeriod == 5);
+                    <tr class="@(isMorningEnd ? "morning-last-row" : "")">
+                        <!-- Cột hiển thị Tiết và Khung giờ -->
+                        <td class="period-cell fw-semibold text-start p-2">
+                            <div class="d-flex flex-column gap-1">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <span class="badge bg-secondary-subtle text-dark fw-bold px-1.5 py-0.5" style="font-size: 0.72rem;">
+                                        Tiết @currentPeriod
+                                    </span>
+                                    <span class="badge @(currentPeriod <= 5 ? "bg-info-subtle text-info-emphasis" : "bg-warning-subtle text-warning-emphasis")" style="font-size: 0.63rem;">
+                                        @(currentPeriod <= 5 ? "Sáng" : "Chiều")
+                                    </span>
+                                </div>
+                                <span class="text-muted small" style="font-size: 0.68rem;">
+                                    @GetPeriodTime(currentPeriod, currentPeriod)
+                                </span>
+                            </div>
+                        </td>
+
+                        <!-- 7 Cột từ Thứ 2 đến Chủ nhật -->
                         @for (int day = 2; day <= 8; day++)
                         {
                             int currentDay = day;
-                            var matchedItem = GetScheduleItem(currentDay, currentPeriod);
+                            var startBlock = GetScheduleStartingAt(currentDay, currentPeriod);
 
-                            if (matchedItem != null)
+                            if (startBlock != null)
                             {
-                                <td class="p-1 table-info">
-                                    <div class="schedule-slot p-2 rounded shadow-sm text-start">
-                                        <div class="fw-bold text-primary small">@matchedItem.CourseName</div>
-                                        <div class="badge bg-primary text-wrap mb-1">@matchedItem.SectionCode</div>
-                                        <div class="small text-muted"><i class="bi bi-geo-alt"></i> @matchedItem.Room</div>
+                                var theme = GetThemeForCourse(startBlock.CourseCode);
+                                <td rowspan="@startBlock.Span" class="schedule-slot-cell align-top text-start">
+                                    <div class="schedule-card h-100 p-2.5 rounded-3 d-flex flex-column justify-content-between"
+                                         style="background: @theme.BgGradient; border: 1px solid @theme.BorderColor; border-left: 5px solid @theme.AccentColor;"
+                                         @onclick="@(() => HandleSectionClick(startBlock.Section))">
+                                        <div>
+                                            <div class="d-flex justify-content-between align-items-center gap-1 mb-1.5 flex-nowrap">
+                                                <span class="badge rounded-pill fw-bold" 
+                                                      style="background-color: @theme.BadgeBg; color: @theme.BadgeText; font-size: 0.72rem;">
+                                                    @startBlock.SectionCode
+                                                </span>
+                                                <span class="badge rounded-pill" 
+                                                      style="background-color: @theme.TagBg; color: @theme.TextColor; font-size: 0.7rem; border: 1px solid @theme.BorderColor;">
+                                                    @startBlock.Credits TC
+                                                </span>
+                                            </div>
+
+                                            <div class="fw-bold text-truncate-2 mb-2 lh-sm" 
+                                                 style="color: @theme.TextColor; font-size: 0.84rem;" 
+                                                 title="@startBlock.CourseName">
+                                                @startBlock.CourseName
+                                            </div>
+                                        </div>
+
+                                        <div class="pt-1.5 border-top" style="border-color: @theme.BorderColor !important; font-size: 0.75rem;">
+                                            <div class="d-flex align-items-center text-truncate mb-1" style="color: @theme.TextColor;">
+                                                <i class="bi bi-geo-alt-fill text-danger me-1 flex-shrink-0"></i>
+                                                <span class="fw-semibold text-truncate">@startBlock.Room</span>
+                                            </div>
+                                            <div class="d-flex align-items-center text-truncate mb-1 text-muted" style="font-size: 0.72rem;">
+                                                <i class="bi bi-person-fill text-primary me-1 flex-shrink-0"></i>
+                                                <span class="text-truncate">@startBlock.Instructor</span>
+                                            </div>
+                                            <div class="d-flex align-items-center text-muted" style="font-size: 0.7rem;">
+                                                <i class="bi bi-clock-history me-1 flex-shrink-0"></i>
+                                                <span>Tiết @startBlock.StartPeriod - @startBlock.EndPeriod</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </td>
                             }
+                            else if (IsPeriodCovered(currentDay, currentPeriod))
+                            {
+                                <!-- Cell đã được bao phủ bởi khối tiết phía trên (rowspan), không render thêm để tránh lệch bảng -->
+                            }
                             else
                             {
-                                <td class="text-muted small bg-light-subtle">&nbsp;</td>
+                                <!-- Ô trống -->
+                                <td class="schedule-empty-cell">&nbsp;</td>
                             }
                         }
                     </tr>
+
+                    @if (isMorningEnd && canShowLunchDivider)
+                    {
+                        <tr class="lunch-divider-row">
+                            <td colspan="8" class="py-1 text-center small bg-light-subtle text-muted border-top border-bottom">
+                                <span class="d-inline-flex align-items-center gap-1.5 px-3 py-0.5 rounded-pill bg-white shadow-2xs border">
+                                    <i class="bi bi-cup-hot-fill text-warning"></i>
+                                    <strong class="text-secondary" style="font-size: 0.72rem;">NGHỈ TRƯA &bull; 11:10 - 13:00</strong>
+                                </span>
+                            </td>
+                        </tr>
+                    }
                 }
             </tbody>
         </table>
@@ -160,36 +414,218 @@ else
     [Parameter]
     public EventCallback<Section> OnSectionClick { get; set; }
 
-    private string viewMode = "Agenda"; // Default to Agenda for convenient mobile & touch experience
-    private int selectedDay = 2; // Default to Thứ 2
+    private string viewMode = "Grid"; // Mặc định hiển thị Lịch học theo tuần cho trải nghiệm ma trận trực quan
+    private int selectedDay = 2; // Ngày đang chọn trong Agenda view
+    private int currentDayOfWeek = 2; // Hôm nay là thứ mấy
 
-    private async Task HandleSectionClick(Section section)
+    public class CourseTheme
     {
-        if (OnSectionClick.HasDelegate)
+        public string BgGradient { get; set; } = string.Empty;
+        public string BorderColor { get; set; } = string.Empty;
+        public string AccentColor { get; set; } = string.Empty;
+        public string TextColor { get; set; } = string.Empty;
+        public string BadgeBg { get; set; } = string.Empty;
+        public string BadgeText { get; set; } = "#ffffff";
+        public string TagBg { get; set; } = string.Empty;
+    }
+
+    // 8 Bộ màu sắc hài hòa, hiện đại dành cho các môn học
+    private static readonly CourseTheme[] Themes = new[]
+    {
+        // 0. Indigo (Chuyên ngành / Công nghệ thông tin)
+        new CourseTheme
         {
-            await OnSectionClick.InvokeAsync(section);
+            BgGradient = "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
+            BorderColor = "#c7d2fe",
+            AccentColor = "#4f46e5",
+            TextColor = "#312e81",
+            BadgeBg = "#4338ca",
+            BadgeText = "#ffffff",
+            TagBg = "#e0e7ff"
+        },
+        // 1. Emerald (Cơ sở dữ liệu / Hệ thống)
+        new CourseTheme
+        {
+            BgGradient = "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)",
+            BorderColor = "#a7f3d0",
+            AccentColor = "#059669",
+            TextColor = "#064e3b",
+            BadgeBg = "#047857",
+            BadgeText = "#ffffff",
+            TagBg = "#d1fae5"
+        },
+        // 2. Amber (Thuật toán / Cấu trúc dữ liệu)
+        new CourseTheme
+        {
+            BgGradient = "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
+            BorderColor = "#fde68a",
+            AccentColor = "#d97706",
+            TextColor = "#78350f",
+            BadgeBg = "#b45309",
+            BadgeText = "#ffffff",
+            TagBg = "#fef3c7"
+        },
+        // 3. Rose (Mạng máy tính / Viễn thông)
+        new CourseTheme
+        {
+            BgGradient = "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)",
+            BorderColor = "#fecdd3",
+            AccentColor = "#e11d48",
+            TextColor = "#881337",
+            BadgeBg = "#be123c",
+            BadgeText = "#ffffff",
+            TagBg = "#ffe4e6"
+        },
+        // 4. Sky (Web & Ứng dụng di động)
+        new CourseTheme
+        {
+            BgGradient = "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
+            BorderColor = "#bae6fd",
+            AccentColor = "#0284c7",
+            TextColor = "#075985",
+            BadgeBg = "#0369a1",
+            BadgeText = "#ffffff",
+            TagBg = "#e0f2fe"
+        },
+        // 5. Purple (Trí tuệ nhân tạo / Khoa học dữ liệu)
+        new CourseTheme
+        {
+            BgGradient = "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)",
+            BorderColor = "#e9d5ff",
+            AccentColor = "#9333ea",
+            TextColor = "#581c87",
+            BadgeBg = "#7e22ce",
+            BadgeText = "#ffffff",
+            TagBg = "#f3e8ff"
+        },
+        // 6. Teal (An toàn thông tin / Bảo mật)
+        new CourseTheme
+        {
+            BgGradient = "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)",
+            BorderColor = "#99f6e4",
+            AccentColor = "#0d9488",
+            TextColor = "#134e4a",
+            BadgeBg = "#0f766e",
+            BadgeText = "#ffffff",
+            TagBg = "#ccfbf1"
+        },
+        // 7. Fuchsia (Đồ họa / Kỹ năng mềm)
+        new CourseTheme
+        {
+            BgGradient = "linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%)",
+            BorderColor = "#f5d0fe",
+            AccentColor = "#c026d3",
+            TextColor = "#701a75",
+            BadgeBg = "#a21caf",
+            BadgeText = "#ffffff",
+            TagBg = "#fae8ff"
         }
+    };
+
+    private CourseTheme GetThemeForCourse(string? key)
+    {
+        if (string.IsNullOrEmpty(key)) return Themes[0];
+        int hash = 0;
+        foreach (char c in key)
+        {
+            hash = (hash * 31 + c) & 0x7FFFFFFF;
+        }
+        return Themes[hash % Themes.Length];
     }
 
-    protected override void OnInitialized()
+    private class UniqueCourseItem
     {
-        // Set selectedDay to today's day of week if possible
-        int day = (int)DateTime.Now.DayOfWeek;
-        selectedDay = day == 0 ? 8 : day + 1; // Convert to 2=Mon ... 8=Sun
-        if (selectedDay < 2 || selectedDay > 8) selectedDay = 2;
-    }
-
-    private class ScheduleCellInfo
-    {
+        public string Key { get; set; } = string.Empty;
         public string CourseName { get; set; } = string.Empty;
         public string SectionCode { get; set; } = string.Empty;
-        public string Room { get; set; } = string.Empty;
+        public int Credits { get; set; }
+    }
+
+    private List<UniqueCourseItem> GetUniqueCourses()
+    {
+        if (Sections == null) return new List<UniqueCourseItem>();
+
+        return Sections
+            .GroupBy(s => s.Course?.CourseCode ?? s.SectionCode)
+            .Select(g =>
+            {
+                var first = g.First();
+                return new UniqueCourseItem
+                {
+                    Key = g.Key,
+                    CourseName = first.Course?.CourseName ?? first.SectionCode,
+                    SectionCode = string.Join(", ", g.Select(s => s.SectionCode)),
+                    Credits = first.Course?.Credits ?? 0
+                };
+            })
+            .ToList();
+    }
+
+    private class ScheduleBlockInfo
+    {
+        public Section Section { get; set; } = default!;
+        public SectionSchedule Schedule { get; set; } = default!;
+        public int DayOfWeek => Schedule.DayOfWeek;
+        public int StartPeriod => Schedule.StartPeriod;
+        public int EndPeriod => Schedule.EndPeriod;
+        public int Span => Math.Max(1, EndPeriod - StartPeriod + 1);
+        public string CourseName => Section.Course?.CourseName ?? Section.SectionCode;
+        public string CourseCode => Section.Course?.CourseCode ?? Section.SectionCode;
+        public int Credits => Section.Course?.Credits ?? 0;
+        public string SectionCode => Section.SectionCode;
+        public string Room => string.IsNullOrEmpty(Schedule.Room) ? Section.Room : Schedule.Room;
+        public string Instructor => Section.Instructor;
     }
 
     private class AgendaItemInfo
     {
         public Section Section { get; set; } = default!;
         public SectionSchedule Schedule { get; set; } = default!;
+    }
+
+    private List<ScheduleBlockInfo> GetAllBlocks()
+    {
+        var list = new List<ScheduleBlockInfo>();
+        if (Sections == null) return list;
+
+        foreach (var sec in Sections)
+        {
+            if (sec.Schedules == null) continue;
+            foreach (var sched in sec.Schedules)
+            {
+                list.Add(new ScheduleBlockInfo
+                {
+                    Section = sec,
+                    Schedule = sched
+                });
+            }
+        }
+        return list;
+    }
+
+    private ScheduleBlockInfo? GetScheduleStartingAt(int dayOfWeek, int period)
+    {
+        var blocks = GetAllBlocks();
+        return blocks.FirstOrDefault(b => b.DayOfWeek == dayOfWeek && b.StartPeriod == period);
+    }
+
+    private bool IsPeriodCovered(int dayOfWeek, int period)
+    {
+        var blocks = GetAllBlocks();
+        return blocks.Any(b => b.DayOfWeek == dayOfWeek && period > b.StartPeriod && period <= b.EndPeriod);
+    }
+
+    private bool HasAnyCrossNoonSchedule()
+    {
+        var blocks = GetAllBlocks();
+        return blocks.Any(b => b.StartPeriod <= 5 && b.EndPeriod > 5);
+    }
+
+    private int GetMaxPeriod()
+    {
+        var blocks = GetAllBlocks();
+        int max = blocks.Any() ? blocks.Max(b => b.EndPeriod) : 10;
+        return Math.Max(10, max);
     }
 
     private IEnumerable<AgendaItemInfo> GetItemsForDay(int dayOfWeek)
@@ -211,31 +647,20 @@ else
         }
     }
 
-    private ScheduleCellInfo? GetScheduleItem(int dayOfWeek, int period)
+    protected override void OnInitialized()
     {
-        if (Sections == null) return null;
+        int day = (int)DateTime.Now.DayOfWeek;
+        currentDayOfWeek = day == 0 ? 8 : day + 1; // Đổi sang 2 = Thứ 2 ... 8 = Chủ nhật
+        selectedDay = currentDayOfWeek;
+        if (selectedDay < 2 || selectedDay > 8) selectedDay = 2;
+    }
 
-        foreach (var sec in Sections)
+    private async Task HandleSectionClick(Section section)
+    {
+        if (OnSectionClick.HasDelegate)
         {
-            if (sec.Schedules == null) continue;
-
-            var sched = sec.Schedules.FirstOrDefault(s =>
-                s.DayOfWeek == dayOfWeek &&
-                period >= s.StartPeriod &&
-                period <= s.EndPeriod);
-
-            if (sched != null)
-            {
-                return new ScheduleCellInfo
-                {
-                    CourseName = sec.Course?.CourseName ?? sec.SectionCode,
-                    SectionCode = sec.SectionCode,
-                    Room = string.IsNullOrEmpty(sched.Room) ? sec.Room : sched.Room
-                };
-            }
+            await OnSectionClick.InvokeAsync(section);
         }
-
-        return null;
     }
 
     private string GetDayName(int day) => day switch
@@ -264,6 +689,8 @@ else
             8 => "13:50",
             9 => "14:45",
             10 => "15:35",
+            11 => "16:25",
+            12 => "17:15",
             _ => "07:00"
         };
 
@@ -279,6 +706,8 @@ else
             8 => "14:35",
             9 => "15:30",
             10 => "16:20",
+            11 => "17:10",
+            12 => "18:00",
             _ => "17:00"
         };
 

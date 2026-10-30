@@ -41,7 +41,7 @@
                         </div>
                     }
 
-                    <form method="post" action="" @onsubmit="HandleLogin" @onsubmit:preventDefault="true" autocomplete="on">
+                    <form id="loginForm" name="loginForm" method="post" action="" @onsubmit="HandleLogin" @onsubmit:preventDefault="true" autocomplete="on">
                         <div class="mb-3">
                             <label class="form-label fw-bold text-dark small mb-1" for="username">Tài khoản / MSSV <span class="text-danger">*</span></label>
                             <div class="input-group">
@@ -118,87 +118,11 @@
     </div>
 }
 
-@if (showBreachWarningModal)
-{
-    <!-- MODAL CẢNH BÁO MẬT KHẨU / NHẮC NHỞ KIỂM TRA MẬT KHẨU TRƯỚC KHI LƯU -->
-    <div class="chrome-breach-backdrop" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10500; background-color: rgba(0, 0, 0, 0.45); display: flex; align-items: center; justify-content: center; padding: 1.25rem;">
-        <div class="chrome-breach-card position-relative" style="width: 100%; max-width: 440px; background: #ffffff; border-radius: 24px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); padding: 26px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; animation: modalPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);">
-            <button type="button" 
-                    class="btn-close position-absolute top-0 end-0 m-3 shadow-none" 
-                    @onclick="ConfirmBreachWarningAndProceed"
-                    aria-label="Đóng"></button>
-
-            <!-- Graphic Illustration chuẩn theo cảnh báo an toàn mật khẩu -->
-            <div class="text-center mb-3">
-                <svg width="220" height="92" viewBox="0 0 220 92" fill="none" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">
-                    <!-- Sparkles/stars -->
-                    <path d="M28 36c0 2.2-1.8 4-4 4s-4-1.8-4-4 1.8-4 4-4 4 1.8 4 4z" fill="#E8EAED"/>
-                    <path d="M192 34c0 2.5-2 4.5-4.5 4.5s-4.5-2-4.5-4.5 2-4.5 4.5-4.5 4.5 2 4.5 4.5z" fill="#E8EAED"/>
-                    <circle cx="20" cy="46" r="3" fill="#E8EAED"/>
-                    
-                    <!-- Curved connecting cable -->
-                    <path d="M106 42 C122 42, 126 18, 142 18 C158 18, 162 42, 172 42" stroke="#DADCE0" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-                    <path d="M88 40 C70 40, 68 56, 50 56" stroke="#DADCE0" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-                    
-                    <!-- Clipboard document -->
-                    <rect x="76" y="8" width="56" height="72" rx="7" fill="#FFFFFF" stroke="#DADCE0" stroke-width="1.6"/>
-                    <path d="M95 5h18a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H95a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="#DADCE0"/>
-                    <rect x="98" y="7" width="12" height="3" rx="1" fill="#FFFFFF"/>
-                    
-                    <!-- Red warning shield badge -->
-                    <g transform="translate(85, 27)">
-                        <path d="M19 1.5 L36 30.5 A2 2 0 0 1 34.3 33.5 L3.7 33.5 A2 2 0 0 1 2 30.5 L19 1.5 Z" fill="#EA4335"/>
-                        <rect x="17" y="11" width="4" height="12" rx="2" fill="#FFFFFF"/>
-                        <circle cx="19" cy="27.5" r="2.2" fill="#FFFFFF"/>
-                    </g>
-                    
-                    <!-- Password input box -->
-                    <g transform="translate(118, 29)">
-                        <rect x="0" y="0" width="62" height="26" rx="4" fill="#FFFFFF" stroke="#DADCE0" stroke-width="1.5"/>
-                        <text x="8" y="18" font-family="'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="16" fill="#1A73E8" letter-spacing="2">* * *</text>
-                        <line x1="50" y1="5" x2="50" y2="21" stroke="#1A73E8" stroke-width="2"/>
-                    </g>
-                </svg>
-            </div>
-
-            <!-- Title -->
-            <h5 class="fw-bold mb-2 text-start" style="color: #1f1f1f; font-size: 1.18rem; letter-spacing: -0.2px;">
-                Thay đổi mật khẩu của bạn
-            </h5>
-
-            <!-- Description -->
-            <div class="text-start mb-4" style="color: #444746; font-size: 0.85rem; line-height: 1.48;">
-                Mật khẩu bạn vừa sử dụng đã bị lộ trong một sự cố rò rỉ dữ liệu. Trình quản lý mật khẩu của Google khuyên bạn nên đổi mật khẩu ngay.
-            </div>
-
-            <!-- Bottom Row: Info Icon & OK Button -->
-            <div class="d-flex justify-content-between align-items-center pt-1">
-                <span class="text-secondary" style="cursor: pointer;" title="Trình quản lý mật khẩu">
-                    <i class="bi bi-info-circle fs-5" style="color: #5f6368;"></i>
-                </span>
-                <button type="button" 
-                        class="btn btn-primary rounded-pill px-4 py-1.5 fw-bold shadow-none" 
-                        style="background-color: #0b57d0; border-color: #0b57d0; font-size: 0.9rem; min-width: 86px;"
-                        @onclick="ConfirmBreachWarningAndProceed"
-                        autofocus>
-                    OK
-                </button>
-            </div>
-
-        </div>
-    </div>
-}
-
 @code {
     private LoginViewModel loginModel = new LoginViewModel();
     private string errorMessage = string.Empty;
     private bool isLoading = false;
-    private bool isConfirming = false;
     private bool showPassword = false;
-    private bool showBreachWarningModal = false;
-    private string savedUsername = string.Empty;
-    private string savedPassword = string.Empty;
-    private UserAccount? pendingAccount = null;
 
     protected override void OnInitialized()
     {
@@ -212,15 +136,12 @@
             errorMessage = string.Empty;
             loginModel = new LoginViewModel();
             showPassword = false;
-            showBreachWarningModal = false;
-            isConfirming = false;
         }
         InvokeAsync(StateHasChanged);
     }
 
     private void CloseModal()
     {
-        showBreachWarningModal = false;
         LoginModalService.Close();
     }
 
@@ -248,16 +169,11 @@
                 // 1. Cập nhật phiên đăng nhập của người dùng
                 await CurrentUserStateStore.SetCurrentUserAsync(account);
 
-                // 2. Lưu thông tin xác thực để kích hoạt lưu mật khẩu trình duyệt sau khi xác nhận cảnh báo
-                savedUsername = username;
-                savedPassword = password;
-                pendingAccount = account;
-
-                // 3. Đóng form nhập liệu đăng nhập
+                // 2. Đóng form nhập liệu đăng nhập
                 LoginModalService.Close();
 
-                // 4. Luôn hiển thị thông báo lưu mật khẩu mỗi khi đăng nhập theo yêu cầu
-                showBreachWarningModal = true;
+                // 3. Kích hoạt thông báo lưu mật khẩu gốc của Google Chrome và điều hướng
+                await ProceedAfterLoginSuccess(account, username, password);
             }
             else
             {
@@ -274,45 +190,25 @@
         }
     }
 
-    private async Task ConfirmBreachWarningAndProceed()
+    private async Task ProceedAfterLoginSuccess(UserAccount account, string username, string password)
     {
-        if (isConfirming) return;
-        isConfirming = true;
-
-        try
-        {
-            showBreachWarningModal = false;
-            var account = pendingAccount ?? await CurrentUserStateStore.GetCurrentUserAsync();
-            if (account != null)
-            {
-                await ProceedAfterLoginSuccess(account);
-            }
-        }
-        finally
-        {
-            isConfirming = false;
-        }
-    }
-
-    private async Task ProceedAfterLoginSuccess(UserAccount account)
-    {
-        // Không lưu phiên tự động vào localStorage để tránh tự đăng nhập khi mở web
+        // 1. Không lưu phiên tự động vào localStorage để tránh tự đăng nhập khi mở lại web
         try
         {
             await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "courseReg_username");
         }
         catch { }
 
-        // Kích hoạt thông báo lưu mật khẩu của Google Chrome (duy nhất Chrome quản lý)
+        // 2. Kích hoạt thông báo lưu mật khẩu gốc của Google Chrome (W3C Credential Management API)
         try
         {
-            await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", savedUsername, savedPassword);
+            await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", username, password);
         }
         catch { }
 
-        await Task.Delay(200);
+        await Task.Delay(150);
 
-        // Điều hướng sau khi đăng nhập thành công theo đúng vai trò:
+        // 3. Điều hướng sau khi đăng nhập thành công theo đúng vai trò:
         if (string.Equals(account.Role, "Admin", StringComparison.OrdinalIgnoreCase))
         {
             // Admin: Tự động vào thẳng Dashboard Tổng quan Cán bộ Đào tạo (/admin)

@@ -49,10 +49,10 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center ms-lg-3 gap-lg-1">
                 @if (currentRole == "Admin")
                 {
-                    <!-- 1. Trang chủ: Điều hướng đến Tổng quan Cán bộ Đào tạo -->
+                    <!-- 1. Tổng quan: Điều hướng đến Tổng quan Cán bộ Đào tạo -->
                     <li class="nav-item">
                         <NavLink class="@(IsAdminHomeActive ? "nav-link active" : "nav-link")" href="/admin" Match="NavLinkMatch.All" @onclick="CloseAllDropdowns">
-                            <i class="bi bi-house-door me-1"></i> Trang chủ
+                            <i class="bi bi-speedometer2 me-1"></i> Tổng quan
                         </NavLink>
                     </li>
 
@@ -63,7 +63,7 @@
                                 @onclick="ToggleAdminDropdown">
                             <i class="bi bi-mortarboard me-1"></i> Quản lý đào tạo
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-dark shadow border-0 rounded-3 p-2 @(isAdminDropdownOpen ? "show" : "")" style="min-width: 320px; max-width: 380px;">
+                        <ul class="dropdown-menu dropdown-menu-dark shadow border-0 rounded-3 p-2 @(isAdminDropdownOpen ? "show" : "")" style="min-width: 290px;">
                             <!-- Quản lý Môn học -->
                             <li>
                                 <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-white" href="/admin/courses" @onclick="CloseAllDropdowns">
@@ -115,75 +115,6 @@
                                     </div>
                                 </a>
                             </li>
-
-                            <li><hr class="dropdown-divider border-secondary opacity-50 my-1"></li>
-
-                            <!-- Toàn bộ tài khoản SV -->
-                            <li class="px-1 py-1">
-                                <button type="button" 
-                                        class="btn btn-sm @(isStudentListExpanded ? "btn-outline-info text-white active" : "btn-outline-secondary text-light") w-100 d-flex align-items-center justify-content-between rounded-3 py-2 px-3 text-start transition-all"
-                                        @onclick:stopPropagation="true"
-                                        @onclick="() => isStudentListExpanded = !isStudentListExpanded">
-                                    <span class="d-flex align-items-center gap-2 text-truncate">
-                                        <i class="bi bi-people-fill text-info"></i>
-                                        <span class="small fw-bold">Toàn bộ tài khoản SV (@availableStudents.Count)</span>
-                                    </span>
-                                    <i class="bi @(isStudentListExpanded ? "bi-chevron-up" : "bi-chevron-down") fw-bold"></i>
-                                </button>
-                            </li>
-                            @if (isStudentListExpanded)
-                            {
-                                <li class="px-1 pt-1 pb-1" @onclick:stopPropagation="true">
-                                    <div class="input-group input-group-sm mb-2 shadow-sm">
-                                        <span class="input-group-text bg-dark border-secondary border-end-0 text-white-50"><i class="bi bi-search"></i></span>
-                                        <input type="text" 
-                                               class="form-control bg-dark text-white border-secondary border-start-0" 
-                                               placeholder="Tìm MSSV hoặc họ tên..." 
-                                               @bind="studentSearchKeyword" 
-                                               @bind:event="oninput" />
-                                        @if (!string.IsNullOrWhiteSpace(studentSearchKeyword))
-                                        {
-                                            <button class="btn btn-outline-secondary border-secondary border-start-0 bg-dark text-white-50" type="button" @onclick="() => studentSearchKeyword = string.Empty">
-                                                <i class="bi bi-x"></i>
-                                            </button>
-                                        }
-                                    </div>
-                                    
-                                    <div class="student-dropdown-scrollable border border-secondary border-opacity-50 rounded-3 p-1 bg-black bg-opacity-40" style="max-height: 220px; overflow-y: auto;">
-                                        @foreach (var s in FilteredStudents)
-                                        {
-                                            bool isCurrent = currentStudent?.StudentId == s.StudentId;
-                                            <button type="button" 
-                                                    class="dropdown-item rounded-2 py-1.5 px-2 mb-1 d-flex align-items-center justify-content-between text-white @(isCurrent ? "bg-primary text-white border-start border-light border-3" : "bg-dark bg-opacity-50")" 
-                                                    @onclick="() => SwitchStudent(s.StudentId)">
-                                                <div class="d-flex align-items-center gap-2 text-truncate">
-                                                    <div class="user-avatar-sm @(s.StudentCode == "SV21002" ? "bg-warning text-dark" : "bg-primary text-white")">
-                                                        <i class="bi bi-person"></i>
-                                                    </div>
-                                                    <div class="text-truncate">
-                                                        <div class="fw-bold small text-truncate @(isCurrent ? "text-white" : "text-light")">@s.FullName</div>
-                                                        <div class="@(isCurrent ? "text-white-50" : "text-secondary")" style="font-size: 0.72rem;">@s.StudentCode &bull; @s.Major</div>
-                                                        <div class="extra-info-text @(s.StudentCode == "SV21002" ? "text-warning fw-semibold" : (isCurrent ? "text-white-50" : "text-success"))" style="font-size: 0.68rem;">
-                                                            @(s.StudentCode == "SV21002" ? "⚠️ Demo chặn Tiên quyết" : "✓ Đạt chuẩn tiên quyết")
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                @if (isCurrent)
-                                                {
-                                                    <span class="badge bg-light text-dark ms-1" style="font-size: 0.62rem;">Đang chọn</span>
-                                                }
-                                            </button>
-                                        }
-                                        @if (!FilteredStudents.Any())
-                                        {
-                                            <div class="text-center text-muted small py-3">
-                                                <i class="bi bi-search text-secondary d-block mb-1"></i>
-                                                Không tìm thấy sinh viên
-                                            </div>
-                                        }
-                                    </div>
-                                </li>
-                            }
                         </ul>
                     </li>
 
@@ -382,8 +313,8 @@
         @if (currentRole == "Admin")
         {
             <NavLink class="@(IsAdminHomeActive ? "mobile-nav-item active" : "mobile-nav-item")" href="/admin" Match="NavLinkMatch.All">
-                <i class="bi bi-house-door"></i>
-                <span>Trang chủ</span>
+                <i class="bi bi-speedometer2"></i>
+                <span>Tổng quan</span>
             </NavLink>
             <NavLink class="@(IsAdminTrainingActive ? "mobile-nav-item active" : "mobile-nav-item")" href="/admin/courses">
                 <i class="bi bi-mortarboard"></i>
@@ -452,16 +383,6 @@
     private bool isAdminDropdownOpen = false;
     private bool isUserDropdownOpen = false;
     private bool isMobileNavExpanded = false;
-    private bool isStudentListExpanded = false;
-    private string studentSearchKeyword = string.Empty;
-
-    private IEnumerable<Student> FilteredStudents =>
-        string.IsNullOrWhiteSpace(studentSearchKeyword)
-            ? availableStudents
-            : availableStudents.Where(s => 
-                (s.StudentCode?.Contains(studentSearchKeyword, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (s.FullName?.Contains(studentSearchKeyword, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (s.Major?.Contains(studentSearchKeyword, StringComparison.OrdinalIgnoreCase) ?? false));
 
     private bool IsLookupActive =>
         NavigationManager.Uri.Contains("/sections", StringComparison.OrdinalIgnoreCase) ||
@@ -548,11 +469,6 @@
         isUserDropdownOpen = !isUserDropdownOpen;
     }
 
-    private async Task SwitchStudent(int studentId)
-    {
-        CloseAllDropdowns();
-        await CurrentUserStateStore.SetCurrentStudentIdAsync(studentId);
-    }
 
     private async Task HandleLogout()
     {
@@ -567,8 +483,6 @@
         isAdminDropdownOpen = false;
         isUserDropdownOpen = false;
         isMobileNavExpanded = false;
-        isStudentListExpanded = false;
-        studentSearchKeyword = string.Empty;
     }
 
     private void OpenLoginModal()

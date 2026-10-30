@@ -376,15 +376,25 @@
                 // 2. Đóng form đăng nhập
                 LoginModalService.Close();
 
-                // 3. Giữ nguyên trang đang đứng (ở Trang chủ thì ở lại Trang chủ, KHÔNG nhảy sang Tổng quan!)
-                var uri = new Uri(NavigationManager.Uri);
-                if (uri.AbsolutePath.Equals("/login", StringComparison.OrdinalIgnoreCase))
+                // 3. Điều hướng sau khi đăng nhập thành công theo đúng vai trò:
+                if (string.Equals(account.Role, "Admin", StringComparison.OrdinalIgnoreCase))
                 {
-                    NavigationManager.NavigateTo("/");
+                    // Admin: Tự động vào thẳng Dashboard Tổng quan Cán bộ Đào tạo (/admin)
+                    NavigationManager.NavigateTo("/admin");
                 }
                 else
                 {
-                    NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: false);
+                    // Sinh viên: Giữ nguyên trang đang đứng hoặc trang chủ sinh viên
+                    var uri = new Uri(NavigationManager.Uri);
+                    if (uri.AbsolutePath.Equals("/login", StringComparison.OrdinalIgnoreCase) ||
+                        uri.AbsolutePath.StartsWith("/admin", StringComparison.OrdinalIgnoreCase))
+                    {
+                        NavigationManager.NavigateTo("/");
+                    }
+                    else
+                    {
+                        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: false);
+                    }
                 }
 
                 savedUsername = username;

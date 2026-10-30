@@ -4,6 +4,7 @@
 @inject IRegistrationCartStateStore CartStateStore
 @inject ICurrentUserStateStore CurrentUserStateStore
 @inject ILoginModalService LoginModalService
+@inject NavigationManager NavigationManager
 @implements IDisposable
 
 <!-- Banner Gọn Gàng - Cổng Đăng Ký Học Phần Trực Tuyến -->
@@ -552,13 +553,19 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await RefreshUserState();
+        if (isAuthenticated && string.Equals(currentRole, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            NavigationManager.NavigateTo("/admin", replace: true);
+            return;
+        }
+
         var all = await StudentRepository.GetAllStudentsAsync();
         students = all.ToList();
 
         CartStateStore.AddStateChangeListeners(HandleCartChange);
         CurrentUserStateStore.AddStateChangeListeners(HandleUserChange);
 
-        await RefreshUserState();
         await LoadCartCount();
     }
 
@@ -574,6 +581,11 @@
     private async void HandleUserChange()
     {
         await RefreshUserState();
+        if (isAuthenticated && string.Equals(currentRole, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            NavigationManager.NavigateTo("/admin", replace: true);
+            return;
+        }
         await InvokeAsync(StateHasChanged);
     }
 

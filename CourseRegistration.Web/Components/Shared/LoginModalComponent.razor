@@ -398,9 +398,27 @@
                     NavigationManager.NavigateTo("/");
                 }
 
-                // 5. Bước 1: Luôn hiển thị cảnh báo thay đổi mật khẩu trước cho cả Admin và Sinh viên
-                showBreachWarningModal = true;
-                showSavePasswordPopup = false;
+                // 5. Xử lý thông báo theo đúng yêu cầu:
+                if (string.Equals(account.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Bên Admin: Bỏ bớt cảnh báo thay đổi mật khẩu để không bị trùng lặp,
+                    // hiển thị ngay thông báo Lưu mật khẩu của Google Chrome
+                    showBreachWarningModal = false;
+                    showSavePasswordPopup = true;
+
+                    try
+                    {
+                        await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", username, password);
+                    }
+                    catch { }
+                }
+                else
+                {
+                    // Bên Sinh viên: Hiển thị cảnh báo mật khẩu rò rỉ trước,
+                    // sau khi bấm OK mới chuyển tiếp đến thông báo Lưu mật khẩu của Google Chrome
+                    showBreachWarningModal = true;
+                    showSavePasswordPopup = false;
+                }
             }
             else
             {

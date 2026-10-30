@@ -25,73 +25,233 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            <a class="navbar-brand fw-bold d-flex align-items-center text-white m-0" href="/">
+            <a class="navbar-brand fw-bold d-flex align-items-center text-white m-0" href="@(currentRole == "Admin" ? "/admin" : "/")">
                 <div class="brand-logo-icon me-2 flex-shrink-0">
                     <i class="bi bi-mortarboard-fill"></i>
                 </div>
                 <div class="d-flex flex-column">
                     <span class="lh-1 fw-bold brand-header-title">Đăng Ký Học Phần</span>
-                    <span class="brand-subtext d-none d-sm-block">Cổng Đào Tạo Trực Tuyến</span>
+                    <span class="brand-subtext d-none d-sm-block">@(currentRole == "Admin" ? "Phòng Đào Tạo & Quản Lý Học Vụ" : "Cổng Đào Tạo Trực Tuyến")</span>
                 </div>
             </a>
         </div>
 
-        <!-- Khối bên phải trên di động: Nút Giỏ Đăng Ký vừa vặn trên cùng hàng -->
-        <div class="d-flex align-items-center d-lg-none ms-auto">
-            <CartBadgeComponent />
-        </div>
+        <!-- Khối bên phải trên di động: Nút Giỏ Đăng Ký vừa vặn trên cùng hàng (chỉ hiển thị cho Sinh viên) -->
+        @if (currentRole != "Admin")
+        {
+            <div class="d-flex align-items-center d-lg-none ms-auto">
+                <CartBadgeComponent />
+            </div>
+        }
 
         <!-- Menu Desktop ở trên cùng hàng ngang với Logo & Accordion trên di động -->
         <div class="collapse navbar-collapse @(isMobileNavExpanded ? "show" : "")" id="navbarNav">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center ms-lg-3 gap-lg-1">
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All" @onclick="CloseAllDropdowns">
-                        <i class="bi bi-house-door me-1"></i> Trang chủ
-                    </NavLink>
-                </li>
-                <!-- Nhóm Kế hoạch & Tra cứu: Kế hoạch đầu, Tra cứu sau -->
-                <li class="nav-item dropdown position-relative">
-                    <button class="nav-link dropdown-toggle d-flex align-items-center bg-transparent border-0 @(IsLookupActive ? "active text-white" : "")" 
-                            type="button" 
-                            @onclick="ToggleLookupDropdown">
-                        <i class="bi bi-calendar3-range me-1"></i> Kế hoạch & Tra cứu
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-dark shadow border-0 rounded-3 p-2 @(isLookupDropdownOpen ? "show" : "")" style="min-width: 270px;">
-                        <li>
-                            <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-white" href="/sections?tab=plan" @onclick="CloseAllDropdowns">
-                                <div class="bg-info bg-opacity-25 text-info p-2 rounded-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
-                                    <i class="bi bi-calendar3-range"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-bold small">Kế hoạch đăng ký</div>
-                                    <div class="text-secondary" style="font-size: 0.72rem;">Tiến độ 3 giai đoạn & mở cổng</div>
-                                </div>
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider border-secondary opacity-50 my-1"></li>
-                        <li>
-                            <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-white" href="/sections?tab=search" @onclick="CloseAllDropdowns">
-                                <div class="bg-primary bg-opacity-25 text-primary p-2 rounded-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
-                                    <i class="bi bi-search"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-bold small">Tra cứu học phần</div>
-                                    <div class="text-secondary" style="font-size: 0.72rem;">Tìm môn học & chọn lớp vào giỏ</div>
-                                </div>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="/schedule" @onclick="CloseAllDropdowns">
-                        <i class="bi bi-calendar3 me-1"></i> Thời khóa biểu
-                    </NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="/tuition" @onclick="CloseAllDropdowns">
-                        <i class="bi bi-wallet2 text-warning me-1"></i> Thanh toán học phí
-                    </NavLink>
-                </li>
+                @if (currentRole == "Admin")
+                {
+                    <!-- 1. Trang chủ: Điều hướng đến Tổng quan Cán bộ Đào tạo -->
+                    <li class="nav-item">
+                        <NavLink class="@(IsAdminHomeActive ? "nav-link active" : "nav-link")" href="/admin" Match="NavLinkMatch.All" @onclick="CloseAllDropdowns">
+                            <i class="bi bi-house-door me-1"></i> Trang chủ
+                        </NavLink>
+                    </li>
+
+                    <!-- 2. Quản lý đào tạo: Dropdown chứa các chức năng -->
+                    <li class="nav-item dropdown position-relative">
+                        <button class="nav-link dropdown-toggle d-flex align-items-center bg-transparent border-0 @(IsAdminTrainingActive ? "active text-white" : "")" 
+                                type="button" 
+                                @onclick="ToggleAdminDropdown">
+                            <i class="bi bi-mortarboard me-1"></i> Quản lý đào tạo
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark shadow border-0 rounded-3 p-2 @(isAdminDropdownOpen ? "show" : "")" style="min-width: 320px; max-width: 380px;">
+                            <!-- Quản lý Môn học -->
+                            <li>
+                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-white" href="/admin/courses" @onclick="CloseAllDropdowns">
+                                    <div class="bg-primary bg-opacity-25 text-primary p-2 rounded-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                        <i class="bi bi-book"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold small">Quản lý Môn học</div>
+                                        <div class="text-secondary" style="font-size: 0.72rem;">Danh mục môn, số tín chỉ &amp; tiên quyết</div>
+                                    </div>
+                                </a>
+                            </li>
+
+                            <!-- Mở & Quản lý Lớp HP -->
+                            <li>
+                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-white" href="/admin/sections" @onclick="CloseAllDropdowns">
+                                    <div class="bg-info bg-opacity-25 text-info p-2 rounded-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                        <i class="bi bi-collection"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold small">Mở &amp; Quản lý Lớp HP</div>
+                                        <div class="text-secondary" style="font-size: 0.72rem;">Mở lớp học phần, lịch học &amp; sĩ số</div>
+                                    </div>
+                                </a>
+                            </li>
+
+                            <!-- Quản lý Đăng ký & Rút môn -->
+                            <li>
+                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-white" href="/admin/enrollments" @onclick="CloseAllDropdowns">
+                                    <div class="bg-success bg-opacity-25 text-success p-2 rounded-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                        <i class="bi bi-people"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold small">Quản lý Đăng ký &amp; Rút môn</div>
+                                        <div class="text-secondary" style="font-size: 0.72rem;">Duyệt đơn rút môn &amp; danh sách SV theo lớp</div>
+                                    </div>
+                                </a>
+                            </li>
+
+                            <!-- Trợ lý AI Phòng Đào tạo -->
+                            <li>
+                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-white" href="/ai-advisor" @onclick="CloseAllDropdowns">
+                                    <div class="bg-warning bg-opacity-25 text-warning p-2 rounded-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                        <i class="bi bi-stars"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold small">Trợ lý AI Phòng Đào tạo</div>
+                                        <div class="text-secondary" style="font-size: 0.72rem;">Cố vấn đào tạo thông minh &amp; phân tích</div>
+                                    </div>
+                                </a>
+                            </li>
+
+                            <li><hr class="dropdown-divider border-secondary opacity-50 my-1"></li>
+
+                            <!-- Toàn bộ tài khoản SV -->
+                            <li class="px-1 py-1">
+                                <button type="button" 
+                                        class="btn btn-sm @(isStudentListExpanded ? "btn-outline-info text-white active" : "btn-outline-secondary text-light") w-100 d-flex align-items-center justify-content-between rounded-3 py-2 px-3 text-start transition-all"
+                                        @onclick:stopPropagation="true"
+                                        @onclick="() => isStudentListExpanded = !isStudentListExpanded">
+                                    <span class="d-flex align-items-center gap-2 text-truncate">
+                                        <i class="bi bi-people-fill text-info"></i>
+                                        <span class="small fw-bold">Toàn bộ tài khoản SV (@availableStudents.Count)</span>
+                                    </span>
+                                    <i class="bi @(isStudentListExpanded ? "bi-chevron-up" : "bi-chevron-down") fw-bold"></i>
+                                </button>
+                            </li>
+                            @if (isStudentListExpanded)
+                            {
+                                <li class="px-1 pt-1 pb-1" @onclick:stopPropagation="true">
+                                    <div class="input-group input-group-sm mb-2 shadow-sm">
+                                        <span class="input-group-text bg-dark border-secondary border-end-0 text-white-50"><i class="bi bi-search"></i></span>
+                                        <input type="text" 
+                                               class="form-control bg-dark text-white border-secondary border-start-0" 
+                                               placeholder="Tìm MSSV hoặc họ tên..." 
+                                               @bind="studentSearchKeyword" 
+                                               @bind:event="oninput" />
+                                        @if (!string.IsNullOrWhiteSpace(studentSearchKeyword))
+                                        {
+                                            <button class="btn btn-outline-secondary border-secondary border-start-0 bg-dark text-white-50" type="button" @onclick="() => studentSearchKeyword = string.Empty">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                    
+                                    <div class="student-dropdown-scrollable border border-secondary border-opacity-50 rounded-3 p-1 bg-black bg-opacity-40" style="max-height: 220px; overflow-y: auto;">
+                                        @foreach (var s in FilteredStudents)
+                                        {
+                                            bool isCurrent = currentStudent?.StudentId == s.StudentId;
+                                            <button type="button" 
+                                                    class="dropdown-item rounded-2 py-1.5 px-2 mb-1 d-flex align-items-center justify-content-between text-white @(isCurrent ? "bg-primary text-white border-start border-light border-3" : "bg-dark bg-opacity-50")" 
+                                                    @onclick="() => SwitchStudent(s.StudentId)">
+                                                <div class="d-flex align-items-center gap-2 text-truncate">
+                                                    <div class="user-avatar-sm @(s.StudentCode == "SV21002" ? "bg-warning text-dark" : "bg-primary text-white")">
+                                                        <i class="bi bi-person"></i>
+                                                    </div>
+                                                    <div class="text-truncate">
+                                                        <div class="fw-bold small text-truncate @(isCurrent ? "text-white" : "text-light")">@s.FullName</div>
+                                                        <div class="@(isCurrent ? "text-white-50" : "text-secondary")" style="font-size: 0.72rem;">@s.StudentCode &bull; @s.Major</div>
+                                                        <div class="extra-info-text @(s.StudentCode == "SV21002" ? "text-warning fw-semibold" : (isCurrent ? "text-white-50" : "text-success"))" style="font-size: 0.68rem;">
+                                                            @(s.StudentCode == "SV21002" ? "⚠️ Demo chặn Tiên quyết" : "✓ Đạt chuẩn tiên quyết")
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                @if (isCurrent)
+                                                {
+                                                    <span class="badge bg-light text-dark ms-1" style="font-size: 0.62rem;">Đang chọn</span>
+                                                }
+                                            </button>
+                                        }
+                                        @if (!FilteredStudents.Any())
+                                        {
+                                            <div class="text-center text-muted small py-3">
+                                                <i class="bi bi-search text-secondary d-block mb-1"></i>
+                                                Không tìm thấy sinh viên
+                                            </div>
+                                        }
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </li>
+
+                    <!-- 3. Thời khóa biểu: Giữ nguyên vị trí trên Navbar -->
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="/schedule" @onclick="CloseAllDropdowns">
+                            <i class="bi bi-calendar3 me-1"></i> Thời khóa biểu
+                        </NavLink>
+                    </li>
+
+                    <!-- 4. Quản lý học phí: Thay thế mục Thanh toán học phí hiện tại -->
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="/admin/tuition" @onclick="CloseAllDropdowns">
+                            <i class="bi bi-wallet2 text-warning me-1"></i> Quản lý học phí
+                        </NavLink>
+                    </li>
+                }
+                else
+                {
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="/" Match="NavLinkMatch.All" @onclick="CloseAllDropdowns">
+                            <i class="bi bi-house-door me-1"></i> Trang chủ
+                        </NavLink>
+                    </li>
+                    <!-- Nhóm Kế hoạch & Tra cứu: Kế hoạch đầu, Tra cứu sau -->
+                    <li class="nav-item dropdown position-relative">
+                        <button class="nav-link dropdown-toggle d-flex align-items-center bg-transparent border-0 @(IsLookupActive ? "active text-white" : "")" 
+                                type="button" 
+                                @onclick="ToggleLookupDropdown">
+                            <i class="bi bi-calendar3-range me-1"></i> Kế hoạch & Tra cứu
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark shadow border-0 rounded-3 p-2 @(isLookupDropdownOpen ? "show" : "")" style="min-width: 270px;">
+                            <li>
+                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-white" href="/sections?tab=plan" @onclick="CloseAllDropdowns">
+                                    <div class="bg-info bg-opacity-25 text-info p-2 rounded-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                        <i class="bi bi-calendar3-range"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold small">Kế hoạch đăng ký</div>
+                                        <div class="text-secondary" style="font-size: 0.72rem;">Tiến độ 3 giai đoạn & mở cổng</div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider border-secondary opacity-50 my-1"></li>
+                            <li>
+                                <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-white" href="/sections?tab=search" @onclick="CloseAllDropdowns">
+                                    <div class="bg-primary bg-opacity-25 text-primary p-2 rounded-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                        <i class="bi bi-search"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold small">Tra cứu học phần</div>
+                                        <div class="text-secondary" style="font-size: 0.72rem;">Tìm môn học & chọn lớp vào giỏ</div>
+                                    </div>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="/schedule" @onclick="CloseAllDropdowns">
+                            <i class="bi bi-calendar3 me-1"></i> Thời khóa biểu
+                        </NavLink>
+                    </li>
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="/tuition" @onclick="CloseAllDropdowns">
+                            <i class="bi bi-wallet2 text-warning me-1"></i> Thanh toán học phí
+                        </NavLink>
+                    </li>
+                }
             </ul>
 
             <div class="d-flex align-items-center flex-nowrap gap-2 pt-2 pt-lg-0 border-top border-secondary border-opacity-25 border-top-lg-0 ms-auto">
@@ -139,7 +299,7 @@
                             }
                         </button>
                         
-                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 p-2 @(isUserDropdownOpen ? "show" : "")" style="min-width: 320px; max-width: 380px;">
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 p-2 @(isUserDropdownOpen ? "show" : "")" style="min-width: @(currentRole == "Admin" ? "270px" : "320px"); max-width: 380px;">
                             <!-- Header thông tin tài khoản -->
                             <li class="px-1 py-1 mb-2">
                                 <div class="d-flex align-items-center gap-2 p-2 bg-light rounded-3 border">
@@ -157,118 +317,7 @@
 
                             @if (currentRole == "Admin")
                             {
-                                <li class="dropdown-header small text-uppercase text-danger fw-bold pb-1 d-flex align-items-center justify-content-between">
-                                    <span><i class="bi bi-shield-lock-fill me-1"></i> Nghiệp Vụ Cán Bộ Đào Tạo</span>
-                                    <span class="badge bg-danger text-white" style="font-size: 0.65rem;">Quản trị</span>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2.5 text-danger fw-bold bg-danger-subtle bg-opacity-25 mb-1" href="/admin" @onclick="CloseAllDropdowns">
-                                        <div class="bg-danger bg-opacity-25 text-danger p-1.5 rounded-2 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
-                                            <i class="bi bi-speedometer2"></i>
-                                        </div>
-                                        <div>
-                                            <div class="small fw-bold">Tổng quan Cán bộ Đào tạo</div>
-                                            <div class="text-secondary fw-normal" style="font-size: 0.7rem;">Trung tâm điều hành học vụ</div>
-                                        </div>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center text-dark" href="/admin/courses" @onclick="CloseAllDropdowns">
-                                        <i class="bi bi-book text-primary me-2"></i>
-                                        <span class="small fw-semibold">Quản lý Môn học</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center text-dark" href="/admin/sections" @onclick="CloseAllDropdowns">
-                                        <i class="bi bi-collection text-info me-2"></i>
-                                        <span class="small fw-semibold">Mở &amp; Quản lý Lớp HP</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center text-dark" href="/admin/enrollments" @onclick="CloseAllDropdowns">
-                                        <i class="bi bi-people text-success me-2"></i>
-                                        <span class="small fw-semibold">Quản lý Đăng ký &amp; Rút môn</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center text-dark" href="/admin/tuition" @onclick="CloseAllDropdowns">
-                                        <i class="bi bi-wallet2 text-warning me-2"></i>
-                                        <span class="small fw-semibold">Quản lý Học Phí &amp; Chế Tài</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center text-dark" href="/ai-advisor" @onclick="CloseAllDropdowns">
-                                        <i class="bi bi-stars text-warning me-2"></i>
-                                        <span class="small fw-semibold">Trợ Lý AI Phòng Đào Tạo</span>
-                                    </a>
-                                </li>
-                                <li><hr class="dropdown-divider my-2"></li>
-                                
-                                <!-- Phần KÉO THẢ TOÀN BỘ TÀI KHOẢN SINH VIÊN -->
-                                <li class="px-1 py-1">
-                                    <button type="button" 
-                                            class="btn btn-sm @(isStudentListExpanded ? "btn-primary text-white" : "btn-outline-primary") w-100 d-flex align-items-center justify-content-between rounded-3 py-2 px-3 text-start transition-all"
-                                            @onclick="() => isStudentListExpanded = !isStudentListExpanded">
-                                        <span class="d-flex align-items-center gap-2 text-truncate">
-                                            <i class="bi bi-people-fill"></i>
-                                            <span class="small fw-bold">Toàn bộ tài khoản SV (@availableStudents.Count)</span>
-                                        </span>
-                                        <i class="bi @(isStudentListExpanded ? "bi-chevron-up" : "bi-chevron-down") fw-bold"></i>
-                                    </button>
-                                </li>
-                                @if (isStudentListExpanded)
-                                {
-                                    <li class="px-1 pt-2 pb-1">
-                                        <div class="input-group input-group-sm mb-2 shadow-sm">
-                                            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
-                                            <input type="text" 
-                                                   class="form-control border-start-0" 
-                                                   placeholder="Tìm theo MSSV hoặc họ tên..." 
-                                                   @bind="studentSearchKeyword" 
-                                                   @bind:event="oninput" />
-                                            @if (!string.IsNullOrWhiteSpace(studentSearchKeyword))
-                                            {
-                                                <button class="btn btn-outline-secondary border-start-0 bg-white" type="button" @onclick="() => studentSearchKeyword = string.Empty">
-                                                    <i class="bi bi-x"></i>
-                                                </button>
-                                            }
-                                        </div>
-                                        
-                                        <div class="student-dropdown-scrollable border rounded-3 p-1 bg-light-subtle" style="max-height: 220px; overflow-y: auto;">
-                                            @foreach (var s in FilteredStudents)
-                                            {
-                                                bool isCurrent = currentStudent?.StudentId == s.StudentId;
-                                                <button type="button" 
-                                                        class="dropdown-item rounded-2 py-1 px-2 mb-1 d-flex align-items-center justify-content-between @(isCurrent ? "bg-primary-subtle border-start border-primary border-3" : "bg-white")" 
-                                                        @onclick="() => SwitchStudent(s.StudentId)">
-                                                    <div class="d-flex align-items-center gap-2 text-truncate">
-                                                        <div class="user-avatar-sm @(s.StudentCode == "SV21002" ? "bg-warning text-dark" : "bg-primary text-white")">
-                                                            <i class="bi bi-person"></i>
-                                                        </div>
-                                                        <div class="text-truncate">
-                                                            <div class="fw-bold small text-truncate">@s.FullName</div>
-                                                            <div class="text-muted" style="font-size: 0.72rem;">@s.StudentCode &bull; @s.Major</div>
-                                                            <div class="extra-info-text @(s.StudentCode == "SV21002" ? "text-danger fw-semibold" : "text-success")" style="font-size: 0.68rem;">
-                                                                @(s.StudentCode == "SV21002" ? "⚠️ Demo chặn Tiên quyết" : "✓ Đạt chuẩn tiên quyết")
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    @if (isCurrent)
-                                                    {
-                                                        <span class="badge bg-primary text-white ms-1" style="font-size: 0.62rem;">Đang chọn</span>
-                                                    }
-                                                </button>
-                                            }
-                                            @if (!FilteredStudents.Any())
-                                            {
-                                                <div class="text-center text-muted small py-3">
-                                                    <i class="bi bi-search text-secondary d-block mb-1"></i>
-                                                    Không tìm thấy sinh viên
-                                                </div>
-                                            }
-                                        </div>
-                                    </li>
-                                }
+                                <!-- Menu tài khoản Admin chỉ giữ lại: Thông tin tài khoản và vai trò hiện tại, Đổi mật khẩu, Đăng xuất -->
                             }
                             else
                             {
@@ -315,10 +364,13 @@
                     </div>
                 }
 
-                <!-- Desktop Cart Badge -->
-                <div class="d-none d-lg-block">
-                    <CartBadgeComponent />
-                </div>
+                <!-- Desktop Cart Badge (Chỉ hiển thị cho Sinh viên) -->
+                @if (currentRole != "Admin")
+                {
+                    <div class="d-none d-lg-block">
+                        <CartBadgeComponent />
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -327,48 +379,63 @@
 <!-- Mobile Native-Style Bottom Navigation Bar (Dành riêng cho Điện thoại < 768px) -->
 <div class="mobile-bottom-nav d-lg-none">
     <div class="mobile-nav-container">
-        <NavLink class="mobile-nav-item" href="/" Match="NavLinkMatch.All">
-            <i class="bi bi-house-door"></i>
-            <span>Trang chủ</span>
-        </NavLink>
-        <NavLink class="mobile-nav-item" href="/sections">
-            <i class="bi bi-search"></i>
-            <span>Tra cứu</span>
-        </NavLink>
-        <NavLink class="mobile-nav-item position-relative" href="/cart">
-            <div class="cart-icon-wrapper">
-                <i class="bi bi-cart3"></i>
-                @if (cartCount > 0)
-                {
-                    <span class="mobile-cart-badge">@cartCount</span>
-                }
-            </div>
-            <span>Giỏ môn</span>
-        </NavLink>
-        <NavLink class="mobile-nav-item" href="/schedule">
-            <i class="bi bi-calendar3"></i>
-            <span>Lịch học</span>
-        </NavLink>
         @if (currentRole == "Admin")
         {
-            <NavLink class="mobile-nav-item" href="/admin/courses">
-                <i class="bi bi-shield-lock"></i>
-                <span>Quản trị</span>
+            <NavLink class="@(IsAdminHomeActive ? "mobile-nav-item active" : "mobile-nav-item")" href="/admin" Match="NavLinkMatch.All">
+                <i class="bi bi-house-door"></i>
+                <span>Trang chủ</span>
             </NavLink>
-        }
-        else if (!isAuthenticated)
-        {
-            <button type="button" class="mobile-nav-item bg-transparent border-0" @onclick="OpenLoginModal">
-                <i class="bi bi-box-arrow-in-right"></i>
-                <span>Đăng nhập</span>
-            </button>
-        }
-        else
-        {
-            <NavLink class="mobile-nav-item" href="/tuition">
+            <NavLink class="@(IsAdminTrainingActive ? "mobile-nav-item active" : "mobile-nav-item")" href="/admin/courses">
+                <i class="bi bi-mortarboard"></i>
+                <span>Đào tạo</span>
+            </NavLink>
+            <NavLink class="mobile-nav-item" href="/schedule">
+                <i class="bi bi-calendar3"></i>
+                <span>Lịch học</span>
+            </NavLink>
+            <NavLink class="mobile-nav-item" href="/admin/tuition">
                 <i class="bi bi-wallet2"></i>
                 <span>Học phí</span>
             </NavLink>
+        }
+        else
+        {
+            <NavLink class="mobile-nav-item" href="/" Match="NavLinkMatch.All">
+                <i class="bi bi-house-door"></i>
+                <span>Trang chủ</span>
+            </NavLink>
+            <NavLink class="mobile-nav-item" href="/sections">
+                <i class="bi bi-search"></i>
+                <span>Tra cứu</span>
+            </NavLink>
+            <NavLink class="mobile-nav-item position-relative" href="/cart">
+                <div class="cart-icon-wrapper">
+                    <i class="bi bi-cart3"></i>
+                    @if (cartCount > 0)
+                    {
+                        <span class="mobile-cart-badge">@cartCount</span>
+                    }
+                </div>
+                <span>Giỏ môn</span>
+            </NavLink>
+            <NavLink class="mobile-nav-item" href="/schedule">
+                <i class="bi bi-calendar3"></i>
+                <span>Lịch học</span>
+            </NavLink>
+            @if (!isAuthenticated)
+            {
+                <button type="button" class="mobile-nav-item bg-transparent border-0" @onclick="OpenLoginModal">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    <span>Đăng nhập</span>
+                </button>
+            }
+            else
+            {
+                <NavLink class="mobile-nav-item" href="/tuition">
+                    <i class="bi bi-wallet2"></i>
+                    <span>Học phí</span>
+                </NavLink>
+            }
         }
     </div>
 </div>
@@ -399,6 +466,24 @@
     private bool IsLookupActive =>
         NavigationManager.Uri.Contains("/sections", StringComparison.OrdinalIgnoreCase) ||
         NavigationManager.Uri.Contains("/registration-plan", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsAdminTrainingActive =>
+        NavigationManager.Uri.Contains("/admin/courses", StringComparison.OrdinalIgnoreCase) ||
+        NavigationManager.Uri.Contains("/admin/sections", StringComparison.OrdinalIgnoreCase) ||
+        NavigationManager.Uri.Contains("/admin/enrollments", StringComparison.OrdinalIgnoreCase) ||
+        NavigationManager.Uri.Contains("/ai-advisor", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsAdminHomeActive
+    {
+        get
+        {
+            var uri = NavigationManager.Uri;
+            return uri.EndsWith("/admin", StringComparison.OrdinalIgnoreCase) ||
+                   uri.EndsWith("/admin/", StringComparison.OrdinalIgnoreCase) ||
+                   uri.Contains("/admin/dashboard", StringComparison.OrdinalIgnoreCase) ||
+                   uri.Contains("/phong-dao-tao", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

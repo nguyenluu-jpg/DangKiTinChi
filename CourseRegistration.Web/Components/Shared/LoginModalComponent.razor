@@ -118,212 +118,13 @@
     </div>
 }
 
-@if (showBreachWarningModal)
-{
-    <!-- MODAL THAY ĐỔI MẬT KHẨU TỰ ĐỘNG HIỆN LÊN MÁY (CHUẨN THEO ẢNH SCREENSHOT 151815) -->
-    <div class="chrome-breach-backdrop" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10500; background-color: rgba(0, 0, 0, 0.45); display: flex; align-items: center; justify-content: center; padding: 1.25rem;">
-        <div class="chrome-breach-card" style="width: 100%; max-width: 440px; background: #ffffff; border-radius: 24px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); padding: 26px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; animation: modalPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);">
-            
-            <!-- Graphic Illustration chuẩn y hệt ảnh Screenshot 151815 -->
-            <div class="text-center mb-3">
-                <svg width="220" height="92" viewBox="0 0 220 92" fill="none" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">
-                    <!-- Sparkles/stars -->
-                    <path d="M28 36c0 2.2-1.8 4-4 4s-4-1.8-4-4 1.8-4 4-4 4 1.8 4 4z" fill="#E8EAED"/>
-                    <path d="M192 34c0 2.5-2 4.5-4.5 4.5s-4.5-2-4.5-4.5 2-4.5 4.5-4.5 4.5 2 4.5 4.5z" fill="#E8EAED"/>
-                    <circle cx="20" cy="46" r="3" fill="#E8EAED"/>
-                    
-                    <!-- Curved connecting cable -->
-                    <path d="M106 42 C122 42, 126 18, 142 18 C158 18, 162 42, 172 42" stroke="#DADCE0" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-                    <path d="M88 40 C70 40, 68 56, 50 56" stroke="#DADCE0" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-                    
-                    <!-- Clipboard document -->
-                    <rect x="76" y="8" width="56" height="72" rx="7" fill="#FFFFFF" stroke="#DADCE0" stroke-width="1.6"/>
-                    <path d="M95 5h18a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H95a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="#DADCE0"/>
-                    <rect x="98" y="7" width="12" height="3" rx="1" fill="#FFFFFF"/>
-                    
-                    <!-- Red warning shield badge -->
-                    <g transform="translate(85, 27)">
-                        <path d="M19 1.5 L36 30.5 A2 2 0 0 1 34.3 33.5 L3.7 33.5 A2 2 0 0 1 2 30.5 L19 1.5 Z" fill="#EA4335"/>
-                        <rect x="17" y="11" width="4" height="12" rx="2" fill="#FFFFFF"/>
-                        <circle cx="19" cy="27.5" r="2.2" fill="#FFFFFF"/>
-                    </g>
-                    
-                    <!-- Password input box -->
-                    <g transform="translate(118, 29)">
-                        <rect x="0" y="0" width="62" height="26" rx="4" fill="#FFFFFF" stroke="#DADCE0" stroke-width="1.5"/>
-                        <text x="8" y="18" font-family="'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="16" fill="#1A73E8" letter-spacing="2">* * *</text>
-                        <line x1="50" y1="5" x2="50" y2="21" stroke="#1A73E8" stroke-width="2"/>
-                    </g>
-                </svg>
-            </div>
 
-            <!-- Title -->
-            <h5 class="fw-bold mb-2 text-start" style="color: #1f1f1f; font-size: 1.18rem; letter-spacing: -0.2px;">
-                Thay đổi mật khẩu của bạn
-            </h5>
-
-            <!-- Description -->
-            <div class="text-start mb-4" style="color: #444746; font-size: 0.85rem; line-height: 1.48;">
-                Mật khẩu bạn vừa sử dụng đã bị lộ trong một sự cố rò rỉ dữ liệu. Trình quản lý mật khẩu của Google khuyên bạn nên đổi mật khẩu ngay.
-            </div>
-
-            <!-- Bottom Row: Info Icon & OK Button -->
-            <div class="d-flex justify-content-between align-items-center pt-1">
-                <span class="text-secondary" style="cursor: pointer;" title="Trình quản lý mật khẩu">
-                    <i class="bi bi-info-circle fs-5" style="color: #5f6368;"></i>
-                </span>
-                <button type="button" 
-                        class="btn btn-primary rounded-pill px-4 py-1.5 fw-bold shadow-none" 
-                        style="background-color: #0b57d0; border-color: #0b57d0; font-size: 0.9rem; min-width: 86px;"
-                        @onclick="ConfirmBreachWarningAndProceed"
-                        autofocus>
-                    OK
-                </button>
-            </div>
-
-        </div>
-    </div>
-}
-
-@if (showSavePasswordPopup)
-{
-    <!-- HỘP THOẠI LƯU MẬT KHẨU CỦA CHROME (CHUẨN 100% THEO ẢNH SCREENSHOT 162716) -->
-    <div class="chrome-save-password-bubble" 
-         style="position: fixed; top: 14px; right: 24px; z-index: 10600; width: 382px; max-width: calc(100vw - 28px); background: #ffffff; border-radius: 16px; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.1); border: 1px solid rgba(0, 0, 0, 0.08); padding: 20px 22px 16px 22px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; animation: chromeBubbleSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1);">
-        
-        <!-- Nút đóng 'X' góc phải trên -->
-        <button type="button" 
-                class="btn btn-sm btn-icon position-absolute top-0 end-0 m-3 d-flex align-items-center justify-content-center text-muted border-0 bg-transparent" 
-                style="width: 28px; height: 28px; border-radius: 50%;" 
-                @onclick="DismissSavePasswordPopup" 
-                aria-label="Đóng">
-            <i class="bi bi-x-lg" style="font-size: 13px;"></i>
-        </button>
-
-        <!-- Illustration trên đầu y hệt Screenshot 162716 -->
-        <div class="text-center mb-3">
-            <svg width="240" height="74" viewBox="0 0 240 74" fill="none" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">
-                <!-- Floating pale green polygon top left -->
-                <polygon points="26,14 36,9 46,14 46,26 36,31 26,26" fill="#C4EED0" opacity="0.85" />
-                
-                <!-- Soft light blue cloud/pill container -->
-                <rect x="62" y="10" width="136" height="52" rx="26" fill="#E8F0FE" />
-                <rect x="74" y="21" width="112" height="30" rx="15" fill="#D3E3FD" />
-                
-                <!-- Security icons inside capsule -->
-                <circle cx="88" cy="36" r="6" fill="#1A73E8" />
-                <polygon points="101,31 106,33 106,39 101,41 96,39 96,33" fill="#1A73E8" />
-                <circle cx="116" cy="36" r="5" fill="#7CBBF3" />
-                <polygon points="128,30 134,36 128,42 122,36" fill="#7CBBF3" />
-                <polygon points="142,31 147,35 145,41 139,41 137,35" fill="#34A853" />
-                <polygon points="155,31 160,33 160,39 155,41 150,39 150,33" fill="#34A853" />
-                <circle cx="170" cy="36" r="6" fill="#81C995" />
-                
-                <!-- Blue checkmark circle badge top right -->
-                <circle cx="180" cy="20" r="10" fill="#1A73E8" />
-                <path d="M176 20 l3 3 l6 -6" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                
-                <!-- Floating pale green polygon bottom right -->
-                <polygon points="198,46 206,42 214,46 214,56 206,60 198,56" fill="#C4EED0" opacity="0.85" />
-            </svg>
-        </div>
-
-        <!-- Key Icon + Tiêu đề "Lưu mật khẩu?" -->
-        <div class="d-flex align-items-center mb-3">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="me-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0z" fill="#34A853" />
-                <circle cx="8" cy="12" r="2" fill="#ffffff" />
-                <rect x="11" y="11" width="9" height="2" fill="#FBBC04" rx="1" />
-                <rect x="18" y="13" width="2" height="3" fill="#1A73E8" rx="0.5" />
-                <rect x="15" y="13" width="2" height="2" fill="#1A73E8" rx="0.5" />
-            </svg>
-            <h6 class="mb-0 fw-bold text-dark" style="font-size: 1.15rem; letter-spacing: -0.2px;">Lưu mật khẩu?</h6>
-        </div>
-
-        <!-- Form fields: Tên người dùng & Mật khẩu -->
-        <div class="mb-2 d-flex align-items-center">
-            <label class="small mb-0" style="width: 110px; font-size: 0.85rem; color: #444746;">Tên người dùng</label>
-            <div class="flex-grow-1">
-                <input type="text" 
-                       class="form-control form-control-sm" 
-                       style="border: 1px solid #747775; border-radius: 8px; font-size: 0.88rem; padding: 6px 12px; color: #1f1f1f; background-color: #fff;" 
-                       @bind="savedUsername" />
-            </div>
-        </div>
-
-        <div class="mb-3 d-flex align-items-center">
-            <label class="small mb-0" style="width: 110px; font-size: 0.85rem; color: #444746;">Mật khẩu</label>
-            <div class="flex-grow-1 position-relative">
-                <input type="@(showSavedPasswordInPopup ? "text" : "password")" 
-                       class="form-control form-control-sm pe-4" 
-                       style="border: 1px solid #747775; border-radius: 8px; font-size: 0.88rem; padding: 6px 12px; color: #1f1f1f; background-color: #fff;" 
-                       @bind="savedPassword" />
-                <button type="button" 
-                        class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-muted p-0 me-2 border-0 shadow-none" 
-                        style="text-decoration: none;"
-                        @onclick="() => showSavedPasswordInPopup = !showSavedPasswordInPopup"
-                        title="@(showSavedPasswordInPopup ? "Ẩn mật khẩu" : "Hiện mật khẩu")">
-                    <i class="bi @(showSavedPasswordInPopup ? "bi-eye-slash-fill" : "bi-eye-fill")" style="font-size: 0.95rem; color: #5f6368;"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- 3 Nút Hành Động: Không bao giờ - Lưu - Không, cảm ơn (Chuẩn Screenshot 162716) -->
-        <div class="d-flex align-items-center justify-content-end gap-2 mt-3 pt-1">
-            <button type="button" 
-                    class="btn fw-semibold shadow-none" 
-                    style="background-color: #edf2fa; color: #0b57d0; border: none; border-radius: 999px; font-size: 0.84rem; padding: 7px 14px;"
-                    @onclick="DismissSavePasswordPopup">
-                Không bao giờ
-            </button>
-            <button type="button" 
-                    class="btn fw-bold shadow-none" 
-                    style="background-color: #0b57d0; color: #ffffff; border: none; border-radius: 999px; font-size: 0.84rem; padding: 7px 22px;"
-                    @onclick="HandleSavePassword">
-                Lưu
-            </button>
-            <button type="button" 
-                    class="btn fw-semibold shadow-none" 
-                    style="background-color: #edf2fa; color: #0b57d0; border: none; border-radius: 999px; font-size: 0.84rem; padding: 7px 14px;"
-                    @onclick="DismissSavePasswordPopup">
-                Không, cảm ơn
-            </button>
-        </div>
-
-        <!-- Chú thích chân hộp thoại y hệt Screenshot 162716 -->
-        <div class="border-top mt-3 pt-2 text-start" style="border-color: #e1e3e1 !important;">
-            <div style="font-size: 0.74rem; color: #444746; line-height: 1.45;">
-                Bạn có thể dùng các mật khẩu đã lưu trên mọi thiết bị. Các mật khẩu đó được lưu vào 
-                <span style="color: #0b57d0; text-decoration: underline; cursor: pointer;">Trình quản lý mật khẩu</span> cho 23k4080024@@hce.edu.vn.
-            </div>
-        </div>
-
-    </div>
-}
-
-<style>
-    @@keyframes chromeBubbleSlideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-12px) scale(0.97);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-</style>
 
 @code {
     private LoginViewModel loginModel = new LoginViewModel();
     private string errorMessage = string.Empty;
     private bool isLoading = false;
     private bool showPassword = false;
-    private bool showBreachWarningModal = false;
-    private bool showSavePasswordPopup = false;
-    private bool showSavedPasswordInPopup = false;
-    private string savedUsername = string.Empty;
-    private string savedPassword = string.Empty;
 
     protected override void OnInitialized()
     {
@@ -337,17 +138,12 @@
             errorMessage = string.Empty;
             loginModel = new LoginViewModel();
             showPassword = false;
-            showBreachWarningModal = false;
-            showSavePasswordPopup = false;
-            showSavedPasswordInPopup = false;
         }
         InvokeAsync(StateHasChanged);
     }
 
     private void CloseModal()
     {
-        showBreachWarningModal = false;
-        showSavePasswordPopup = false;
         LoginModalService.Close();
     }
 
@@ -373,10 +169,17 @@
                 // 1. Cập nhật phiên đăng nhập của người dùng
                 await CurrentUserStateStore.SetCurrentUserAsync(account);
 
-                // 2. Đóng form đăng nhập
+                // 2. Kích hoạt thông báo lưu mật khẩu của Google Chrome (duy nhất trình duyệt quản lý)
+                try
+                {
+                    await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", username, password);
+                }
+                catch { }
+
+                // 3. Đóng form đăng nhập
                 LoginModalService.Close();
 
-                // 3. Điều hướng sau khi đăng nhập thành công theo đúng vai trò:
+                // 4. Điều hướng sau khi đăng nhập thành công theo đúng vai trò:
                 if (string.Equals(account.Role, "Admin", StringComparison.OrdinalIgnoreCase))
                 {
                     // Admin: Tự động vào thẳng Dashboard Tổng quan Cán bộ Đào tạo (/admin)
@@ -396,31 +199,6 @@
                         NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: false);
                     }
                 }
-
-                savedUsername = username;
-                savedPassword = password;
-
-                // 4. Xử lý thông báo theo đúng yêu cầu:
-                if (string.Equals(account.Role, "Admin", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Bên Admin: Bỏ bớt thông báo "Thay đổi mật khẩu của bạn" (vì bị thừa theo yêu cầu),
-                    // hiển thị NGAY LẬP TỨC hộp thoại Lưu mật khẩu của Chrome (Screenshot 162716)!
-                    showBreachWarningModal = false;
-                    showSavePasswordPopup = true;
-                }
-                else
-                {
-                    // Bên Sinh viên: Tự động hiển thị cảnh báo mật khẩu rò rỉ (Screenshot 151815) trước,
-                    // sau khi bấm OK sẽ chuyển tiếp đến hộp thoại Lưu mật khẩu (Screenshot 162716).
-                    showBreachWarningModal = true;
-                    showSavePasswordPopup = false;
-                }
-
-                try
-                {
-                    await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", username, password);
-                }
-                catch { }
             }
             else
             {
@@ -437,37 +215,6 @@
         }
     }
 
-    private async Task ConfirmBreachWarningAndProceed()
-    {
-        showBreachWarningModal = false;
-
-        // Bấm OK -> Lập tức hiển thị hộp thoại Lưu mật khẩu của Chrome (Screenshot 162716) không cần bấm thêm nút nào!
-        showSavePasswordPopup = true;
-
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", savedUsername, savedPassword);
-        }
-        catch { }
-    }
-
-    private async Task HandleSavePassword()
-    {
-        showSavePasswordPopup = false;
-
-        // Lưu thông tin đăng nhập vào localStorage an toàn và kích hoạt Browser Credential Manager
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("authStorage.saveCredentials", savedUsername, savedPassword, true);
-            await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", savedUsername, savedPassword);
-        }
-        catch { }
-    }
-
-    private void DismissSavePasswordPopup()
-    {
-        showSavePasswordPopup = false;
-    }
 
     public void Dispose()
     {

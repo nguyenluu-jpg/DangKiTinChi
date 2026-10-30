@@ -42,20 +42,8 @@
         {
             try
             {
-                bool isAuth = await CurrentUserStateStore.IsAuthenticatedAsync();
-                if (!isAuth)
-                {
-                    var savedUsername = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "courseReg_username");
-                    if (!string.IsNullOrWhiteSpace(savedUsername))
-                    {
-                        var user = await UserAccountRepository.GetByUsernameAsync(savedUsername);
-                        if (user != null)
-                        {
-                            await CurrentUserStateStore.SetCurrentUserAsync(user);
-                            StateHasChanged();
-                        }
-                    }
-                }
+                // Không tự động đăng nhập khi mở web/F5; dọn dẹp session cũ nếu có
+                await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "courseReg_username");
             }
             catch { }
         }

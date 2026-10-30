@@ -256,33 +256,8 @@
                 // 3. Đóng form nhập liệu đăng nhập
                 LoginModalService.Close();
 
-                // 4. Kiểm tra trạng thái đã cảnh báo trong phiên làm việc này để chống lặp lại
-                bool alreadyWarned = false;
-                try
-                {
-                    alreadyWarned = await JSRuntime.InvokeAsync<bool>("hasBreachWarningBeenShown", username);
-                }
-                catch { }
-
-                // Đối với Admin HOẶC người dùng đã được cảnh báo trong phiên:
-                // Không hiển thị lại cảnh báo thay đổi mật khẩu (tránh bị lặp lại nhiều lần)
-                if (string.Equals(account.Role, "Admin", StringComparison.OrdinalIgnoreCase) || alreadyWarned)
-                {
-                    showBreachWarningModal = false;
-                    await ProceedAfterLoginSuccess(account);
-                }
-                else
-                {
-                    // Đánh dấu tài khoản đã được hiển thị cảnh báo trong phiên
-                    try
-                    {
-                        await JSRuntime.InvokeVoidAsync("markBreachWarningShown", username);
-                    }
-                    catch { }
-
-                    // Hiển thị cảnh báo nhắc nhở kiểm tra mật khẩu trước khi lưu (chỉ 1 lần duy nhất)
-                    showBreachWarningModal = true;
-                }
+                // 4. Luôn hiển thị thông báo lưu mật khẩu mỗi khi đăng nhập theo yêu cầu
+                showBreachWarningModal = true;
             }
             else
             {
@@ -321,10 +296,10 @@
 
     private async Task ProceedAfterLoginSuccess(UserAccount account)
     {
-        // Lưu phiên đăng nhập bền vững vào localStorage để không bị văng khi F5
+        // Không lưu phiên tự động vào localStorage để tránh tự đăng nhập khi mở web
         try
         {
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "courseReg_username", account.Username);
+            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "courseReg_username");
         }
         catch { }
 

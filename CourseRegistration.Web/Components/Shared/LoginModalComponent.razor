@@ -329,6 +329,7 @@
     private string savedUsername = string.Empty;
     private string savedPassword = string.Empty;
     private UserAccount? pendingAccount = null;
+    private bool isConfirming = false;
 
     protected override void OnInitialized()
     {
@@ -345,6 +346,7 @@
             showBreachWarningModal = false;
             showSavePasswordPopup = false;
             showSavedPasswordInPopup = false;
+            isConfirming = false;
         }
         InvokeAsync(StateHasChanged);
     }
@@ -353,6 +355,7 @@
     {
         showBreachWarningModal = false;
         showSavePasswordPopup = false;
+        isConfirming = false;
         LoginModalService.Close();
     }
 
@@ -423,18 +426,28 @@
 
     private async Task ConfirmBreachWarningAndProceed()
     {
-        // Đóng cảnh báo thay đổi mật khẩu
-        showBreachWarningModal = false;
+        if (isConfirming) return;
+        isConfirming = true;
 
-        // Bước 2: Bấm OK ở cảnh báo thì lập tức hiển thị thông báo Lưu mật khẩu của Google Chrome
-        showSavePasswordPopup = true;
-
-        // Kích hoạt Credential API trình duyệt đồng thời
         try
         {
-            await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", savedUsername, savedPassword);
+            // Đóng cảnh báo thay đổi mật khẩu
+            showBreachWarningModal = false;
+
+            // Bước 2: Bấm OK hoặc đóng cảnh báo thì lập tức hiển thị thông báo Lưu mật khẩu của Google Chrome
+            showSavePasswordPopup = true;
+
+            // Kích hoạt form đăng nhập nền an toàn để Chrome nhận diện tài khoản (không gọi credentials.store)
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("triggerBrowserSavePassword", savedUsername, savedPassword);
+            }
+            catch { }
         }
-        catch { }
+        finally
+        {
+            isConfirming = false;
+        }
     }
 
     private async Task HandleSavePassword()

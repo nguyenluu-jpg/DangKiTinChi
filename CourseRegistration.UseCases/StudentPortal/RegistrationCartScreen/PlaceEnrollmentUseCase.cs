@@ -110,28 +110,72 @@ namespace CourseRegistration.UseCases.StudentPortal.RegistrationCartScreen
                 };
             }
 
-            // Tạo phiếu đăng ký chính thức
-            var newEnrollment = new Enrollment
-            {
-                StudentId = studentId,
-                Semester = semester,
-                DateRegistered = DateTime.Now,
-                Status = "Confirmed",
-                UniqueId = Guid.NewGuid().ToString()
-            };
+            // LUẬT 2: SĨ SỐ KHÔNG VƯỢT GIỚI HẠN (KỂ CẢ TRANH CHẤP CHỖ CUỐI CÙNG - CONCURRENCY)
+            // Tạm giữ chỗ nguyên tử cho từng lớp trong giỏ.
+            // Nếu có bất kỳ lớp nào hết chỗ trong tích tắc tranh chấp, lập tức nhả các chỗ đã giữ và từ chối giao dịch.
+            var successfullyIncrementedSectionIds = new List<int>();
+            string? concurrencyError = null;
 
             foreach (var line in cart.EnrollmentLines)
             {
-                newEnrollment.AddSection(line.SectionId, line.Section!);
+                bool acquired = await _sectionRepository.IncrementEnrollmentCountAsync(line.SectionId);
+                if (acquired)
+                {
+                    successfullyIncrementedSectionIds.Add(line.SectionId);
+                }
+                else
+                {
+                    var fullSection = line.Section ?? await _sectionRepository.GetSectionByIdAsync(line.SectionId);
+                    concurrencyError = $"Lớp {fullSection?.SectionCode ?? $"ID {line.SectionId}"} ({fullSection?.Course?.CourseName}) vừa hết chỗ do có sinh viên khác nhanh tay đăng ký chỗ cuối cùng trước. Giao dịch đã được hủy an toàn.";
+                    break;
+                }
             }
 
-            // Lưu Header - Line trong transaction của Repository
-            var enrollmentId = await _enrollmentRepository.CreateEnrollmentAsync(newEnrollment);
-
-            // Cập nhật sĩ số các lớp
-            foreach (var line in cart.EnrollmentLines)
+            // Nếu xảy ra tranh chấp chỗ cuối và không giữ được chỗ
+            if (!string.IsNullOrEmpty(concurrencyError))
             {
-                await _sectionRepository.IncrementEnrollmentCountAsync(line.SectionId);
+                // Rollback / hoàn trả lại chỗ của các lớp đã tạm tăng trong giỏ này
+                foreach (var secId in successfullyIncrementedSectionIds)
+                {
+                    await _sectionRepository.DecrementEnrollmentCountAsync(secId);
+                }
+
+                return new EnrollmentResult
+                {
+                    IsSuccess = false,
+                    Errors = new List<string> { concurrencyError }
+                };
+            }
+
+            int enrollmentId;
+            try
+            {
+                // Tạo phiếu đăng ký chính thức
+                var newEnrollment = new Enrollment
+                {
+                    StudentId = studentId,
+                    Semester = semester,
+                    DateRegistered = DateTime.Now,
+                    Status = "Confirmed",
+                    UniqueId = Guid.NewGuid().ToString()
+                };
+
+                foreach (var line in cart.EnrollmentLines)
+                {
+                    newEnrollment.AddSection(line.SectionId, line.Section!);
+                }
+
+                // Lưu Header - Line trong transaction của Repository
+                enrollmentId = await _enrollmentRepository.CreateEnrollmentAsync(newEnrollment);
+            }
+            catch
+            {
+                // Nếu lưu CSDL gặp sự cố, bồi hoàn (compensate) sĩ số đã tăng để đảm bảo toàn vẹn
+                foreach (var secId in successfullyIncrementedSectionIds)
+                {
+                    await _sectionRepository.DecrementEnrollmentCountAsync(secId);
+                }
+                throw;
             }
 
             // Xóa giỏ hàng và cập nhật UI State

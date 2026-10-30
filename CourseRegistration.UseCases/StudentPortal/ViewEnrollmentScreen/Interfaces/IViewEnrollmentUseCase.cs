@@ -6,5 +6,6 @@ namespace CourseRegistration.UseCases.StudentPortal.ViewEnrollmentScreen.Interfa
     {
         Task<Enrollment?> ExecuteAsync(int enrollmentId);
         Task<IEnumerable<Enrollment>> GetByStudentIdAsync(int studentId);
+        Task<bool> DropSectionAsync(int studentId, int sectionId);
     }
 }

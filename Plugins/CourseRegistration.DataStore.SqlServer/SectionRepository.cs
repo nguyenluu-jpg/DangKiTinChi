@@ -142,25 +142,23 @@ namespace CourseRegistration.DataStore.SqlServer
         public async Task<bool> IncrementEnrollmentCountAsync(int sectionId)
         {
             using var context = _contextFactory.CreateDbContext();
-            var section = await context.Sections.FindAsync(sectionId);
-            if (section != null && section.CurrentEnrollment < section.MaxCapacity)
-            {
-                section.CurrentEnrollment++;
-                await context.SaveChangesAsync();
-                return true;
-            }
-            return false;
+            // Sử dụng câu lệnh UPDATE nguyên tử ở mức SQL Server (Atomic conditional update - LUẬT 2)
+            // SQL Server tự động đặt exclusive lock tại hàng được cập nhật.
+            // Nếu 2 sinh viên cùng đăng ký chỗ cuối cùng (ví dụ sĩ số 29/30):
+            // - Sinh viên 1: thỏa mãn CurrentEnrollment < MaxCapacity -> CurrentEnrollment tăng lên 30, affectedRows = 1 -> trả về true.
+            // - Sinh viên 2: CurrentEnrollment lúc này đã là 30, không còn < MaxCapacity -> 0 rows affected -> trả về false.
+            // Đảm bảo triệt để Luật 2 (sĩ số không bao giờ vượt giới hạn, loại trừ race condition kể cả khi nhiều SV cùng đăng ký chỗ cuối).
+            int affected = await context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE dbo.Sections SET CurrentEnrollment = CurrentEnrollment + 1 WHERE SectionId = {sectionId} AND CurrentEnrollment < MaxCapacity");
+
+            return affected > 0;
         }
 
         public async Task DecrementEnrollmentCountAsync(int sectionId)
         {
             using var context = _contextFactory.CreateDbContext();
-            var section = await context.Sections.FindAsync(sectionId);
-            if (section != null && section.CurrentEnrollment > 0)
-            {
-                section.CurrentEnrollment--;
-                await context.SaveChangesAsync();
-            }
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE dbo.Sections SET CurrentEnrollment = CurrentEnrollment - 1 WHERE SectionId = {sectionId} AND CurrentEnrollment > 0");
         }
     }
 }

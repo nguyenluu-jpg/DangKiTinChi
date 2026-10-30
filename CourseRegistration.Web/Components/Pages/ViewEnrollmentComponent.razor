@@ -62,9 +62,28 @@
                         </div>
                     </div>
 
-                    <h5 class="fw-bold mb-3 text-dark">
-                        <i class="bi bi-card-checklist text-primary me-2"></i>Chi Tiết Danh Sách Lớp Đã Xác Nhận
-                    </h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="bi bi-card-checklist text-primary me-2"></i>Chi Tiết Danh Sách Lớp Đã Xác Nhận
+                        </h5>
+                        @if (enrollment.Status == "Confirmed")
+                        {
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1.5 rounded-pill small">
+                                <i class="bi bi-unlock-fill me-1"></i>Đang trong đợt đăng ký &bull; Có thể hủy môn
+                            </span>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(dropFeedback))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show p-3 mb-3 rounded-3 shadow-xs d-flex align-items-center justify-content-between" role="alert">
+                            <div>
+                                <i class="bi bi-check-circle-fill text-success me-2 fs-5"></i>
+                                <strong>Thành công:</strong> @dropFeedback
+                            </div>
+                            <button type="button" class="btn-close" @onclick="() => dropFeedback = string.Empty"></button>
+                        </div>
+                    }
 
                     <!-- Desktop View (Table) -->
                     <div class="table-responsive mb-4 d-none d-md-block">
@@ -77,6 +96,7 @@
                                     <th>Tín Chỉ</th>
                                     <th>Giảng Viên</th>
                                     <th>Lịch Học & Phòng</th>
+                                    <th class="text-end" style="width: 120px;">Thao Tác</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -109,13 +129,24 @@
                                                 <span class="text-muted fst-italic">@(string.IsNullOrEmpty(sec?.Room) ? "Chưa xếp" : sec.Room)</span>
                                             }
                                         </td>
+                                        <td class="text-end">
+                                            @if (enrollment.Status == "Confirmed")
+                                            {
+                                                <button class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 shadow-xs" 
+                                                        title="Hủy lớp học phần này để nhả chỗ cho sinh viên khác"
+                                                        @onclick="() => PromptDropSection(sec?.SectionId ?? 0, sec?.SectionCode, sec?.Course?.CourseName)">
+                                                    <i class="bi bi-trash3"></i>
+                                                    <span>Hủy môn</span>
+                                                </button>
+                                            }
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
                             <tfoot class="table-group-divider">
                                 <tr class="fw-bold">
                                     <td colspan="3" class="text-end">Tổng số tín chỉ xác nhận:</td>
-                                    <td colspan="3" class="text-success fs-5">@enrollment.TotalCredits Tín chỉ</td>
+                                    <td colspan="4" class="text-success fs-5">@enrollment.TotalCredits Tín chỉ</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -143,11 +174,21 @@
                                     </div>
                                     @if (sec?.Schedules != null && sec.Schedules.Any())
                                     {
-                                        <div class="p-2 bg-white rounded border small">
+                                        <div class="p-2 bg-white rounded border small mb-2">
                                             @foreach (var sched in sec.Schedules)
                                             {
                                                 <div>@sched.DayOfWeekName (Tiết @sched.StartPeriod-@sched.EndPeriod)</div>
                                             }
+                                        </div>
+                                    }
+                                    @if (enrollment.Status == "Confirmed")
+                                    {
+                                        <div class="text-end pt-2 border-top">
+                                            <button class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
+                                                    @onclick="() => PromptDropSection(sec?.SectionId ?? 0, sec?.SectionCode, sec?.Course?.CourseName)">
+                                                <i class="bi bi-trash3"></i>
+                                                <span>Hủy đăng ký lớp này</span>
+                                            </button>
                                         </div>
                                     }
                                 </div>
@@ -290,6 +331,54 @@
     OnClose="() => isPaymentModalOpen = false" 
     OnPaymentSuccess="HandlePaymentSuccess" />
 
+<!-- Modal Xác Nhận Hủy Môn Cho Sinh Viên (Use Case Người Dùng) -->
+@if (isDropModalOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-danger text-white py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác Nhận Hủy Đăng Ký Học Phần
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => isDropModalOpen = false"></button>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                    <p class="mb-2 text-dark">
+                        Bạn có chắc chắn muốn hủy đăng ký lớp học phần này trong học kỳ không?
+                    </p>
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="fw-bold text-dark fs-6">@dropTargetSectionCode &bull; @dropTargetCourseName</div>
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-info-circle text-primary me-1"></i>
+                            Sau khi hủy, chỉ tiêu sĩ số sẽ được hoàn trả lại cho hệ thống để sinh viên khác có thể đăng ký.
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(dropErrorMessage))
+                    {
+                        <div class="alert alert-danger py-2 px-3 small mb-0">@dropErrorMessage</div>
+                    }
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => isDropModalOpen = false">Đóng</button>
+                    <button type="button" class="btn btn-danger fw-bold px-3" @onclick="ConfirmDropAsync" disabled="@isDropping">
+                        @if (isDropping)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Đang xử lý...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-check-circle me-1"></i>
+                            <span>Xác Nhận Hủy</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter]
     public int EnrollmentId { get; set; }
@@ -298,11 +387,60 @@
     private bool isLoading = true;
     private bool isPaymentModalOpen = false;
 
+    // Quản lý trạng thái hủy môn sinh viên
+    private bool isDropModalOpen = false;
+    private int dropSectionId = 0;
+    private string dropTargetSectionCode = "";
+    private string dropTargetCourseName = "";
+    private string dropFeedback = "";
+    private string dropErrorMessage = "";
+    private bool isDropping = false;
+
     protected override async Task OnInitializedAsync()
     {
         isLoading = true;
         enrollment = await ViewEnrollmentUseCase.ExecuteAsync(EnrollmentId);
         isLoading = false;
+    }
+
+    private void PromptDropSection(int secId, string? secCode, string? courseName)
+    {
+        if (secId <= 0) return;
+        dropSectionId = secId;
+        dropTargetSectionCode = secCode ?? "";
+        dropTargetCourseName = courseName ?? "";
+        dropErrorMessage = "";
+        isDropModalOpen = true;
+    }
+
+    private async Task ConfirmDropAsync()
+    {
+        if (enrollment == null || dropSectionId <= 0) return;
+        isDropping = true;
+        dropErrorMessage = "";
+        try
+        {
+            bool success = await ViewEnrollmentUseCase.DropSectionAsync(enrollment.StudentId, dropSectionId);
+            if (success)
+            {
+                dropFeedback = $"Đã hủy thành công lớp {dropTargetSectionCode} ({dropTargetCourseName}). Sĩ số lớp đã được hoàn trả.";
+                isDropModalOpen = false;
+                // Làm mới lại phiếu
+                enrollment = await ViewEnrollmentUseCase.ExecuteAsync(EnrollmentId);
+            }
+            else
+            {
+                dropErrorMessage = "Không thể hủy môn học phần. Vui lòng thử lại sau.";
+            }
+        }
+        catch (Exception ex)
+        {
+            dropErrorMessage = $"Lỗi: {ex.Message}";
+        }
+        finally
+        {
+            isDropping = false;
+        }
     }
 
     private void HandlePaymentSuccess(TuitionPaymentResult result)

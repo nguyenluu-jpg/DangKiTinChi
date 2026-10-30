@@ -22,5 +22,10 @@ namespace CourseRegistration.UseCases.StudentPortal.ViewEnrollmentScreen
         {
             return await _enrollmentRepository.GetEnrollmentsByStudentIdAsync(studentId);
         }
+
+        public async Task<bool> DropSectionAsync(int studentId, int sectionId)
+        {
+            return await _enrollmentRepository.DropSectionForStudentAsync(studentId, sectionId, "Sinh viên tự hủy trong thời gian cho phép");
+        }
     }
 }

@@ -63,6 +63,7 @@ namespace CourseRegistration.Web
             builder.Services.AddScoped<ICurrentUserStateStore, CurrentUserStateStore>();
             builder.Services.AddScoped<ILoginModalService, LoginModalService>();
             builder.Services.AddScoped<IChangePasswordModalService, ChangePasswordModalService>();
+            builder.Services.AddScoped<AiChatSessionState>();
 
             // Đăng ký Account UseCases (Sprint 2 - Đăng nhập & Phân quyền)
             builder.Services.AddTransient<ILoginUseCase, LoginUseCase>();

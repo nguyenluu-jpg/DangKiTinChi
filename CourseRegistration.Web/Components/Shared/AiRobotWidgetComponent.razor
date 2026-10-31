@@ -3,6 +3,7 @@
 @using CourseRegistration.UseCases.StudentPortal.AiAdvisor
 @using CourseRegistration.UseCases.AdminPortal.AiAdminAssistant.Interfaces
 @using CourseRegistration.UseCases.PluginInterfaces.DataStore
+@using CourseRegistration.Web.Services
 @inject IGetAiAdviceUseCase GetAiAdviceUseCase
 @inject IAdminAiAssistantUseCase AdminAiAssistantUseCase
 @inject ICurrentUserStateStore CurrentUserStateStore
@@ -10,6 +11,7 @@
 @inject ILoginModalService LoginModalService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@inject AiChatSessionState ChatSessionState
 @implements IDisposable
 
 @if (!isOnAiAdvisorPage)
@@ -45,7 +47,7 @@
 
                 <!-- Thân Cuộc Trò Chuyện (Scrollable) -->
                 <div class="ai-chat-body p-3">
-                    @foreach (var msg in chatMessages)
+                    @foreach (var msg in ChatSessionState.Messages)
                     {
                         @if (msg.IsUser)
                         {
@@ -87,6 +89,31 @@
                                                     @onclick="() => LoginModalService.Open()">
                                                 <i class="bi bi-box-arrow-in-right"></i> Đăng nhập ngay
                                             </button>
+                                        </div>
+                                    }
+
+                                    @if (msg.ActionLinks?.Any() == true)
+                                    {
+                                        <div class="mt-2 d-flex flex-wrap gap-1">
+                                            @foreach (var link in msg.ActionLinks)
+                                            {
+                                                if (link.Kind == AiActionLinkKind.Login)
+                                                {
+                                                    <button type="button" 
+                                                            class="btn btn-xs btn-primary rounded-pill px-2 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1"
+                                                            style="font-size: 0.75rem;"
+                                                            @onclick="() => LoginModalService.Open()">
+                                                        <i class="bi bi-box-arrow-in-right"></i> @link.Label
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <a href="@link.Url" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1"
+                                                       style="font-size: 0.75rem;">
+                                                        <i class="bi bi-arrow-right-circle"></i> @link.Label
+                                                    </a>
+                                                }
+                                            }
                                         </div>
                                     }
 

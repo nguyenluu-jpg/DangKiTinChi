@@ -10,6 +10,15 @@ using Microsoft.Extensions.AI;
 
 namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 {
+    public enum TuitionIntent
+    {
+        OwnStatus,
+        HowToPay,
+        PolicyInfo,
+        BankAccount,
+        Other
+    }
+
     /// <summary>
     /// Implementation của UseCase tư vấn đăng ký học phần thông minh bằng AI
     /// Tuân thủ nghiêm ngặt 5 tiêu chuẩn của giảng viên (Mục 10):
@@ -232,6 +241,20 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                                             });
                                         }
                                     }
+                                }
+                            }
+
+                            // Tự động gắn ActionLinks nếu kết quả LLM đề cập tới học phí hoặc /tuition
+                            if (responseText.Contains("/tuition") || responseText.Contains("học phí") || responseText.Contains("tuition") || responseText.Contains("thanh toán"))
+                            {
+                                if (!advice.ActionLinks.Any(l => l.Url == "/tuition"))
+                                {
+                                    advice.ActionLinks.Add(new AiActionLink
+                                    {
+                                        Label = "Xem chi tiết & thanh toán",
+                                        Url = "/tuition",
+                                        Kind = AiActionLinkKind.Navigate
+                                    });
                                 }
                             }
                         }
@@ -557,27 +580,9 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
             // =========================================================================
             // BƯỚC 1.5: ĐỊNH NGHĨA CÁC Ý ĐỊNH HỌC VỤ NGỮ NGHĨA (SEMANTIC INTENTS)
             // =========================================================================
-            bool asksPaymentStatus = qNorm.Contains("dong chua") || qNorm.Contains("nop chua") || 
-                                     qNorm.Contains("thanh toan chua") || qNorm.Contains("da dong") || 
-                                     qNorm.Contains("da nop") || qNorm.Contains("chua dong") || 
-                                     qNorm.Contains("chua nop") || qNorm.Contains("con no") || 
-                                     qNorm.Contains("no hoc phi") || qNorm.Contains("no tien") || 
-                                     qNorm.Contains("tinh trang hoc phi") || qNorm.Contains("trang thai hoc phi") ||
-                                     qNorm.Contains("kiem tra hoc phi") || qNorm.Contains("hoan tat hoc phi") ||
-                                     qNorm.Contains("dong tien chua") || qNorm.Contains("nop tien chua") ||
-                                     qNorm.Contains("dong hoc phi chua") || qNorm.Contains("nop hoc phi chua") ||
-                                     qLower.Contains("paid yet") || qLower.Contains("has paid") || 
-                                     qLower.Contains("is paid") || qLower.Contains("unpaid") || 
-                                     qLower.Contains("payment status") || qLower.Contains("tuition status") ||
-                                     (qNorm.Contains("hoc phi") && (qNorm.Contains("chua") || qNorm.Contains("roi") || qNorm.Contains("xong")));
-
-            bool isTuition = qNorm.Contains("hoc phi") || (qNorm.Contains("tien hoc") && !qNorm.Contains("dau tien")) || qNorm.Contains("gia tin chi") ||
-                             qNorm.Contains("dong tien") || qNorm.Contains("thanh toan") || qNorm.Contains("gia bao nhieu") ||
-                             qNorm.Contains("bao nhieu tien") || qNorm.Contains("don gia") || qNorm.Contains("chuyen tien") ||
-                             qNorm.Contains("nop tien") || qNorm.Contains("ngan hang") || qNorm.Contains("stk") ||
-                             qNorm.Contains("so tai khoan") || qNorm.Contains("vietqr") || qNorm.Contains("mb bank") ||
-                             qNorm.Contains("chuyen khoan") || qLower.Contains("tuition") || qLower.Contains("fee") ||
-                             qLower.Contains("payment") || qLower.Contains("how much is") || asksPaymentStatus;
+            var tuitionIntent = ClassifyTuitionIntent(qNorm, qLower, conversationHistory);
+            bool isTuition = tuitionIntent != TuitionIntent.Other;
+            bool asksPaymentStatus = tuitionIntent == TuitionIntent.OwnStatus;
 
             bool isStudentProfileQuery =
                 (matchedExplicitStudent != null || (currentStudent != null && (qNorm.Contains("thong tin cua toi") || qNorm.Contains("ho so cua toi") || qNorm.Contains("thong tin ca nhan") || qNorm.Contains("mssv cua toi") || qNorm.Contains("nganh cua toi")))) &&
@@ -1503,20 +1508,16 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                 var sb = new StringBuilder();
                 var evalTuitionStudent = matchedExplicitStudent ?? targetStudent ?? currentStudent;
 
-                if (asksPaymentStatus)
+                // 6.1. HỎI SỐ TIỀN / TÌNH TRẠNG HỌC PHÍ CÁ NHÂN (OwnStatus)
+                if (tuitionIntent == TuitionIntent.OwnStatus)
                 {
                     if (evalTuitionStudent == null)
                     {
-                        if (isEnglish)
-                        {
-                            advice.AiMessage = "👋 **You are currently browsing as a Guest (not logged in).**\n\nTo check your personalized tuition payment status (Paid vs Unpaid), please click **Login** with your student account, or specify your Full Name / Student ID (e.g. `SV21001` or `Nguyen Van Tuan`) in your question!";
-                            advice.SuggestLogin = true;
-                        }
-                        else
-                        {
-                            advice.AiMessage = "👋 **Chào bạn! Bạn hiện đang ở chế độ Khách (chưa đăng nhập).**\n\nĐể Cố vấn AI kiểm tra chính xác trạng thái đóng học phí (đã đóng hay chưa đóng), vui lòng bấm nút **Đăng nhập** tài khoản sinh viên hoặc nhập kèm Họ và tên / Mã số sinh viên (ví dụ: `SV21001` hoặc `Nguyễn Văn Tuấn`) để hệ thống tra cứu CSDL cho bạn nhé!";
-                            advice.SuggestLogin = true;
-                        }
+                        advice.SuggestLogin = true;
+                        advice.ActionLinks.Add(new AiActionLink { Label = "Đăng nhập", Url = "/login", Kind = AiActionLinkKind.Login });
+                        advice.AiMessage = isEnglish
+                            ? "👋 **You are currently browsing as a Guest (not logged in).**\n\nPlease **Log in** with your student account to check your personalized tuition fee and payment status."
+                            : "👋 **Chào bạn! Bạn hiện đang ở chế độ Khách (chưa đăng nhập).**\n\nĐể xem chính xác số tiền học phí và tình trạng thanh toán của bản thân, vui lòng bấm nút **Đăng nhập** tài khoản sinh viên.";
                         return;
                     }
 
@@ -1554,161 +1555,141 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
                     }
 
                     bool isPaid = studentEnrollment?.IsPaid == true;
-                    bool asksDebt = qNorm.Contains("con no") || qNorm.Contains("co no") || qNorm.Contains("no hoc phi") || qLower.Contains("owe") || qLower.Contains("debt");
 
                     if (isEnglish)
                     {
-                        if (asksDebt)
+                        if (isPaid)
                         {
-                            if (isPaid)
-                            {
-                                sb.AppendLine($"❌ **NO.** Student **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`) **has zero outstanding tuition debt** for semester **{semester}** (fully paid {totalTuition:N0} VNĐ successfully).");
-                            }
-                            else
-                            {
-                                sb.AppendLine($"✅ **YES.** Student **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`) currently **owes tuition fee** for semester **{semester}**: **{totalTuition:N0} VNĐ** ({totalRegCredits} credits registered).");
-                                sb.AppendLine($"- **Status:** **Unpaid**.");
-                                sb.AppendLine($"- **Payment channel:** MB Bank VietQR Napas24/7 (Account: 101705201967 - TRUONG DAI HOC KINH TE HUE).");
-                            }
+                            sb.AppendLine($"✅ Student **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`) has **fully paid** the tuition fee for semester {semester}.");
+                            sb.AppendLine($"- Registered credits: **{totalRegCredits} Credits**");
+                            sb.AppendLine($"- Total tuition: **{totalTuition:N0} VNĐ** (Status: **Paid**)");
+                            sb.AppendLine();
+                            sb.AppendLine("👉 [View details & payment](/tuition)");
                         }
                         else
                         {
-                            if (isPaid)
-                            {
-                                sb.AppendLine($"✅ **PAID.** Student **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`) has **successfully completed** the tuition fee payment for semester **{semester}**!");
-                                sb.AppendLine();
-                                sb.AppendLine($"- **Registered credits:** **{totalRegCredits} Credits**");
-                                sb.AppendLine($"- **Tuition paid:** **{totalTuition:N0} VNĐ** (450,000 VNĐ / credit)");
-                                sb.AppendLine($"- **Payment date:** **{(studentEnrollment?.PaymentDate.HasValue == true ? studentEnrollment.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm:ss") : "Recorded")}**");
-                                sb.AppendLine($"- **Payment method:** **{(!string.IsNullOrEmpty(studentEnrollment?.PaymentMethod) ? studentEnrollment.PaymentMethod : "VietQR Napas247")}**");
-                                sb.AppendLine($"- **Transaction reference:** **{(!string.IsNullOrEmpty(studentEnrollment?.TransactionReference) ? studentEnrollment.TransactionReference : "VQR-CONFIRMED")}**");
-                                sb.AppendLine($"- **Enrollment status:** **{(studentEnrollment?.Status ?? "Confirmed")}**");
-                            }
-                            else
-                            {
-                                sb.AppendLine($"❌ **UNPAID.** Student **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`) **has not paid** the tuition fee for semester **{semester}** yet!");
-                                sb.AppendLine();
-                                sb.AppendLine($"- **Registered credits:** **{totalRegCredits} Credits**");
-                                sb.AppendLine($"- **Tuition due:** **{totalTuition:N0} VNĐ** (Unit price 450,000 VNĐ / credit)");
-                                sb.AppendLine($"- **Payment status:** **Unpaid**");
-                                sb.AppendLine($"- **Payment instructions:** Please visit `/tuition` to scan the dynamic VietQR MB Bank code for 24/7 real-time settlement.");
-                                sb.AppendLine($"- **University Account:** 101705201967 - MB Bank, Beneficiary: TRUONG DAI HOC KINH TE HUE.");
-                            }
+                            sb.AppendLine($"💳 Tuition fee for semester {semester} for student **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`):");
+                            sb.AppendLine($"- Registered credits: **{totalRegCredits} Credits**");
+                            sb.AppendLine($"- Total tuition due: **{totalTuition:N0} VNĐ** (Status: **Unpaid**)");
+                            sb.AppendLine();
+                            sb.AppendLine("👉 [View details & payment](/tuition)");
                         }
                     }
                     else
                     {
-                        if (asksDebt)
+                        if (isPaid)
                         {
-                            if (isPaid)
-                            {
-                                sb.AppendLine($"❌ **KHÔNG.** Sinh viên **{evalTuitionStudent.FullName}** (MSSV: `{evalTuitionStudent.StudentCode}`) **không còn nợ học phí** học kỳ **{semester}** (đã thanh toán toàn bộ **{totalTuition:N0} VNĐ** thành công)!");
-                            }
-                            else
-                            {
-                                sb.AppendLine($"✅ **CÓ.** Sinh viên **{evalTuitionStudent.FullName}** (MSSV: `{evalTuitionStudent.StudentCode}`) hiện **đang còn nợ học phí** học kỳ **{semester}** là **{totalTuition:N0} VNĐ** (tương ứng **{totalRegCredits} tín chỉ** đã đăng ký)!");
-                                sb.AppendLine();
-                                sb.AppendLine($"- **Trạng thái:** **Chưa thanh toán (Unpaid)**.");
-                                sb.AppendLine($"- **Kênh nộp tiền:** Quét mã VietQR tại trang **'Thanh toán học phí'** (`/tuition`) hoặc chuyển khoản tới MB Bank STK **101705201967** (TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ).");
-                            }
+                            sb.AppendLine($"✅ Sinh viên **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`) đã **hoàn tất thanh toán học phí** học kỳ {semester}.");
+                            sb.AppendLine($"- Số tín chỉ đã đăng ký: **{totalRegCredits} Tín chỉ**");
+                            sb.AppendLine($"- Tổng học phí: **{totalTuition:N0} VNĐ** (Trạng thái: **Đã thanh toán**)");
+                            sb.AppendLine();
+                            sb.AppendLine("👉 [Xem chi tiết & thanh toán](/tuition)");
                         }
                         else
                         {
-                            if (isPaid)
-                            {
-                                sb.AppendLine($"✅ **ĐÃ ĐÓNG.** Sinh viên **{evalTuitionStudent.FullName}** (MSSV: `{evalTuitionStudent.StudentCode}`) đã **hoàn tất thanh toán học phí** học kỳ **{semester}**!");
-                                sb.AppendLine();
-                                sb.AppendLine($"- **Số tín chỉ đã đăng ký:** **{totalRegCredits} Tín chỉ**");
-                                sb.AppendLine($"- **Số tiền học phí đã nộp:** **{totalTuition:N0} VNĐ** (Đơn giá 450.000 VNĐ / tín chỉ)");
-                                sb.AppendLine($"- **Thời gian thanh toán:** **{(studentEnrollment?.PaymentDate.HasValue == true ? studentEnrollment.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm:ss") : "Đã xác nhận thanh toán")}**");
-                                sb.AppendLine($"- **Phương thức thanh toán:** **{(!string.IsNullOrEmpty(studentEnrollment?.PaymentMethod) ? studentEnrollment.PaymentMethod : "VietQR Napas247")}**");
-                                sb.AppendLine($"- **Mã giao dịch / Mã tham chiếu:** **{(!string.IsNullOrEmpty(studentEnrollment?.TransactionReference) ? studentEnrollment.TransactionReference : "VQR-CONFIRMED-2026")}**");
-                                sb.AppendLine($"- **Trạng thái phiếu đăng ký:** **{(studentEnrollment?.Status ?? "Confirmed")}**");
-                            }
-                            else
-                            {
-                                sb.AppendLine($"❌ **CHƯA ĐÓNG.** Sinh viên **{evalTuitionStudent.FullName}** (MSSV: `{evalTuitionStudent.StudentCode}`) hiện **chưa thanh toán** học phí học kỳ **{semester}**!");
-                                sb.AppendLine();
-                                sb.AppendLine($"- **Số tín chỉ đã đăng ký:** **{totalRegCredits} Tín chỉ**");
-                                sb.AppendLine($"- **Tổng số tiền học phí cần nộp:** **{totalTuition:N0} VNĐ** (Đơn giá quy định: **450.000 VNĐ / tín chỉ**)");
-                                sb.AppendLine($"- **Trạng thái công nợ:** **Chưa thanh toán (Unpaid)**");
-                                sb.AppendLine();
-                                sb.AppendLine("- **Hướng dẫn hoàn tất học phí:**");
-                                sb.AppendLine("  + Bạn vào mục **'Thanh toán học phí'** (`/tuition`) trên thanh menu để quét mã VietQR MB Bank tự động gạch nợ tức thì 24/7.");
-                                sb.AppendLine("  + Hoặc chuyển khoản tới tài khoản thu học phí nhà trường: **101705201967** - **MB Bank (Ngân hàng Quân Đội)**.");
-                                sb.AppendLine("  + Đơn vị thụ hưởng: **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**.");
-                                sb.AppendLine($"  + Cú pháp chuyển khoản: `[{evalTuitionStudent.StudentCode}] HP {semester}`");
-                            }
+                            sb.AppendLine($"💳 Học phí học kỳ {semester} của sinh viên **{evalTuitionStudent.FullName}** (`{evalTuitionStudent.StudentCode}`):");
+                            sb.AppendLine($"- Số tín chỉ đã đăng ký: **{totalRegCredits} Tín chỉ**");
+                            sb.AppendLine($"- Tổng số tiền học phí cần nộp: **{totalTuition:N0} VNĐ** (Trạng thái: **Chưa thanh toán**)");
+                            sb.AppendLine();
+                            sb.AppendLine("👉 [Xem chi tiết & thanh toán](/tuition)");
                         }
                     }
 
+                    advice.ActionLinks.Add(new AiActionLink { Label = "Xem chi tiết & thanh toán", Url = "/tuition", Kind = AiActionLinkKind.Navigate });
                     advice.AiMessage = sb.ToString();
                     return;
                 }
 
-                // Không hỏi tình trạng đóng tiền -> Hiển thị quy định mức thu học phí chuẩn
+                // 6.2. HỎI CÁCH ĐÓNG HỌC PHÍ (HowToPay)
+                if (tuitionIntent == TuitionIntent.HowToPay)
+                {
+                    if (isEnglish)
+                    {
+                        sb.AppendLine("### 💳 How to Pay Your Tuition Online:");
+                        sb.AppendLine();
+                        sb.AppendLine("1. Visit the **[Tuition Payment](/tuition)** section on the system.");
+                        sb.AppendLine("2. Scan the dynamic **VietQR** code with any banking app (the amount and transfer reference are automatically filled).");
+                        sb.AppendLine("3. Wait for the instant automatic reconciliation within seconds (24/7 settlement).");
+                        sb.AppendLine();
+                        sb.AppendLine("👉 Click the link below to go to the payment page:");
+                    }
+                    else
+                    {
+                        sb.AppendLine("### 💳 Hướng Dẫn Đóng Học Phí Trực Tuyến:");
+                        sb.AppendLine();
+                        sb.AppendLine("1. Truy cập mục **[Thanh toán học phí](/tuition)** trên hệ thống.");
+                        sb.AppendLine("2. Quét mã **VietQR** hiển thị trên màn hình bằng ứng dụng ngân hàng bất kỳ (nội dung và số tiền đã được điền tự động chính xác).");
+                        sb.AppendLine("3. Chờ hệ thống tự động gạch nợ trong vài giây (xác nhận tức thì 24/7).");
+                        sb.AppendLine();
+                        sb.AppendLine("👉 Bấm vào liên kết bên dưới để tới trang thanh toán:");
+                    }
+
+                    advice.ActionLinks.Add(new AiActionLink { Label = "Đến trang thanh toán học phí", Url = "/tuition", Kind = AiActionLinkKind.Navigate });
+                    advice.AiMessage = sb.ToString();
+                    return;
+                }
+
+                // 6.3. HỎI THÔNG TIN TÀI KHOẢN NGÂN HÀNG (BankAccount)
+                if (tuitionIntent == TuitionIntent.BankAccount)
+                {
+                    string studentCode = evalTuitionStudent?.StudentCode ?? "MSSV";
+                    if (isEnglish)
+                    {
+                        sb.AppendLine("### 🏦 University Bank Account for Tuition Collection:");
+                        sb.AppendLine();
+                        sb.AppendLine("- **Bank:** MB Bank (Military Commercial Joint Stock Bank)");
+                        sb.AppendLine("- **Account number:** **101705201967**");
+                        sb.AppendLine("- **Beneficiary:** **TRUONG DAI HOC KINH TE HUE**");
+                        sb.AppendLine($"- **Transfer note:** `[{studentCode}] HP {semester}`");
+                        sb.AppendLine();
+                        sb.AppendLine("💡 *Tip:* You can also visit **[Tuition Payment](/tuition)** to scan the dynamic VietQR code for automatic instant reconciliation!");
+                    }
+                    else
+                    {
+                        sb.AppendLine("### 🏦 Thông Tin Tài Khoản Thu Học Phí Nhà Trường:");
+                        sb.AppendLine();
+                        sb.AppendLine("- **Ngân hàng:** MB Bank (Ngân hàng TMCP Quân Đội)");
+                        sb.AppendLine("- **Số tài khoản:** **101705201967**");
+                        sb.AppendLine("- **Đơn vị thụ hưởng:** **TRUONG DAI HOC KINH TE HUE**");
+                        sb.AppendLine($"- **Cú pháp chuyển khoản:** `[{studentCode}] HP {semester}`");
+                        sb.AppendLine();
+                        sb.AppendLine("💡 *Khuyến nghị:* Bạn nên vào trang **[Thanh toán học phí](/tuition)** để quét mã VietQR tự động điền sẵn nội dung và gạch nợ tức thì!");
+                    }
+
+                    advice.ActionLinks.Add(new AiActionLink { Label = "Thanh toán qua VietQR", Url = "/tuition", Kind = AiActionLinkKind.Navigate });
+                    advice.AiMessage = sb.ToString();
+                    return;
+                }
+
+                // 6.4. HỎI CHÍNH SÁCH / ĐƠN GIÁ TÍN CHỈ CHUNG (PolicyInfo hoặc mặc định)
                 if (isEnglish)
                 {
-                    sb.AppendLine("### 💰 Tuition Fee Regulations & Online VietQR Payment 2026 - 2027:");
+                    sb.AppendLine("### 💰 Tuition Fee Regulations 2026 - 2027:");
                     sb.AppendLine();
-                    sb.AppendLine("- **Credit unit price:** **450,000 VNĐ / credit**.");
+                    sb.AppendLine("- **Standard rate:** **450,000 VNĐ / credit**.");
                     sb.AppendLine("- **Examples:**");
                     sb.AppendLine("  + 2-credit course: **900,000 VNĐ**");
                     sb.AppendLine("  + 3-credit course: **1,350,000 VNĐ**");
                     sb.AppendLine("  + 4-credit course: **1,800,000 VNĐ**");
                     sb.AppendLine("  + Standard semester (14 credits): **6,300,000 VNĐ**");
                     sb.AppendLine();
-
-                    if (evalTuitionStudent != null && registeredSections.Any())
-                    {
-                        int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
-                        long totalTuition = (long)totalRegCredits * 450000;
-                        var studentEnrollment = allSemesterEnrollments?.FirstOrDefault(e => e.StudentId == evalTuitionStudent.StudentId && e.Status != "Cancelled");
-                        string statusLabel = studentEnrollment?.IsPaid == true ? "✅ Paid" : "❌ Unpaid";
-                        sb.AppendLine($"💳 **Your personalized tuition ({evalTuitionStudent.FullName} - {evalTuitionStudent.StudentCode}):**");
-                        sb.AppendLine($"- Registered credits: **{totalRegCredits} Credits**");
-                        sb.AppendLine($"- Total semester tuition: **{totalTuition:N0} VNĐ** (Status: **{statusLabel}**)");
-                        sb.AppendLine();
-                    }
-
-                    sb.AppendLine("- **University bank account details:**");
-                    sb.AppendLine("  + Account number: **101705201967**");
-                    sb.AppendLine("  + Bank: **MB Bank (Military Commercial Joint Stock Bank)**");
-                    sb.AppendLine("  + Beneficiary: **TRUONG DAI HOC KINH TE HUE**");
-                    sb.AppendLine("- **VietQR Online Payment:** System automatically creates dynamic VietQR code with content `[MSSV] HP 2026_HK1`, real-time 24/7 reconciliation.");
+                    sb.AppendLine("💡 You can view details and make payments at **[Tuition Payment](/tuition)**.");
                 }
                 else
                 {
-                    sb.AppendLine("### 💰 Quy Định Mức Thu Học Phí & Thanh Toán Năm Học 2026 - 2027:");
+                    sb.AppendLine("### 💰 Quy Định Mức Thu Học Phí Năm Học 2026 - 2027:");
                     sb.AppendLine();
                     sb.AppendLine("- **Đơn giá tín chỉ:** **450.000 VNĐ / tín chỉ**.");
-                    sb.AppendLine("- **Ví dụ cụ thể:**");
+                    sb.AppendLine("- **Ví dụ tính học phí theo môn:**");
                     sb.AppendLine("  + Môn 2 tín chỉ: **900.000 VNĐ**");
                     sb.AppendLine("  + Môn 3 tín chỉ: **1.350.000 VNĐ**");
                     sb.AppendLine("  + Môn 4 tín chỉ: **1.800.000 VNĐ**");
                     sb.AppendLine("  + Học kỳ tiêu chuẩn (14 tín chỉ): **6.300.000 VNĐ**");
                     sb.AppendLine();
-
-                    if (evalTuitionStudent != null && registeredSections.Any())
-                    {
-                        int totalRegCredits = registeredSections.Sum(s => s.Course?.Credits ?? 0);
-                        long totalTuition = (long)totalRegCredits * 450000;
-                        var studentEnrollment = allSemesterEnrollments?.FirstOrDefault(e => e.StudentId == evalTuitionStudent.StudentId && e.Status != "Cancelled");
-                        string statusLabel = studentEnrollment?.IsPaid == true ? "✅ Đã đóng" : "❌ Chưa đóng";
-                        sb.AppendLine($"💳 **Học phí cá nhân của bạn ({evalTuitionStudent.FullName} - {evalTuitionStudent.StudentCode}):**");
-                        sb.AppendLine($"- Tổng số tín chỉ đã đăng ký: **{totalRegCredits} Tín chỉ**");
-                        sb.AppendLine($"- Tổng học phí học kỳ {semester}: **{totalTuition:N0} VNĐ** (Trạng thái: **{statusLabel}**)");
-                        sb.AppendLine();
-                    }
-
-                    sb.AppendLine("- **Thông tin tài khoản thu học phí nhà trường:**");
-                    sb.AppendLine("  + Số tài khoản: **101705201967**");
-                    sb.AppendLine("  + Ngân hàng: **MB Bank (Ngân hàng TMCP Quân Đội)**");
-                    sb.AppendLine("  + Đơn vị thụ hưởng: **TRƯỜNG ĐẠI HỌC KINH TẾ HUẾ**");
-                    sb.AppendLine();
-                    sb.AppendLine("- **Thanh toán thông minh qua VietQR:** Hệ thống tự động tạo mã VietQR Napas247 điền sẵn số tiền và nội dung `[MSSV] HP 2026_HK1`, gạch nợ tức thì 24/7.");
+                    sb.AppendLine("💡 Bạn có thể xem chi tiết học phí tại trang **[Thanh toán học phí](/tuition)**.");
                 }
 
+                advice.ActionLinks.Add(new AiActionLink { Label = "Xem chi tiết học phí", Url = "/tuition", Kind = AiActionLinkKind.Navigate });
                 advice.AiMessage = sb.ToString();
                 return;
             }
@@ -2710,6 +2691,109 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 
         #region Helper Extraction & Matching Methods
 
+        public static TuitionIntent ClassifyTuitionIntent(string qNorm, string qLower, List<AiConversationMessage>? history = null)
+        {
+            // 1. Hỏi số tài khoản / ngân hàng / chuyển khoản vào đâu (BankAccount)
+            bool asksBank = qNorm.Contains("stk") || qNorm.Contains("so tai khoan") || qNorm.Contains("so tk") ||
+                            qNorm.Contains("ngan hang nao") || qNorm.Contains("chuyen vao dau") || qNorm.Contains("chuyen khoan vao dau") ||
+                            qNorm.Contains("chuyen tien vao dau") || qNorm.Contains("tai khoan truong") || qNorm.Contains("tai khoan hoc phi") ||
+                            qNorm.Contains("bank account") || qLower.Contains("account number") || qLower.Contains("which bank");
+
+            if (asksBank)
+            {
+                return TuitionIntent.BankAccount;
+            }
+
+            // 2. Hỏi cách đóng học phí / hướng dẫn đóng / phương thức đóng (HowToPay)
+            bool asksHowToPay = qNorm.Contains("dong nhu nao") || qNorm.Contains("dong the nao") || qNorm.Contains("dong sao") ||
+                                qNorm.Contains("nop nhu nao") || qNorm.Contains("nop the nao") || qNorm.Contains("nop sao") ||
+                                qNorm.Contains("thanh toan nhu nao") || qNorm.Contains("thanh toan the nao") || qNorm.Contains("thanh toan sao") ||
+                                qNorm.Contains("cach dong") || qNorm.Contains("cach nop") || qNorm.Contains("cach thanh toan") ||
+                                qNorm.Contains("huong dan dong") || qNorm.Contains("huong dan nop") || qNorm.Contains("huong dan thanh toan") ||
+                                qNorm.Contains("lam sao dong") || qNorm.Contains("lam sao de dong") || qNorm.Contains("lam sao de nop") ||
+                                qNorm.Contains("lam sao thanh toan") || qNorm.Contains("lam sao de thanh toan") ||
+                                qNorm.Contains("dong nhu the nao") || qNorm.Contains("nop nhu the nao") ||
+                                qNorm.Contains("dong hoc phi o dau") || qNorm.Contains("nop hoc phi o dau") ||
+                                qNorm.Contains("thanh toan o dau") ||
+                                qNorm.Contains("muon dong hoc phi") || qNorm.Contains("dong hoc phi dong nhu nao") ||
+                                qLower.Contains("how to pay") || qLower.Contains("how do i pay") || qLower.Contains("how can i pay") ||
+                                qLower.Contains("payment instruction") || qLower.Contains("payment guide");
+
+            if (asksHowToPay)
+            {
+                return TuitionIntent.HowToPay;
+            }
+
+            // 2b. Kiểm tra câu nối tiếp ngắn (ví dụ "đóng như nào", "đóng sao", "làm sao đóng") sau khi vừa trao đổi về học phí
+            if (history != null && history.Any())
+            {
+                var lastMsg = history.LastOrDefault(m => !string.IsNullOrWhiteSpace(m.Content));
+                if (lastMsg != null)
+                {
+                    string lastNorm = RemoveDiacritics(lastMsg.Content.ToLowerInvariant());
+                    bool lastWasTuition = lastNorm.Contains("hoc phi") || lastNorm.Contains("tuition") || lastNorm.Contains("tien hoc") || lastNorm.Contains("/tuition");
+                    if (lastWasTuition)
+                    {
+                        if (qNorm.Contains("nhu nao") || qNorm.Contains("the nao") || qNorm.Contains("sao") ||
+                            qNorm.Contains("o dau") || qNorm.Contains("lam sao") || qNorm.Contains("huong dan") ||
+                            qLower.Contains("how") || qLower.Contains("where"))
+                        {
+                            return TuitionIntent.HowToPay;
+                        }
+                    }
+                }
+            }
+
+            // 3. Hỏi tình trạng học phí cá nhân / số tiền của bản thân (OwnStatus)
+            bool asksStatus = qNorm.Contains("dong chua") || qNorm.Contains("nop chua") || 
+                              qNorm.Contains("thanh toan chua") || qNorm.Contains("da dong") || 
+                              qNorm.Contains("da nop") || qNorm.Contains("chua dong") || 
+                              qNorm.Contains("chua nop") || qNorm.Contains("con no") || 
+                              qNorm.Contains("no hoc phi") || qNorm.Contains("no tien") || 
+                              qNorm.Contains("tinh trang hoc phi") || qNorm.Contains("trang thai hoc phi") ||
+                              qNorm.Contains("kiem tra hoc phi") || qNorm.Contains("hoan tat hoc phi") ||
+                              qNorm.Contains("dong tien chua") || qNorm.Contains("nop tien chua") ||
+                              qNorm.Contains("dong hoc phi chua") || qNorm.Contains("nop hoc phi chua") ||
+                              qLower.Contains("paid yet") || qLower.Contains("has paid") || 
+                              qLower.Contains("is paid") || qLower.Contains("unpaid") || 
+                              qLower.Contains("payment status") || qLower.Contains("tuition status");
+
+            bool hasPersonalPronoun = DetectHasPersonalPronoun(qNorm, qLower) ||
+                                      qNorm.Contains("hien tai") || qNorm.Contains("cua toi") ||
+                                      qNorm.Contains("cua em") || qNorm.Contains("cua minh") ||
+                                      qNorm.Contains("hoc phi toi") || qNorm.Contains("hoc phi em") ||
+                                      qLower.Contains("my tuition");
+
+            bool isTuitionWord = qNorm.Contains("hoc phi") || (qNorm.Contains("tien hoc") && !qNorm.Contains("dau tien")) || qLower.Contains("tuition");
+
+            if (asksStatus || (isTuitionWord && hasPersonalPronoun))
+            {
+                return TuitionIntent.OwnStatus;
+            }
+
+            // 4. Hỏi chính sách / quy định / đơn giá một tín chỉ (PolicyInfo)
+            bool asksPolicy = qNorm.Contains("don gia") || qNorm.Contains("gia tin chi") || qNorm.Contains("gia 1 tin") ||
+                              qNorm.Contains("1 tin chi") || qNorm.Contains("mot tin chi") || qNorm.Contains("bao nhieu 1 tin") ||
+                              qNorm.Contains("bao nhieu mot tin") || qNorm.Contains("chinh sach hoc phi") || qNorm.Contains("quy dinh hoc phi") ||
+                              qNorm.Contains("tinh hoc phi") || qNorm.Contains("cach tinh") ||
+                              qLower.Contains("per credit") || qLower.Contains("tuition policy") || qLower.Contains("fee per credit") ||
+                              qLower.Contains("price per credit");
+
+            if (asksPolicy)
+            {
+                return TuitionIntent.PolicyInfo;
+            }
+
+            // Nếu câu hỏi có từ khóa học phí nhưng chung chung:
+            if (isTuitionWord || qNorm.Contains("dong tien") || qNorm.Contains("thanh toan") || qNorm.Contains("nop tien") || qLower.Contains("payment"))
+            {
+                if (hasPersonalPronoun) return TuitionIntent.OwnStatus;
+                return TuitionIntent.PolicyInfo;
+            }
+
+            return TuitionIntent.Other;
+        }
+
         private static bool DetectIsEnglish(string qLower, string qNorm)
         {
             string[] enKeywords = new[]
@@ -3558,7 +3642,10 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
    - TUYỆT ĐỐI KHÔNG cung cấp thời khóa biểu cá nhân, danh sách môn đã đăng ký, điểm số, học bạ hay thông tin riêng tư của bất kỳ sinh viên nào.
    - Khi hỏi lịch cá nhân, điểm số, môn đã đăng ký: Giải thích thông tin mang tính bảo mật cá nhân, hướng dẫn bấm nút 'Đăng nhập' ở góc trên để xem dữ liệu của mình.
 5. KHI THIẾU THÔNG TIN HOẶC CHƯA HIỂU RÕ:
-   - Hỏi lại tự nhiên thông tin còn thiếu; TUYỆT ĐỐI KHÔNG tự động tuôn ra danh sách các câu hỏi mẫu.";
+   - Hỏi lại tự nhiên thông tin còn thiếu; TUYỆT ĐỐI KHÔNG tự động tuôn ra danh sách các câu hỏi mẫu.
+6. HỌC PHÍ & THANH TOÁN:
+   - Khách hỏi về chính sách/đơn giá: Trả lời đơn giá 450.000 VNĐ / tín chỉ kèm ví dụ ngắn gọn, dẫn link [Thanh toán học phí](/tuition).
+   - Khách hỏi số tiền học phí hoặc tình trạng nợ của cá nhân: Giải thích khách chưa đăng nhập, hướng dẫn bấm nút 'Đăng nhập' để tra cứu số liệu cá nhân, tuyệt đối không lộ dữ liệu.";
         }
 
         /// <summary>
@@ -3623,8 +3710,10 @@ namespace CourseRegistration.UseCases.StudentPortal.AiAdvisor
 {prereqSummary}
 
 [QUY TẮC PHẢN HỒI ĐÚNG TRỌNG TÂM]
-1. TÌNH TRẠNG ĐÓNG HỌC PHÍ:
-   - Nếu hỏi bạn đã đóng học phí chưa, có nợ tiền không: Hãy trả lời TRỰC TIẾP và DỨT KHOÁT ngay đầu câu: '✅ ĐÃ ĐÓNG.' hoặc '❌ CHƯA ĐÓNG.', kèm chi tiết số tiền, ngày giờ nộp và phương thức!
+1. TÌNH TRẠNG & ĐÓNG HỌC PHÍ:
+   - Nếu hỏi về số tiền hoặc tình trạng học phí cá nhân: Hãy trả lời ngắn gọn 1-3 dòng (số TC đã đăng ký, tổng tiền, trạng thái Đã đóng/Chưa đóng), kèm link [Xem chi tiết & thanh toán](/tuition). TUYỆT ĐỐI KHÔNG tự động tuôn ra bảng giá mẫu hay số tài khoản MB Bank nếu không được hỏi thẳng STK.
+   - Nếu hỏi cách đóng học phí: Nêu 3 bước ngắn gọn vào mục [Thanh toán học phí](/tuition), quét mã VietQR và chờ gạch nợ tự động trong vài giây.
+   - Nếu hỏi số tài khoản: Cung cấp STK MB Bank 101705201967 (TRUONG DAI HOC KINH TE HUE).
 2. LỊCH HỌC NGÀY MAI / HÔM NAY / THỨ TRONG TUẦN:
    - CHỈ tra cứu trong các lớp bạn ĐÃ ĐĂNG KÝ có lịch vào đúng ngày đó.
    - Nêu trực tiếp: Môn gì, lớp nào, ca mấy, phòng nào, giảng viên nào.

@@ -1120,27 +1120,187 @@ html, body {
     color: #2563eb;
 }
 
-/* Responsive trên điện thoại */
+/* ==========================================================================
+   TỐI ƯU HÓA ĐẶC BIỆT DÀNH RIÊNG CHO MÀN HÌNH ĐIỆN THOẠI (DEVTOOLS 390PX)
+   Cam kết: 100% không ảnh hưởng giao diện máy tính & không thay đổi chức năng
+   ========================================================================== */
+
 @media (max-width: 767.98px) {
+    /* 1. Nút Robot Cố Vấn AI Nổi */
     .ai-robot-floating-container {
         bottom: 74px !important;
-        right: 14px !important;
+        right: 12px !important;
     }
 
     .ai-robot-circle-btn {
-        width: 52px !important;
-        height: 52px !important;
+        width: 48px !important;
+        height: 48px !important;
     }
 
     .ai-robot-circle-btn i {
-        font-size: 1.5rem !important;
+        font-size: 1.35rem !important;
     }
 
     .ai-robot-chat-window {
-        width: calc(100vw - 28px) !important;
-        height: min(520px, 72vh) !important;
+        width: calc(100vw - 20px) !important;
+        height: min(500px, 72vh) !important;
         right: 0 !important;
+        border-radius: 16px !important;
+    }
+
+    /* 2. Tiêu đề gọn gàng, tránh ngắt dòng lắt nhắt */
+    h1, .h1 { font-size: 1.35rem !important; line-height: 1.35 !important; }
+    h2, .h2 { font-size: 1.2rem !important; line-height: 1.35 !important; }
+    h3, .h3 { font-size: 1.08rem !important; }
+    h4, .h4 { font-size: 1rem !important; }
+    h5, .h5 { font-size: 0.95rem !important; }
+    h6, .h6 { font-size: 0.88rem !important; }
+
+    /* 3. Đệm thẻ (Card) gọn hơn để mở rộng diện tích nội dung */
+    .card:not(.custom-navbar .card) {
+        border-radius: 14px !important;
+    }
+    .card-body.p-4, .card.p-4 {
+        padding: 0.95rem !important;
+    }
+    .p-3.p-md-4 {
+        padding: 0.9rem !important;
+    }
+
+    /* 4. Thẻ Hero Banner Trang Chủ */
+    .hero-portal {
+        border-radius: 18px !important;
+        padding: 1.15rem 1rem !important;
+        box-shadow: 0 10px 24px -6px rgba(37, 99, 235, 0.2) !important;
+    }
+    .hero-action-btn {
+        flex: 1 1 auto !important;
+        justify-content: center !important;
+        font-size: 0.86rem !important;
+        padding: 0.5rem 0.8rem !important;
+    }
+    .student-badge-card {
+        padding: 0.9rem !important;
+        border-radius: 14px !important;
+    }
+
+    /* 5. Thẻ Môn Học / Lớp Học Phần */
+    .section-card {
+        border-radius: 14px !important;
+        margin-bottom: 0.5rem;
+    }
+    .section-card .card-title {
+        font-size: 1rem !important;
+        line-height: 1.35 !important;
+    }
+    .section-card .card-body {
+        padding: 0.85rem !important;
+    }
+
+    /* 6. Thời Khóa Biểu Agenda (Lịch theo ngày) */
+    .agenda-day-pill {
+        padding: 0.4rem 0.75rem !important;
+        font-size: 0.82rem !important;
+        border-radius: 10px !important;
+    }
+    .agenda-card {
+        padding: 0.85rem !important;
+        border-radius: 14px !important;
+    }
+    .period-pill {
+        font-size: 0.75rem !important;
+        padding: 0.2rem 0.45rem !important;
+    }
+
+    /* 7. Thanh Điều Hướng Đáy Màn Hình (Mobile Bottom Navigation) */
+    .mobile-bottom-nav {
+        height: 60px !important;
+        background: rgba(15, 23, 42, 0.97) !important;
+        padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    .mobile-nav-item {
+        font-size: 0.68rem !important;
+        padding: 4px 4px !important;
+    }
+    .mobile-nav-item i {
+        font-size: 1.2rem !important;
+        margin-bottom: 1px !important;
+    }
+    .page {
+        padding-bottom: 76px !important;
+    }
+
+    /* 8. Nút bấm & Badge */
+    .badge {
+        font-weight: 600;
+        letter-spacing: -0.01em;
+    }
+    .btn {
+        font-size: 0.88rem;
+    }
+
+    /* 9. Bảng Biểu Dữ Liệu */
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+        border-radius: 12px;
+    }
+    .table td, .table th {
+        padding: 0.55rem 0.65rem !important;
+        font-size: 0.82rem !important;
     }
 }
+
+/* Tinh chỉnh siêu gọn cho màn hình hẹp (<= 576px, bao gồm 390px iPhone DevTools) */
+@media (max-width: 576px) {
+    .container {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+
+    main.flex-grow-1 {
+        padding-top: 0.85rem !important;
+        padding-bottom: 1.25rem !important;
+    }
+
+    .custom-navbar {
+        padding-top: 0.35rem !important;
+        padding-bottom: 0.35rem !important;
+    }
+    .brand-header-title {
+        font-size: 0.95rem !important;
+    }
+    .brand-logo-icon {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 1rem !important;
+    }
+
+    /* Popup lưu mật khẩu Chrome tự co giãn vừa vặn 390px */
+    .chrome-save-password-bubble {
+        width: calc(100vw - 20px) !important;
+        right: 10px !important;
+        top: 10px !important;
+        padding: 14px 12px !important;
+        border-radius: 14px !important;
+    }
+    .chrome-save-password-bubble .btn {
+        font-size: 0.78rem !important;
+        padding: 5px 8px !important;
+    }
+
+    /* Modal Đăng Nhập & Cảnh Báo An Toàn */
+    .login-modal-dialog {
+        max-width: calc(100vw - 16px) !important;
+        margin: 8px auto !important;
+    }
+    .login-modal-header {
+        padding: 1.25rem 1rem !important;
+    }
+    .chrome-breach-card {
+        padding: 1.25rem 1rem !important;
+        border-radius: 18px !important;
+    }
+}
+
 
 

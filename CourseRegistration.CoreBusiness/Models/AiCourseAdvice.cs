@@ -29,7 +29,23 @@ namespace CourseRegistration.CoreBusiness.Models
         // Gợi ý đăng nhập nếu là khách hỏi thông tin cá nhân
         public bool SuggestLogin { get; set; } = false;
 
+        // Danh sách hành động/liên kết điều hướng đính kèm câu trả lời của AI
+        public List<AiActionLink> ActionLinks { get; set; } = new List<AiActionLink>();
+
         public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    }
+
+    public enum AiActionLinkKind
+    {
+        Navigate,
+        Login
+    }
+
+    public class AiActionLink
+    {
+        public string Label { get; set; } = string.Empty;
+        public string Url { get; set; } = string.Empty;
+        public AiActionLinkKind Kind { get; set; } = AiActionLinkKind.Navigate;
     }
 
     // Chi tiết lớp học phần được AI gợi ý
@@ -58,5 +74,12 @@ namespace CourseRegistration.CoreBusiness.Models
         public bool IsUser { get; set; }
         public string Content { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; } = DateTime.Now;
+        public List<AiRecommendedSection>? RecommendedSections { get; set; }
+        public List<AiActionLink>? ActionLinks { get; set; }
+        public bool ShowLoginButton { get; set; } = false;
+        public bool IsAiGenerated { get; set; }
+        public string? ModelUsed { get; set; }
+        public string? WarningMessage { get; set; }
+        public bool ShowAllSections { get; set; }
     }
 }

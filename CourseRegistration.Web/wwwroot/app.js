@@ -77,78 +77,13 @@ window.triggerBrowserSavePassword = function (username, password) {
 
     // 2. Tự động lưu vào LocalStorage an toàn
     try {
+        // Lưu an toàn thông tin đăng nhập vào LocalStorage
         window.authStorage.saveCredentials(username, password, true);
     } catch (e) { }
 
-    // 3. Kích hoạt thông báo Lưu mật khẩu của trình duyệt thông qua hidden form submission
-    // LƯU Ý: Tránh gọi trực tiếp navigator.credentials.store() vì Google Chrome sẽ kích hoạt
-    // hộp thoại "Thay đổi mật khẩu của bạn" lần thứ hai (gây lặp lại cảnh báo).
-    // Dùng form submission chuẩn giúp Google Chrome chỉ nhận diện form và hiển thị thông báo "Lưu mật khẩu?".
-    try {
-        var currentUrl = window.location.href;
-        var iframeName = 'chrome_auth_sink_frame';
-        var iframe = document.getElementById(iframeName);
-        if (!iframe) {
-            iframe = document.createElement('iframe');
-            iframe.name = iframeName;
-            iframe.id = iframeName;
-            iframe.style.position = 'fixed';
-            iframe.style.top = '-9999px';
-            iframe.style.left = '-9999px';
-            iframe.style.width = '1px';
-            iframe.style.height = '1px';
-            iframe.style.opacity = '0';
-            iframe.style.pointerEvents = 'none';
-            document.body.appendChild(iframe);
-        }
-
-        var formId = 'chrome_password_saver_form';
-        var form = document.getElementById(formId);
-        if (!form) {
-            form = document.createElement('form');
-            form.id = formId;
-            form.method = 'POST';
-            form.action = currentUrl;
-            form.target = iframeName;
-            form.style.position = 'fixed';
-            form.style.top = '-9999px';
-            form.style.left = '-9999px';
-            form.style.width = '1px';
-            form.style.height = '1px';
-            form.style.opacity = '0';
-            form.style.pointerEvents = 'none';
-
-            var userInput = document.createElement('input');
-            userInput.type = 'text';
-            userInput.name = 'username';
-            userInput.autocomplete = 'username';
-            form.appendChild(userInput);
-
-            var passInput = document.createElement('input');
-            passInput.type = 'password';
-            passInput.name = 'password';
-            passInput.autocomplete = 'current-password';
-            form.appendChild(passInput);
-
-            var submitBtn = document.createElement('button');
-            submitBtn.type = 'submit';
-            form.appendChild(submitBtn);
-
-            document.body.appendChild(form);
-        } else {
-            form.action = currentUrl;
-        }
-
-        form.elements['username'].value = username;
-        form.elements['password'].value = password;
-        if (typeof form.requestSubmit === 'function') {
-            form.requestSubmit();
-        } else {
-            form.submit();
-        }
-    } catch (err) {
-        console.debug('Browser save trigger notice:', err);
-    }
+    // Đã hoàn tất lưu tài khoản an toàn vào authStorage
+    // Tắt lệnh submit form nền vào iframe để ngăn Google Chrome kích hoạt cảnh báo native trễ khi người dùng chuyển sang trang khác (như trang Thanh toán học phí)
+    return true;
 };
 
 window.notifyWeakPasswordAndSave = function (username, password, isWeak) {

@@ -787,6 +787,37 @@ html, body {
         border-radius: 20px !important;
         height: 36px !important;
     }
+
+    /* Bảng thao tác trực tiếp tài khoản Admin trên mobile (390px) */
+    .admin-mobile-direct-container {
+        position: fixed;
+        top: 52px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1045;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .admin-mobile-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+
+    .admin-mobile-action-card {
+        position: relative;
+        z-index: 2;
+        background: #0f172a;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        border-bottom-left-radius: 16px;
+        border-bottom-right-radius: 16px;
+        padding: 12px 14px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    }
 }
 
 /* Tinh chỉnh đặc biệt cho điện thoại cỡ nhỏ (< 400px như iPhone SE / 5) */

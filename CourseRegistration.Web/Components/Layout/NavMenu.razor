@@ -37,8 +37,37 @@
             </a>
         </div>
 
-        <!-- Khối bên phải trên di động: Nút Giỏ Đăng Ký vừa vặn trên cùng hàng (chỉ hiển thị cho Sinh viên) -->
-        @if (currentRole != "Admin")
+        <!-- Khối bên phải trên di động: Hiển thị các nút tương ứng trạng thái trên mobile -->
+        @if (currentRole == "Admin")
+        {
+            <div class="d-flex align-items-center d-lg-none ms-auto">
+                <button type="button" 
+                        class="btn btn-dark user-profile-btn d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill border border-danger border-opacity-50 shadow-xs"
+                        style="height: 34px;"
+                        @onclick="ToggleAdminMobileActions">
+                    <span class="user-avatar bg-danger text-white" style="width: 22px; height: 22px; font-size: 0.72rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-shield-lock-fill"></i>
+                    </span>
+                    <span class="fw-semibold text-white" style="font-size: 0.8rem;">Admin</span>
+                    <i class="bi @(isAdminMobileActionsOpen ? "bi-chevron-up" : "bi-chevron-down") text-muted" style="font-size: 0.7rem;"></i>
+                </button>
+            </div>
+        }
+        else if (!isAuthenticated)
+        {
+            <!-- Khi mới F5 / chưa đăng nhập: Giỏ hàng trước Đăng nhập trên header mobile -->
+            <div class="d-flex align-items-center gap-1.5 d-lg-none ms-auto">
+                <CartBadgeComponent />
+                <button type="button" 
+                        class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-pill shadow-xs"
+                        style="height: 34px; font-size: 0.8rem;"
+                        @onclick="OpenLoginModal">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    <span class="fw-semibold">Đăng nhập</span>
+                </button>
+            </div>
+        }
+        else
         {
             <div class="d-flex align-items-center d-lg-none ms-auto">
                 <CartBadgeComponent />
@@ -187,6 +216,14 @@
             </ul>
 
             <div class="d-flex align-items-center flex-nowrap gap-2 pt-2 pt-lg-0 border-top border-secondary border-opacity-25 border-top-lg-0 ms-auto">
+                <!-- Desktop Cart Badge (Chỉ hiển thị cho Sinh viên) - Đứng trước Đăng nhập / Tài khoản -->
+                @if (currentRole != "Admin")
+                {
+                    <div class="d-none d-lg-block">
+                        <CartBadgeComponent />
+                    </div>
+                }
+
                 <!-- User Switcher & Auth Controls -->
                 @if (!isAuthenticated)
                 {
@@ -249,7 +286,19 @@
 
                             @if (currentRole == "Admin")
                             {
-                                <!-- Menu tài khoản Admin chỉ giữ lại: Thông tin tài khoản và vai trò hiện tại, Đổi mật khẩu, Đăng xuất -->
+                                <!-- Mobile: Nút trực tiếp bên ngoài menu xổ xuống trong hamburger menu -->
+                                <li class="px-2 py-1 d-lg-none">
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-warning btn-sm flex-fill d-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-bold text-dark rounded-3" @onclick="OpenChangePasswordModal">
+                                            <i class="bi bi-key-fill"></i>
+                                            <span>Đổi mật khẩu</span>
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm flex-fill d-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-bold text-white rounded-3" @onclick="HandleLogout">
+                                            <i class="bi bi-box-arrow-right"></i>
+                                            <span>Đăng xuất</span>
+                                        </button>
+                                    </div>
+                                </li>
                             }
                             else
                             {
@@ -295,40 +344,77 @@
                         </ul>
                     </div>
                 }
-
-                <!-- Desktop Cart Badge (Chỉ hiển thị cho Sinh viên) -->
-                @if (currentRole != "Admin")
-                {
-                    <div class="d-none d-lg-block">
-                        <CartBadgeComponent />
-                    </div>
-                }
             </div>
         </div>
     </div>
 </nav>
+
+<!-- Bảng thao tác trực tiếp tài khoản Admin trên Mobile (Hiển thị trực tiếp Đổi mật khẩu & Đăng xuất bên ngoài menu xổ xuống) -->
+@if (isAdminMobileActionsOpen && currentRole == "Admin")
+{
+    <div class="admin-mobile-direct-container d-lg-none">
+        <div class="admin-mobile-backdrop" @onclick="CloseAdminMobileActions"></div>
+        <div class="admin-mobile-action-card shadow-lg animate-fade-in">
+            <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom border-secondary border-opacity-25">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="user-avatar bg-danger text-white shadow-xs" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-shield-lock-fill fs-6"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-white small lh-1">@(currentUser?.FullName ?? "Cán bộ Đào tạo")</div>
+                        <span class="text-white-50" style="font-size: 0.72rem;">Cán bộ Quản trị &bull; Cổng Đào tạo</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white small p-1" @onclick="CloseAdminMobileActions" aria-label="Đóng"></button>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="button" 
+                        class="btn btn-warning flex-fill d-flex align-items-center justify-content-center gap-1.5 py-2 rounded-3 fw-bold text-dark shadow-xs"
+                        style="font-size: 0.85rem;"
+                        @onclick="() => { CloseAdminMobileActions(); OpenChangePasswordModal(); }">
+                    <i class="bi bi-key-fill fs-6"></i>
+                    <span>Đổi mật khẩu</span>
+                </button>
+                <button type="button" 
+                        class="btn btn-danger flex-fill d-flex align-items-center justify-content-center gap-1.5 py-2 rounded-3 fw-bold text-white shadow-xs"
+                        style="font-size: 0.85rem;"
+                        @onclick="async () => { CloseAdminMobileActions(); await HandleLogout(); }">
+                    <i class="bi bi-box-arrow-right fs-6"></i>
+                    <span>Đăng xuất</span>
+                </button>
+            </div>
+        </div>
+    </div>
+}
 
 <!-- Mobile Native-Style Bottom Navigation Bar (Dành riêng cho Điện thoại < 768px) -->
 <div class="mobile-bottom-nav d-lg-none">
     <div class="mobile-nav-container">
         @if (currentRole == "Admin")
         {
-            <NavLink class="@(IsAdminHomeActive ? "mobile-nav-item active" : "mobile-nav-item")" href="/admin" Match="NavLinkMatch.All">
+            <NavLink class="@(IsAdminHomeActive ? "mobile-nav-item active" : "mobile-nav-item")" href="/admin" Match="NavLinkMatch.All" @onclick="CloseAdminMobileActions">
                 <i class="bi bi-speedometer2"></i>
                 <span>Tổng quan</span>
             </NavLink>
-            <NavLink class="@(IsAdminTrainingActive ? "mobile-nav-item active" : "mobile-nav-item")" href="/admin/courses">
+            <NavLink class="@(IsAdminTrainingActive ? "mobile-nav-item active" : "mobile-nav-item")" href="/admin/courses" @onclick="CloseAdminMobileActions">
                 <i class="bi bi-mortarboard"></i>
                 <span>Đào tạo</span>
             </NavLink>
-            <NavLink class="mobile-nav-item" href="/schedule">
+            <NavLink class="mobile-nav-item" href="/schedule" @onclick="CloseAdminMobileActions">
                 <i class="bi bi-calendar3"></i>
                 <span>Lịch học</span>
             </NavLink>
-            <NavLink class="mobile-nav-item" href="/admin/tuition">
+            <NavLink class="mobile-nav-item" href="/admin/tuition" @onclick="CloseAdminMobileActions">
                 <i class="bi bi-wallet2"></i>
                 <span>Học phí</span>
             </NavLink>
+            <button type="button" 
+                    class="mobile-nav-item bg-transparent border-0 @(isAdminMobileActionsOpen ? "active text-danger" : "")" 
+                    @onclick="ToggleAdminMobileActions">
+                <i class="bi bi-shield-lock-fill"></i>
+                <span>Tài khoản</span>
+            </button>
         }
         else
         {
@@ -340,6 +426,7 @@
                 <i class="bi bi-search"></i>
                 <span>Tra cứu</span>
             </NavLink>
+            <!-- Vị trí 3: Giỏ môn (đứng trước Đăng nhập) -->
             <NavLink class="mobile-nav-item position-relative" href="/cart">
                 <div class="cart-icon-wrapper">
                     <i class="bi bi-cart3"></i>
@@ -354,6 +441,7 @@
                 <i class="bi bi-calendar3"></i>
                 <span>Lịch học</span>
             </NavLink>
+            <!-- Vị trí 5: Đăng nhập / Học phí (đứng sau Giỏ môn) -->
             @if (!isAuthenticated)
             {
                 <button type="button" class="mobile-nav-item bg-transparent border-0" @onclick="OpenLoginModal">
@@ -483,12 +571,26 @@
         NavigationManager.NavigateTo("/");
     }
 
+    private bool isAdminMobileActionsOpen = false;
+
+    private void ToggleAdminMobileActions()
+    {
+        CloseAllDropdowns();
+        isAdminMobileActionsOpen = !isAdminMobileActionsOpen;
+    }
+
+    private void CloseAdminMobileActions()
+    {
+        isAdminMobileActionsOpen = false;
+    }
+
     private void CloseAllDropdowns()
     {
         isLookupDropdownOpen = false;
         isAdminDropdownOpen = false;
         isUserDropdownOpen = false;
         isMobileNavExpanded = false;
+        isAdminMobileActionsOpen = false;
     }
 
     private void OpenLoginModal()

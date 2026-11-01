@@ -65,6 +65,18 @@ namespace CourseRegistration.Web.Services
             NotifyStateChanged();
         }
 
+        /// <summary>
+        /// Lấy tối đa N tin nhắn gần nhất để làm ngữ cảnh gửi cho LLM (mặc định 6 tin).
+        /// </summary>
+        public List<AiConversationMessage> GetRecentHistory(int maxMessages = 6)
+        {
+            if (Messages.Count <= maxMessages)
+            {
+                return new List<AiConversationMessage>(Messages);
+            }
+            return Messages.Skip(Messages.Count - maxMessages).ToList();
+        }
+
         public void Clear()
         {
             Messages.Clear();

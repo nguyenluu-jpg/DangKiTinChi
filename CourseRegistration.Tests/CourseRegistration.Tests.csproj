@@ -20,6 +20,7 @@
     <ProjectReference Include="..\CourseRegistration.CoreBusiness\CourseRegistration.CoreBusiness.csproj" />
     <ProjectReference Include="..\CourseRegistration.UseCases\CourseRegistration.UseCases.csproj" />
     <ProjectReference Include="..\Plugins\CourseRegistration.StateStore.DI\CourseRegistration.StateStore.DI.csproj" />
+    <ProjectReference Include="..\CourseRegistration.Web\CourseRegistration.Web.csproj" />
   </ItemGroup>
 
 </Project>

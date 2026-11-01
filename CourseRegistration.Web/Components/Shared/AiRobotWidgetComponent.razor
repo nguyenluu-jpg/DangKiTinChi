@@ -176,7 +176,7 @@
                 </div>
 
                 <!-- Khối Gợi Ý Câu Hỏi Nhanh (Chips) -->
-                @if (chatMessages.Count <= 2 && !isThinking)
+                @if (ChatSessionState.Messages.Count <= 2 && !isThinking)
                 {
                     <div class="px-3 py-2 bg-light border-top border-bottom">
                         <div class="small fw-semibold text-muted mb-1" style="font-size: 0.72rem;">
@@ -317,14 +317,19 @@
     private string currentRole = string.Empty;
     private Student? currentStudent;
     private List<Student> allStudents = new List<Student>();
-    private List<ChatMessageModel> chatMessages = new List<ChatMessageModel>();
-
     private bool isOnAiAdvisorPage => NavigationManager.Uri.Contains("/ai-advisor", StringComparison.OrdinalIgnoreCase);
 
     protected override async Task OnInitializedAsync()
     {
         CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
         NavigationManager.LocationChanged += HandleLocationChanged;
+        ChatSessionState.OnChange += OnSessionStateChanged;
+
+        if (ChatSessionState.IsWidgetChatOpen)
+        {
+            isChatOpen = true;
+            ChatSessionState.IsWidgetChatOpen = false;
+        }
 
         try
         {
@@ -334,6 +339,11 @@
 
         await RefreshUserState();
         InitDefaultMessage();
+    }
+
+    private void OnSessionStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
@@ -366,11 +376,11 @@
 
     private void InitDefaultMessage()
     {
-        chatMessages.Clear();
+        if (ChatSessionState.Messages.Any()) return;
 
         if (currentRole == "Admin")
         {
-            chatMessages.Add(new ChatMessageModel
+            ChatSessionState.AddMessage(new AiConversationMessage
             {
                 IsUser = false,
                 Content = "Xin chào **Cán bộ Phòng Đào Tạo**! Tôi là **Trợ lý AI Quản Trị Đào Tạo**. Bạn có thể yêu cầu tôi rà soát sĩ số lớp, cảnh báo quá tải hoặc thống kê học vụ bất kỳ lúc nào.",
@@ -379,7 +389,7 @@
         }
         else if (isAuthenticated && currentStudent != null)
         {
-            chatMessages.Add(new ChatMessageModel
+            ChatSessionState.AddMessage(new AiConversationMessage
             {
                 IsUser = false,
                 Content = $"Xin chào **{currentStudent.FullName}** (MSSV: {currentStudent.StudentCode})! Tôi là **Cố vấn học thuật AI**. Tôi có thể gợi ý môn nên học kỳ 2026_HK1, rà soát điều kiện tiên quyết hoặc hỗ trợ lịch học cho bạn.",
@@ -388,7 +398,7 @@
         }
         else
         {
-            chatMessages.Add(new ChatMessageModel
+            ChatSessionState.AddMessage(new AiConversationMessage
             {
                 IsUser = false,
                 Content = "Xin chào bạn! Tôi là **Cố vấn học thuật AI** của Trường Đại học Kinh tế Huế. Bạn có thể hỏi tôi về **môn học, giảng viên, phòng học, lịch học, quy chế tín chỉ, mức học phí VietQR**, hoặc **Đăng nhập tài khoản** để tôi phân tích thời khóa biểu tối ưu riêng cho bạn nhé!",
@@ -438,7 +448,7 @@
         inputQuestion = string.Empty;
 
         // 1. Phản hồi tức thì ngay khi bấm Gửi (Instant feedback)
-        chatMessages.Add(new ChatMessageModel
+        ChatSessionState.AddMessage(new AiConversationMessage
         {
             IsUser = true,
             Content = question,
@@ -461,7 +471,7 @@
             if (currentRole == "Admin")
             {
                 var result = await AdminAiAssistantUseCase.ExecuteAsync(question, "2026_HK1");
-                chatMessages.Add(new ChatMessageModel
+                ChatSessionState.AddMessage(new AiConversationMessage
                 {
                     IsUser = false,
                     Content = result.AnswerSummary,
@@ -476,24 +486,20 @@
                 {
                     studentId = await CurrentUserStateStore.GetCurrentStudentIdAsync();
                 }
-                // Lịch sử chỉ gồm các lượt TRƯỚC câu hỏi hiện tại (câu hỏi vừa thêm ở trên được bỏ đi để LLM không nhận câu hỏi hai lần)
-                var history = chatMessages
-                    .Take(chatMessages.Count - 1)
-                    .Select(m => new AiConversationMessage
-                    {
-                        IsUser = m.IsUser,
-                        Content = m.Content,
-                        Timestamp = m.Timestamp
-                    })
+                // Lịch sử chỉ gồm các lượt TRƯỚC câu hỏi hiện tại (tối đa 6 tin gần nhất)
+                var history = ChatSessionState.Messages
+                    .Take(ChatSessionState.Messages.Count - 1)
+                    .TakeLast(6)
                     .ToList();
 
                 var advice = await GetAiAdviceUseCase.ExecuteAsync(studentId, "2026_HK1", question, history);
 
-                chatMessages.Add(new ChatMessageModel
+                ChatSessionState.AddMessage(new AiConversationMessage
                 {
                     IsUser = false,
                     Content = advice.AiMessage,
                     RecommendedSections = advice.RecommendedSections,
+                    ActionLinks = advice.ActionLinks,
                     ShowLoginButton = advice.SuggestLogin,
                     IsAiGenerated = advice.IsAiGenerated,
                     ModelUsed = advice.ModelUsed,
@@ -505,7 +511,7 @@
         catch (Exception ex)
         {
             Console.WriteLine($"[AiRobotWidget Error] {ex.GetType().Name}: {ex.Message}");
-            chatMessages.Add(new ChatMessageModel
+            ChatSessionState.AddMessage(new AiConversationMessage
             {
                 IsUser = false,
                 Content = "Dịch vụ AI hiện chưa khả dụng hoặc đang bận xử lý. Vui lòng thử lại sau giây lát nhé!",
@@ -570,6 +576,10 @@
         var formatted = System.Text.RegularExpressions.Regex.Replace(line, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
         formatted = System.Text.RegularExpressions.Regex.Replace(formatted, @"\*(.+?)\*", "<em>$1</em>");
         formatted = System.Text.RegularExpressions.Regex.Replace(formatted, @"`(.+?)`", "<code class=\"bg-white border px-1 rounded text-primary\" style=\"font-size: 0.85rem;\">$1</code>");
+        formatted = System.Text.RegularExpressions.Regex.Replace(
+            formatted,
+            @"\[([^\]]+)\]\((/[^/\)][^\)]*)\)",
+            "<a href=\"$2\" class=\"text-primary text-decoration-underline fw-bold\">$1</a>");
         return formatted;
     }
 
@@ -577,18 +587,6 @@
     {
         CurrentUserStateStore.RemoveStateChangeListeners(HandleUserStateChange);
         NavigationManager.LocationChanged -= HandleLocationChanged;
-    }
-
-    private class ChatMessageModel
-    {
-        public bool IsUser { get; set; }
-        public string Content { get; set; } = string.Empty;
-        public DateTime Timestamp { get; set; } = DateTime.Now;
-        public List<AiRecommendedSection>? RecommendedSections { get; set; }
-        public bool ShowLoginButton { get; set; } = false;
-        public bool IsAiGenerated { get; set; }
-        public string? ModelUsed { get; set; }
-        public string? WarningMessage { get; set; }
-        public bool ShowAllSections { get; set; }
+        ChatSessionState.OnChange -= OnSessionStateChanged;
     }
 }

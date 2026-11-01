@@ -4,6 +4,7 @@
 @using CourseRegistration.UseCases.StudentPortal.AiAdvisor
 @using CourseRegistration.UseCases.StudentPortal.RegistrationCartScreen.Interfaces
 @using CourseRegistration.UseCases.AdminPortal.AiAdminAssistant.Interfaces
+@using CourseRegistration.Web.Services
 @inject IGetAiAdviceUseCase GetAiAdviceUseCase
 @inject IAdminAiAssistantUseCase AdminAiAssistantUseCase
 @inject IAddSectionToCartUseCase AddSectionToCartUseCase
@@ -12,6 +13,8 @@
 @inject IStudentRepository StudentRepository
 @inject ILoginModalService LoginModalService
 @inject NavigationManager NavigationManager
+@inject AiChatSessionState ChatSessionState
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <PageTitle>Trợ Lý & Cố Vấn Học Thuật AI - Đăng Ký Tín Chỉ</PageTitle>
@@ -21,12 +24,13 @@
     <div class="card border-0 rounded-4 shadow-sm text-white mb-4 overflow-hidden position-relative" 
          style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);">
         <div class="card-body p-4 p-lg-5 position-relative z-1">
-                <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div style="max-width: 800px;">
                     <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white bg-opacity-20 text-white small fw-bold mb-3 backdrop-blur">
                         <i class="bi bi-stars text-warning"></i> Tính Năng Nâng Cao &bull; Trí Tuệ Nhân Tạo AI
                     </div>
                     <h2 class="display-6 fw-bold mb-2">Trợ Lý &amp; Cố Vấn Học Thuật AI</h2>
-                    <p class="lead mb-0 text-white-50 fs-6" style="max-width: 900px;">
+                    <p class="lead mb-0 text-white-50 fs-6">
                         @if (currentRole == "Admin")
                         {
                             <span>Hệ thống AI đa nhiệm: Vừa là <strong>Trợ lý AI Phòng Đào Tạo</strong> (tra cứu sĩ số, cảnh báo quá tải, rà soát học vụ), vừa là <strong>Cố vấn học tập</strong> cho sinh viên.</span>
@@ -37,6 +41,14 @@
                         }
                     </p>
                 </div>
+                <div>
+                    <button type="button" class="btn btn-light rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-2 text-primary"
+                            @onclick="MinimizeToWidget" title="Thu nhỏ về chat box nổi ở góc màn hình">
+                        <i class="bi bi-box-arrow-in-down-right"></i>
+                        <span>Thu nhỏ về chat box</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -134,99 +146,125 @@
             }
         </div>
 
-        @if (guestResult != null)
+        <!-- KẾT QUẢ TRẢ LỜI CỦA AI CHO KHÁCH (DẠNG THREAD HỘI THOẠI LIÊN TỤC) -->
+        @if (ChatSessionState.Messages.Any())
         {
-            <!-- KẾT QUẢ TRẢ LỜI CỦA AI CHO KHÁCH -->
-            <div class="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4 border-start border-info border-4 animate__animated animate__fadeIn">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill shadow-sm">
-                            <i class="bi bi-robot me-1 text-warning"></i>
-                            Cố Vấn Học Thuật AI
-                        </span>
-                        <span class="badge bg-info-subtle text-info-emphasis border px-2 py-1">
-                            @guestResult.Category
-                        </span>
-                    </div>
-                    <span class="text-muted small">Cập nhật: @guestResult.GeneratedAt.ToString("dd/MM/yyyy HH:mm:ss")</span>
-                </div>
-
-                <div class="ai-response-bubble p-4 rounded-4 shadow-sm bg-white border border-primary-subtle mb-3">
-                    <div class="ai-response-content text-dark" style="font-size: 0.96rem; line-height: 1.75;">
-                        @((MarkupString)FormatMessage(guestResult.AnswerSummary))
-                    </div>
-                </div>
-
-                @if (guestResult.ActionableSuggestions.Any())
+            <div class="d-flex flex-column gap-3 mb-4">
+                @foreach (var msg in ChatSessionState.Messages)
                 {
-                    <div class="card border-0 shadow-sm bg-light p-3 rounded-4 mb-3 border-start border-primary border-4">
-                        <div class="fw-bold mb-2 small d-flex align-items-center gap-2 text-primary">
-                            <i class="bi bi-lightbulb-fill text-warning fs-5"></i>
-                            <span>Gợi ý hướng dẫn từ Cố vấn AI:</span>
+                    if (msg.IsUser)
+                    {
+                        <!-- User message -->
+                        <div class="d-flex justify-content-end">
+                            <div class="card border-0 shadow-sm rounded-4 text-white p-3" 
+                                 style="max-width: 80%; background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);">
+                                <div class="d-flex align-items-center justify-content-between gap-3 mb-1">
+                                    <span class="small fw-bold opacity-75">
+                                        <i class="bi bi-person-fill me-1"></i>Bạn (Khách)
+                                    </span>
+                                    <span class="small opacity-50">@msg.Timestamp.ToString("HH:mm")</span>
+                                </div>
+                                <div class="fs-6" style="white-space: pre-wrap; word-break: break-word;">@msg.Content</div>
+                            </div>
                         </div>
-                        <ul class="mb-0 ps-3 small d-flex flex-column gap-1 text-dark">
-                            @foreach (var sug in guestResult.ActionableSuggestions)
+                    }
+                    else
+                    {
+                        <!-- AI message -->
+                        <div class="card border-0 shadow-sm rounded-4 bg-white p-4 mb-2 border-start border-info border-4 animate__animated animate__fadeIn">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill shadow-sm">
+                                        <i class="bi bi-robot me-1 text-warning"></i>
+                                        Cố Vấn Học Thuật AI
+                                    </span>
+                                    @if (!string.IsNullOrEmpty(msg.ModelUsed))
+                                    {
+                                        <span class="badge bg-info-subtle text-info-emphasis border px-2 py-1">
+                                            @msg.ModelUsed
+                                        </span>
+                                    }
+                                </div>
+                                <span class="text-muted small">@msg.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")</span>
+                            </div>
+
+                            <div class="ai-response-bubble p-4 rounded-4 shadow-sm bg-white border border-primary-subtle mb-3">
+                                <div class="ai-response-content text-dark" style="font-size: 0.96rem; line-height: 1.75;">
+                                    @((MarkupString)FormatMessage(msg.Content))
+                                </div>
+                            </div>
+
+                            @if (msg.ActionLinks.Any())
                             {
-                                <li>@sug</li>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                    <span class="small fw-bold text-muted me-1">Liên kết gợi ý:</span>
+                                    @foreach (var link in msg.ActionLinks)
+                                    {
+                                        if (link.Kind == AiActionLinkKind.Login)
+                                        {
+                                            <button type="button" class="btn btn-primary btn-sm rounded-pill fw-bold shadow-sm" @onclick="() => LoginModalService.Open()">
+                                                <i class="bi bi-box-arrow-in-right me-1"></i>@link.Label
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <a href="@link.Url" class="btn btn-outline-primary btn-sm rounded-pill fw-bold shadow-sm">
+                                                <i class="bi bi-box-arrow-up-right me-1"></i>@link.Label
+                                            </a>
+                                        }
+                                    }
+                                </div>
                             }
-                        </ul>
-                    </div>
-                }
 
-                @if (guestResult.Sections.Any())
-                {
-                    <h6 class="fw-bold text-dark mt-3 mb-2">
-                        <i class="bi bi-table text-primary me-1"></i> Danh Sách Lớp Học Phần Liên Quan:
-                    </h6>
-                    <div class="table-responsive rounded-3 border mb-3">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light small">
-                                <tr>
-                                    <th>Mã Lớp</th>
-                                    <th>Tên Học Phần</th>
-                                    <th>Giảng Viên</th>
-                                    <th>Sĩ Số (Hiện tại / Tối đa)</th>
-                                    <th>Tỷ Lệ Lấp Đầy</th>
-                                    <th>Trạng Thái &amp; Ghi Chú</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var sec in guestResult.Sections)
-                                {
-                                    <tr>
-                                        <td class="fw-bold text-primary">@sec.SectionCode</td>
-                                        <td class="fw-semibold">@sec.CourseName</td>
-                                        <td class="small text-muted">@sec.Instructor</td>
-                                        <td class="small fw-bold">@sec.CurrentEnrollment / @sec.MaxCapacity SV</td>
-                                        <td style="min-width: 140px;">
-                                            <div class="progress" style="height: 8px;">
-                                                <div class="progress-bar @(sec.FillRate >= 90 ? "bg-danger" : (sec.FillRate >= 50 ? "bg-primary" : "bg-secondary"))" 
-                                                     role="progressbar" 
-                                                     style="width: @(Math.Min(100, sec.FillRate))%;"></div>
-                                            </div>
-                                            <span class="small fw-semibold text-muted">@sec.FillRate%</span>
-                                        </td>
-                                        <td>
-                                            <span class="@sec.StatusBadge me-1">@sec.Note</span>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
+                            @if (msg.RecommendedSections.Any())
+                            {
+                                <h6 class="fw-bold text-dark mt-3 mb-2">
+                                    <i class="bi bi-table text-primary me-1"></i> Danh Sách Lớp Học Phần Liên Quan:
+                                </h6>
+                                <div class="table-responsive rounded-3 border mb-3">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light small">
+                                            <tr>
+                                                <th>Mã Lớp</th>
+                                                <th>Tên Học Phần</th>
+                                                <th>Giảng Viên</th>
+                                                <th>Thời Khóa Biểu</th>
+                                                <th>Ghi Chú</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var sec in msg.RecommendedSections)
+                                            {
+                                                <tr>
+                                                    <td class="fw-bold text-primary">@sec.SectionCode</td>
+                                                    <td class="fw-semibold">@sec.CourseName</td>
+                                                    <td class="small text-muted">@sec.Instructor</td>
+                                                    <td class="small">@sec.ScheduleSummary</td>
+                                                    <td class="small text-muted">@sec.RecommendationReason</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
 
-                <div class="alert alert-warning border-0 rounded-4 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-person-check-fill fs-4 text-warning"></i>
-                        <span class="small">
-                            Bạn muốn AI phân tích học bạ cá nhân và tự động lên lịch học tối ưu cho riêng bạn?
-                        </span>
-                    </div>
-                    <button type="button" class="btn btn-primary btn-sm fw-bold rounded-pill px-3 shadow-sm" @onclick="() => LoginModalService.Open()">
-                        <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Sinh Viên Ngay
-                    </button>
-                </div>
+                            @if (msg.ShowLoginButton)
+                            {
+                                <div class="alert alert-warning border-0 rounded-4 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-person-check-fill fs-4 text-warning"></i>
+                                        <span class="small">
+                                            Bạn muốn AI phân tích học bạ cá nhân và tự động lên lịch học tối ưu cho riêng bạn?
+                                        </span>
+                                    </div>
+                                    <button type="button" class="btn btn-primary btn-sm fw-bold rounded-pill px-3 shadow-sm" @onclick="() => LoginModalService.Open()">
+                                        <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập Sinh Viên Ngay
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
             </div>
         }
     }
@@ -592,148 +630,197 @@
                 </div>
             }
 
-            <!-- KẾT QUẢ TƯ VẤN CỦA AI -->
-            @if (currentAdvice != null)
+            <!-- HỘI THOẠI VỚI CỐ VẤN AI (LIÊN TỤC, GIỮ NGUYÊN LỊCH SỬ) -->
+            @if (ChatSessionState.Messages.Any())
             {
-                @if (!string.IsNullOrEmpty(currentAdvice.WarningMessage))
-                {
-                    <div class="alert alert-info border-0 shadow-sm rounded-4 p-3 d-flex align-items-center gap-2 mb-3">
-                        <i class="bi bi-info-circle-fill text-primary fs-5 flex-shrink-0"></i>
-                        <div class="small fw-semibold">@currentAdvice.WarningMessage</div>
-                    </div>
-                }
-
-                <!-- Card lời khuyên tổng quan từ Cố vấn AI (Giao diện Sang Trọng & Hiện Đại) -->
-                <div class="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4 border-start border-primary border-4">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-3 border-bottom border-light-subtle">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-circle text-white d-flex align-items-center justify-content-center shadow-sm" 
-                                 style="width: 48px; height: 48px; background: linear-gradient(135deg, #1d4ed8 0%, #0284c7 100%);">
-                                <i class="bi bi-stars fs-4"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold text-dark fs-6 d-flex align-items-center gap-2">
-                                    <span>@(currentAdvice.IsAiGenerated ? "Trợ Lý Trí Tuệ Nhân Tạo AI" : "Cố Vấn Học Thuật Tín Chỉ")</span>
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill py-1 px-2 small">
-                                        <i class="bi bi-patch-check-fill me-1"></i>Đã phân tích toàn diện
-                                    </span>
-                                </div>
-                                <div class="small text-muted">
-                                    Thời gian: @currentAdvice.GeneratedAt.ToString("dd/MM/yyyy HH:mm") &bull; @(string.IsNullOrEmpty(currentAdvice.ModelUsed) ? "Động cơ Cố vấn" : currentAdvice.ModelUsed)
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-primary-subtle text-primary border px-2 py-1">
-                                <i class="bi bi-book me-1"></i>@currentAdvice.RecommendedSections.Count môn đề xuất
-                            </span>
-                            <span class="badge bg-success-subtle text-success border px-2 py-1">
-                                <i class="bi bi-mortarboard me-1"></i>@currentAdvice.TotalCredits tín chỉ
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="ai-response-content text-dark p-3 rounded-4 bg-light bg-opacity-75 border border-light-subtle mb-0" style="font-size: 0.96rem; line-height: 1.8;">
-                        @((MarkupString)FormatMessage(currentAdvice.AiMessage))
-                    </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="small text-muted fw-bold">
+                        <i class="bi bi-chat-left-text me-1 text-primary"></i>Lịch sử đối thoại (@ChatSessionState.Messages.Count tin nhắn):
+                    </span>
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill" @onclick="ClearHistory">
+                        <i class="bi bi-trash3 me-1"></i>Xóa cuộc trò chuyện
+                    </button>
                 </div>
 
-                <!-- Danh sách các lớp học phần được gợi ý -->
-                <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden mb-4">
-                    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div>
-                            <h5 class="fw-bold mb-0 text-dark">
-                                <i class="bi bi-list-check text-primary me-2"></i>Danh Sách Lớp Học Phần Đề Xuất Cho Bạn
-                            </h5>
-                            <span class="small text-muted">Bạn có thể chọn hoặc bỏ chọn từng môn trước khi xác nhận</span>
-                        </div>
-
-                        <div class="d-flex align-items-center gap-3">
-                            <span class="small">
-                                Đã chọn: <strong class="text-primary fs-6">@SelectedCredits</strong> tín chỉ
-                            </span>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ToggleSelectAll">
-                                @(currentAdvice.RecommendedSections.All(s => s.IsSelected) ? "Bỏ chọn tất cả" : "Chọn tất cả")
-                            </button>
-                        </div>
-                    </div>
-
-                    @if (!currentAdvice.RecommendedSections.Any())
+                <div class="d-flex flex-column gap-3 mb-4">
+                    @foreach (var msg in ChatSessionState.Messages)
                     {
-                        <div class="p-5 text-center text-muted">
-                            <i class="bi bi-emoji-smile fs-1 mb-2 d-block"></i>
-                            <h6>Không có lớp học phần nào phù hợp thêm trong kỳ này.</h6>
-                            <p class="small mb-0">Bạn có thể đã hoàn thành hết các môn tiên quyết hoặc đã đăng ký đủ tải.</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 45px;" class="text-center">Chọn</th>
-                                        <th>Mã Lớp</th>
-                                        <th>Tên Học Phần</th>
-                                        <th>Số TC</th>
-                                        <th>Giảng Viên</th>
-                                        <th>Thời Khóa Biểu &amp; Phòng</th>
-                                        <th>Lý Do AI Đề Xuất</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in currentAdvice.RecommendedSections)
-                                    {
-                                        <tr class="@(item.IsSelected ? "table-primary-subtle" : "")">
-                                            <td class="text-center">
-                                                <input type="checkbox" class="form-check-input" 
-                                                       style="cursor: pointer; width: 1.25rem; height: 1.25rem;"
-                                                       @bind="item.IsSelected" />
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-primary fs-6">@item.SectionCode</span>
-                                            </td>
-                                            <td>
-                                                <div class="fw-bold text-dark">@item.CourseName</div>
-                                                <div class="small text-muted">Mã môn: @item.CourseCode</div>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-secondary">@item.Credits TC</span>
-                                            </td>
-                                            <td class="small">@item.Instructor</td>
-                                            <td>
-                                                <span class="badge bg-light text-dark border">
-                                                    <i class="bi bi-clock me-1 text-primary"></i>@item.ScheduleSummary
+                        if (msg.IsUser)
+                        {
+                            <!-- Bong bóng tin nhắn người dùng -->
+                            <div class="d-flex justify-content-end">
+                                <div class="card border-0 shadow-sm rounded-4 text-white p-3" 
+                                     style="max-width: 80%; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);">
+                                    <div class="d-flex align-items-center justify-content-between gap-3 mb-1">
+                                        <span class="small fw-bold opacity-75">
+                                            <i class="bi bi-person-fill me-1"></i>Bạn (@currentStudentName)
+                                        </span>
+                                        <span class="small opacity-50">@msg.Timestamp.ToString("HH:mm")</span>
+                                    </div>
+                                    <div class="fs-6" style="white-space: pre-wrap; word-break: break-word;">@msg.Content</div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Thẻ trả lời của Cố vấn AI -->
+                            <div class="card border-0 shadow-sm rounded-4 bg-white p-4 mb-2 border-start border-primary border-4 animate__animated animate__fadeIn">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-3 border-bottom border-light-subtle">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center shadow-sm" 
+                                             style="width: 44px; height: 44px; background: linear-gradient(135deg, #1d4ed8 0%, #0284c7 100%);">
+                                            <i class="bi bi-stars fs-5"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark fs-6 d-flex align-items-center gap-2">
+                                                <span>@(msg.IsAiGenerated ? "Trợ Lý Trí Tuệ Nhân Tạo AI" : "Cố Vấn Học Thuật Tín Chỉ")</span>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill py-1 px-2 small">
+                                                    <i class="bi bi-patch-check-fill me-1"></i>Phản hồi chính thức
                                                 </span>
-                                                <div class="small text-muted mt-1">Phòng: @item.Room</div>
-                                            </td>
-                                            <td class="small text-muted" style="max-width: 320px;">
-                                                <i class="bi bi-check-circle-fill text-success me-1"></i>@item.RecommendationReason
-                                            </td>
-                                        </tr>
+                                            </div>
+                                            <div class="small text-muted">
+                                                @msg.Timestamp.ToString("dd/MM/yyyy HH:mm") &bull; @(string.IsNullOrEmpty(msg.ModelUsed) ? "Hệ thống Cố vấn" : msg.ModelUsed)
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if (msg.RecommendedSections.Any())
+                                    {
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-primary-subtle text-primary border px-2 py-1">
+                                                <i class="bi bi-book me-1"></i>@msg.RecommendedSections.Count môn đề xuất
+                                            </span>
+                                            <span class="badge bg-success-subtle text-success border px-2 py-1">
+                                                <i class="bi bi-mortarboard me-1"></i>@msg.RecommendedSections.Sum(s => s.Credits) tín chỉ
+                                            </span>
+                                        </div>
                                     }
-                                </tbody>
-                            </table>
-                        </div>
+                                </div>
 
-                        <div class="card-footer bg-white border-top p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
-                            <div class="text-muted small">
-                                <i class="bi bi-info-circle me-1"></i>Học phần được chọn sẽ được đưa vào <strong>Giỏ Đăng Ký</strong> để bạn kiểm tra lần cuối trước khi ghi danh.
-                            </div>
+                                @if (!string.IsNullOrEmpty(msg.WarningMessage))
+                                {
+                                    <div class="alert alert-info border-0 shadow-sm rounded-4 p-3 d-flex align-items-center gap-2 mb-3">
+                                        <i class="bi bi-info-circle-fill text-primary fs-5 flex-shrink-0"></i>
+                                        <div class="small fw-semibold">@msg.WarningMessage</div>
+                                    </div>
+                                }
 
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-outline-secondary" @onclick="ClearAdvice">
-                                    <i class="bi bi-arrow-counterclockwise me-1"></i>Xóa Kết Quả
-                                </button>
-                                <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" 
-                                        @onclick="AddSelectedToCart" 
-                                        disabled="@(!currentAdvice.RecommendedSections.Any(s => s.IsSelected))">
-                                    <i class="bi bi-cart-plus-fill me-2 fs-5"></i>
-                                    Xác Nhận Thêm Vào Giỏ Đăng Ký (@SelectedCredits TC)
-                                </button>
+                                <div class="ai-response-content text-dark p-3 rounded-4 bg-light bg-opacity-75 border border-light-subtle mb-0" 
+                                     style="font-size: 0.96rem; line-height: 1.8;">
+                                    @((MarkupString)FormatMessage(msg.Content))
+                                </div>
+
+                                <!-- Action Links nếu có -->
+                                @if (msg.ActionLinks.Any())
+                                {
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2 border-top border-light-subtle">
+                                        <span class="small fw-bold text-muted me-1">Thao tác nhanh:</span>
+                                        @foreach (var link in msg.ActionLinks)
+                                        {
+                                            if (link.Kind == AiActionLinkKind.Login)
+                                            {
+                                                <button type="button" class="btn btn-primary btn-sm rounded-pill fw-bold shadow-sm d-inline-flex align-items-center gap-1"
+                                                        @onclick="() => LoginModalService.Open()">
+                                                    <i class="bi bi-box-arrow-in-right"></i>
+                                                    <span>@link.Label</span>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <a href="@link.Url" class="btn btn-outline-primary btn-sm rounded-pill fw-bold shadow-sm d-inline-flex align-items-center gap-1">
+                                                    <i class="bi bi-box-arrow-up-right"></i>
+                                                    <span>@link.Label</span>
+                                                </a>
+                                            }
+                                        }
+                                    </div>
+                                }
+
+                                <!-- Danh sách các lớp học phần được gợi ý -->
+                                @if (msg.RecommendedSections.Any())
+                                {
+                                    <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden mt-3 border">
+                                        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                            <div>
+                                                <h6 class="fw-bold mb-0 text-dark">
+                                                    <i class="bi bi-list-check text-primary me-2"></i>Danh Sách Lớp Học Phần Đề Xuất
+                                                </h6>
+                                                <span class="small text-muted">Chọn các môn bạn muốn đưa vào Giỏ Đăng Ký</span>
+                                            </div>
+
+                                            <div class="d-flex align-items-center gap-3">
+                                                <span class="small">
+                                                    Đã chọn: <strong class="text-primary fs-6">@msg.RecommendedSections.Where(s => s.IsSelected).Sum(s => s.Credits)</strong> tín chỉ
+                                                </span>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => ToggleSelectAllForMessage(msg)">
+                                                    @(msg.RecommendedSections.All(s => s.IsSelected) ? "Bỏ chọn tất cả" : "Chọn tất cả")
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="table-responsive">
+                                            <table class="table table-hover align-middle mb-0">
+                                                <thead class="table-light small">
+                                                    <tr>
+                                                        <th style="width: 45px;" class="text-center">Chọn</th>
+                                                        <th>Mã Lớp</th>
+                                                        <th>Tên Học Phần</th>
+                                                        <th>Số TC</th>
+                                                        <th>Giảng Viên</th>
+                                                        <th>Thời Khóa Biểu &amp; Phòng</th>
+                                                        <th>Lý Do AI Đề Xuất</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var item in msg.RecommendedSections)
+                                                    {
+                                                        <tr class="@(item.IsSelected ? "table-primary-subtle" : "")">
+                                                            <td class="text-center">
+                                                                <input type="checkbox" class="form-check-input" 
+                                                                       style="cursor: pointer; width: 1.25rem; height: 1.25rem;"
+                                                                       @bind="item.IsSelected" />
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge bg-primary fs-6">@item.SectionCode</span>
+                                                            </td>
+                                                            <td>
+                                                                <div class="fw-bold text-dark">@item.CourseName</div>
+                                                                <div class="small text-muted">Mã môn: @item.CourseCode</div>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge bg-secondary">@item.Credits TC</span>
+                                                            </td>
+                                                            <td class="small">@item.Instructor</td>
+                                                            <td>
+                                                                <span class="badge bg-light text-dark border">
+                                                                    <i class="bi bi-clock me-1 text-primary"></i>@item.ScheduleSummary
+                                                                </span>
+                                                                <div class="small text-muted mt-1">Phòng: @item.Room</div>
+                                                            </td>
+                                                            <td class="small text-muted" style="max-width: 320px;">
+                                                                <i class="bi bi-check-circle-fill text-success me-1"></i>@item.RecommendationReason
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div class="card-footer bg-white border-top p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                            <div class="text-muted small">
+                                                <i class="bi bi-info-circle me-1"></i>Học phần được chọn sẽ được đưa vào <strong>Giỏ Đăng Ký</strong>.
+                                            </div>
+                                            <button type="button" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm" 
+                                                    @onclick="() => AddSelectedFromMessageToCart(msg)" 
+                                                    disabled="@(!msg.RecommendedSections.Any(s => s.IsSelected))">
+                                                <i class="bi bi-cart-plus-fill me-1"></i>
+                                                Thêm Vào Giỏ Đăng Ký (@msg.RecommendedSections.Where(s => s.IsSelected).Sum(s => s.Credits) TC)
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
                             </div>
-                        </div>
+                        }
                     }
                 </div>
             }
@@ -760,41 +847,78 @@
     private string guestQuery = string.Empty;
     private bool isGuestLoading = false;
     private AdminAiQueryResult? guestResult;
-    private List<AiConversationMessage> guestChatHistory = new List<AiConversationMessage>();
 
     private List<Student> studentList = new List<Student>();
     private string userPrompt = string.Empty;
     private bool isLoading = false;
     private string successMessage = string.Empty;
     private AiCourseAdvice? currentAdvice;
-    private List<AiConversationMessage> studentChatHistory = new List<AiConversationMessage>();
-
-    private int SelectedCredits => currentAdvice?.RecommendedSections.Where(s => s.IsSelected).Sum(s => s.Credits) ?? 0;
 
     protected override async Task OnInitializedAsync()
     {
         CurrentUserStateStore.AddStateChangeListeners(HandleUserStateChange);
+        ChatSessionState.OnChange += OnSessionChanged;
         studentList = (await StudentRepository.GetAllStudentsAsync()).ToList();
         await RefreshUserState();
 
-        // Khởi tạo giao diện chào mừng từ AI
-        if (!isAuthenticated)
+        // Khởi tạo lời chào nếu chưa có hội thoại nào trong ChatSessionState
+        if (!ChatSessionState.Messages.Any())
         {
-            var initAdvice = await GetAiAdviceUseCase.ExecuteAsync(0, "2026_HK1", "");
-            guestResult = new AdminAiQueryResult
+            if (!isAuthenticated)
             {
-                Query = string.Empty,
-                Category = "Cố Vấn Học Thuật AI",
-                AnswerSummary = initAdvice.AiMessage,
-                ModelUsed = initAdvice.ModelUsed,
-                WarningMessage = initAdvice.WarningMessage
-            };
-            guestQuery = string.Empty;
+                var initAdvice = await GetAiAdviceUseCase.ExecuteAsync(0, "2026_HK1", "");
+                ChatSessionState.AddMessage(new AiConversationMessage
+                {
+                    IsUser = false,
+                    Content = initAdvice.AiMessage,
+                    Timestamp = DateTime.Now,
+                    ActionLinks = initAdvice.ActionLinks ?? new(),
+                    ShowLoginButton = initAdvice.SuggestLogin,
+                    IsAiGenerated = initAdvice.IsAiGenerated,
+                    ModelUsed = initAdvice.ModelUsed,
+                    WarningMessage = initAdvice.WarningMessage
+                });
+            }
+            else if (currentRole != "Admin")
+            {
+                var initAdvice = await GetAiAdviceUseCase.ExecuteAsync(activeStudentId, "2026_HK1", "");
+                currentAdvice = initAdvice;
+                ChatSessionState.AddMessage(new AiConversationMessage
+                {
+                    IsUser = false,
+                    Content = initAdvice.AiMessage,
+                    Timestamp = DateTime.Now,
+                    RecommendedSections = initAdvice.RecommendedSections ?? new(),
+                    ActionLinks = initAdvice.ActionLinks ?? new(),
+                    IsAiGenerated = initAdvice.IsAiGenerated,
+                    ModelUsed = initAdvice.ModelUsed,
+                    WarningMessage = initAdvice.WarningMessage
+                });
+            }
         }
-        else if (currentRole == "Admin")
+
+        if (currentRole == "Admin")
         {
             adminResult = await AdminAiAssistantUseCase.ExecuteAsync("chào", "2026_HK1");
             adminQuery = string.Empty;
+        }
+    }
+
+    private void OnSessionChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task MinimizeToWidget()
+    {
+        ChatSessionState.IsWidgetChatOpen = true;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("history.back");
+        }
+        catch
+        {
+            NavigationManager.NavigateTo("/");
         }
     }
 
@@ -826,70 +950,49 @@
 
         try
         {
-            guestChatHistory.Add(new AiConversationMessage
+            ChatSessionState.AddMessage(new AiConversationMessage
             {
                 IsUser = true,
                 Content = question,
                 Timestamp = DateTime.Now
             });
 
-            var advice = await GetAiAdviceUseCase.ExecuteAsync(0, "2026_HK1", question, guestChatHistory);
+            var history = ChatSessionState.GetRecentHistory(6);
+            var advice = await GetAiAdviceUseCase.ExecuteAsync(0, "2026_HK1", question, history);
 
-            guestResult = new AdminAiQueryResult
-            {
-                Query = question,
-                Category = advice.IsAiGenerated ? "Trợ Lý AI (LLM)" : "Cố Vấn Học Thuật AI",
-                AnswerSummary = advice.AiMessage,
-                IsAiGenerated = advice.IsAiGenerated,
-                ModelUsed = advice.ModelUsed,
-                WarningMessage = advice.WarningMessage
-            };
-
-            if (advice.RecommendedSections.Any())
-            {
-                foreach (var s in advice.RecommendedSections)
-                {
-                    guestResult.Sections.Add(new AdminAiSectionItem
-                    {
-                        SectionId = s.SectionId,
-                        SectionCode = s.SectionCode,
-                        CourseName = s.CourseName,
-                        Instructor = s.Instructor,
-                        CurrentEnrollment = 0,
-                        MaxCapacity = 50,
-                        Note = s.RecommendationReason
-                    });
-                }
-            }
-
-            guestChatHistory.Add(new AiConversationMessage
+            ChatSessionState.AddMessage(new AiConversationMessage
             {
                 IsUser = false,
                 Content = advice.AiMessage,
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.Now,
+                RecommendedSections = advice.RecommendedSections ?? new(),
+                ActionLinks = advice.ActionLinks ?? new(),
+                ShowLoginButton = advice.SuggestLogin,
+                IsAiGenerated = advice.IsAiGenerated,
+                ModelUsed = advice.ModelUsed,
+                WarningMessage = advice.WarningMessage
             });
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[AiAdvisor Guest Error] {ex.GetType().Name}: {ex.Message}");
-            guestResult = new AdminAiQueryResult
+            ChatSessionState.AddMessage(new AiConversationMessage
             {
-                Query = question,
-                Category = "Dịch Vụ AI",
-                AnswerSummary = "Dịch vụ AI hiện chưa khả dụng. Ứng dụng vẫn hoạt động bình thường, vui lòng thử lại sau giây lát."
-            };
+                IsUser = false,
+                Content = "Dịch vụ AI hiện chưa khả dụng. Ứng dụng vẫn hoạt động bình thường, vui lòng thử lại sau giây lát.",
+                Timestamp = DateTime.Now
+            });
         }
         finally
         {
             isGuestLoading = false;
             StateHasChanged();
+            await ScrollToBottomAsync();
         }
     }
 
     private async void HandleUserStateChange()
     {
-        studentChatHistory.Clear();
-        guestChatHistory.Clear();
         await RefreshUserState();
         await InvokeAsync(StateHasChanged);
     }
@@ -987,7 +1090,7 @@
                 currentMajor = student.Major;
                 currentAcademicYear = student.AcademicYear;
                 currentAdvice = null;
-                studentChatHistory.Clear();
+                ChatSessionState.Clear();
                 successMessage = string.Empty;
                 StateHasChanged();
             }
@@ -1002,76 +1105,93 @@
         userPrompt = string.Empty;
 
         isLoading = true;
-        currentAdvice = null;
         successMessage = string.Empty;
         StateHasChanged();
 
         try
         {
-            studentChatHistory.Add(new AiConversationMessage
+            ChatSessionState.AddMessage(new AiConversationMessage
             {
                 IsUser = true,
                 Content = question,
                 Timestamp = DateTime.Now
             });
 
-            currentAdvice = await GetAiAdviceUseCase.ExecuteAsync(activeStudentId, "2026_HK1", question, studentChatHistory);
+            var history = ChatSessionState.GetRecentHistory(6);
+            var advice = await GetAiAdviceUseCase.ExecuteAsync(activeStudentId, "2026_HK1", question, history);
+            currentAdvice = advice;
 
-            if (currentAdvice != null && !string.IsNullOrEmpty(currentAdvice.AiMessage))
+            if (advice != null && !string.IsNullOrEmpty(advice.AiMessage))
             {
-                studentChatHistory.Add(new AiConversationMessage
+                ChatSessionState.AddMessage(new AiConversationMessage
                 {
                     IsUser = false,
-                    Content = currentAdvice.AiMessage,
-                    Timestamp = DateTime.Now
+                    Content = advice.AiMessage,
+                    Timestamp = DateTime.Now,
+                    RecommendedSections = advice.RecommendedSections ?? new(),
+                    ActionLinks = advice.ActionLinks ?? new(),
+                    ShowLoginButton = advice.SuggestLogin,
+                    IsAiGenerated = advice.IsAiGenerated,
+                    ModelUsed = advice.ModelUsed,
+                    WarningMessage = advice.WarningMessage
                 });
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[AiAdvisor Student Error] {ex.GetType().Name}: {ex.Message}");
-            currentAdvice = new AiCourseAdvice
+            ChatSessionState.AddMessage(new AiConversationMessage
             {
-                StudentId = activeStudentId,
-                StudentCode = currentStudentCode,
-                StudentName = currentStudentName,
-                Semester = "2026_HK1",
+                IsUser = false,
+                Content = "Dịch vụ AI hiện chưa khả dụng. Ứng dụng và các chức năng đăng ký tín chỉ vẫn hoạt động bình thường, vui lòng thử lại sau giây lát.",
+                Timestamp = DateTime.Now,
                 IsAiGenerated = false,
-                WarningMessage = "Dịch vụ AI hiện chưa khả dụng. Ứng dụng và các chức năng đăng ký tín chỉ vẫn hoạt động bình thường, vui lòng thử lại sau giây lát."
-            };
+                WarningMessage = "Dịch vụ AI ngoại tuyến tạm thời."
+            });
         }
         finally
         {
             isLoading = false;
             StateHasChanged();
+            await ScrollToBottomAsync();
         }
     }
 
-    private void ToggleSelectAll()
+    private async Task ScrollToBottomAsync()
     {
-        if (currentAdvice == null || !currentAdvice.RecommendedSections.Any()) return;
-        bool allSelected = currentAdvice.RecommendedSections.All(s => s.IsSelected);
-        foreach (var s in currentAdvice.RecommendedSections)
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 999999);
+        }
+        catch { }
+    }
+
+    private void ToggleSelectAllForMessage(AiConversationMessage msg)
+    {
+        if (msg == null || !msg.RecommendedSections.Any()) return;
+        bool allSelected = msg.RecommendedSections.All(s => s.IsSelected);
+        foreach (var s in msg.RecommendedSections)
         {
             s.IsSelected = !allSelected;
         }
     }
 
-    private void ClearAdvice()
+    private void ClearHistory()
     {
+        ChatSessionState.Clear();
         currentAdvice = null;
-        studentChatHistory.Clear();
         successMessage = string.Empty;
     }
 
-    private async Task AddSelectedToCart()
+    private async Task AddSelectedFromMessageToCart(AiConversationMessage msg)
     {
-        if (currentAdvice == null) return;
+        if (msg == null) return;
 
-        var selected = currentAdvice.RecommendedSections.Where(s => s.IsSelected).ToList();
+        var selected = msg.RecommendedSections.Where(s => s.IsSelected).ToList();
         if (!selected.Any()) return;
 
         int addedCount = 0;
+        int creditsCount = selected.Sum(s => s.Credits);
         foreach (var item in selected)
         {
             var sec = new Section
@@ -1095,7 +1215,7 @@
             addedCount++;
         }
 
-        successMessage = $"Bạn đã xác nhận và thêm thành công {addedCount} học phần ({SelectedCredits} tín chỉ) vào Giỏ Đăng Ký!";
+        successMessage = $"Bạn đã xác nhận và thêm thành công {addedCount} học phần ({creditsCount} tín chỉ) vào Giỏ Đăng Ký!";
         StateHasChanged();
     }
 
@@ -1189,20 +1309,31 @@
     {
         if (string.IsNullOrEmpty(text)) return string.Empty;
 
-        // Bold: **text**
-        text = System.Text.RegularExpressions.Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong class=\"text-dark fw-bold\">$1</strong>");
+        // 1. HtmlEncode để chống XSS
+        var encoded = System.Net.WebUtility.HtmlEncode(text);
 
-        // Italic: *text*
-        text = System.Text.RegularExpressions.Regex.Replace(text, @"\*(.+?)\*", "<em class=\"text-muted\">$1</em>");
+        // 2. Bold: **text**
+        encoded = System.Text.RegularExpressions.Regex.Replace(encoded, @"\*\*(.+?)\*\*", "<strong class=\"text-dark fw-bold\">$1</strong>");
 
-        // Inline code: `code`
-        text = System.Text.RegularExpressions.Regex.Replace(text, @"`(.+?)`", "<code class=\"bg-white border px-2 py-0 rounded text-primary fw-semibold\" style=\"font-size: 0.88rem;\">$1</code>");
+        // 3. Italic: *text*
+        encoded = System.Text.RegularExpressions.Regex.Replace(encoded, @"\*(.+?)\*", "<em class=\"text-muted\">$1</em>");
 
-        return text;
+        // 4. Inline code: `code`
+        encoded = System.Text.RegularExpressions.Regex.Replace(encoded, @"`(.+?)`", "<code class=\"bg-white border px-1 py-0 rounded text-primary fw-semibold\" style=\"font-size: 0.88rem;\">$1</code>");
+
+        // 5. Safe markdown link: [text](/duong-dan-noi-bo) - chỉ cho phép đường dẫn bắt đầu bằng / đơn lẻ
+        encoded = System.Text.RegularExpressions.Regex.Replace(
+            encoded,
+            @"\[([^\]]+)\]\((/[^/\)][^\)]*)\)",
+            "<a href=\"$2\" class=\"fw-bold text-decoration-underline text-primary\">$1 <i class=\"bi bi-box-arrow-up-right small\"></i></a>"
+        );
+
+        return encoded;
     }
 
     public void Dispose()
     {
         CurrentUserStateStore.RemoveStateChangeListeners(HandleUserStateChange);
+        ChatSessionState.OnChange -= OnSessionChanged;
     }
 }

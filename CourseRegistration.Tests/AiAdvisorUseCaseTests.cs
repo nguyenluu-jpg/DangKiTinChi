@@ -1450,6 +1450,210 @@ namespace CourseRegistration.Tests
             Assert.Equal(1, recorder.LastMessages.Count(m => m.Role == ChatRole.User && m.Text == question));
             Assert.Contains(recorder.LastMessages, m => m.Role == ChatRole.User && m.Text == "Câu hỏi trước đó");
         }
+
+        #region 20. Yêu Cầu Mới: Học Phí Thông Minh, Điều Hướng /tuition, Bảo Mật, Session State, Markdown Link
+
+        [Fact]
+        public async Task Test_Unit_Tuition_OwnStatus_Concise_NoMBBank_HasTuitionLink()
+        {
+            // 1. SV21001 hỏi "học phí tôi hiện tại mấy" -> có số tiền, không có STK MB Bank, có ActionLink /tuition
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            var result = await useCase.ExecuteAsync(1, "2026_HK1", "học phí tôi hiện tại mấy");
+
+            Assert.NotNull(result);
+            Assert.Contains("Nguyễn Văn Tuấn", result.AiMessage);
+            Assert.Contains("12 Tín chỉ", result.AiMessage);
+            Assert.True(result.AiMessage.Contains("5.400.000") || result.AiMessage.Contains("5,400,000"));
+            Assert.Contains("CHƯA ĐÓNG", result.AiMessage);
+            // KHÔNG in số tài khoản MB Bank khi hỏi học phí cá nhân
+            Assert.DoesNotContain("101705201967", result.AiMessage);
+            // Có liên kết hoặc nút điều hướng tới /tuition
+            Assert.Contains("/tuition", result.AiMessage);
+            Assert.Contains(result.ActionLinks, l => l.Url == "/tuition");
+        }
+
+        [Fact]
+        public async Task Test_Unit_Tuition_HowToPay_ThreeSteps_NoBankUnlessAsked()
+        {
+            // 2. Hỏi cách đóng "tôi muốn đóng học phí đóng như nào" -> có 3 bước, link /tuition, không in STK
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "tôi muốn đóng học phí đóng như nào");
+
+            Assert.NotNull(result);
+            Assert.Contains("Hướng Dẫn Đóng Học Phí", result.AiMessage);
+            Assert.Contains("VietQR", result.AiMessage);
+            Assert.Contains("gạch nợ", result.AiMessage);
+            Assert.Contains("/tuition", result.AiMessage);
+            // Không nêu STK trừ khi hỏi thẳng STK
+            Assert.DoesNotContain("101705201967", result.AiMessage);
+            Assert.Contains(result.ActionLinks, l => l.Url == "/tuition");
+        }
+
+        [Fact]
+        public async Task Test_Unit_Tuition_FollowUpQuery_RecognizesHowToPayFromHistory()
+        {
+            // 3. Câu nối tiếp: sau khi hỏi học phí, câu tiếp theo là "đóng như nào" -> phân loại TuitionIntent.HowToPay
+            var useCase = CreateUseCase();
+            var history = new List<AiConversationMessage>
+            {
+                new AiConversationMessage { IsUser = true, Content = "Học phí học kỳ 2026_HK1 của em là bao nhiêu?" },
+                new AiConversationMessage { IsUser = false, Content = "Học phí của bạn là 5.400.000 VNĐ cho 12 tín chỉ. Xem chi tiết tại /tuition" }
+            };
+
+            var intent = GetAiAdviceUseCase.ClassifyTuitionIntent("dong nhu nao", "dong nhu nao", history);
+            Assert.Equal(TuitionIntent.HowToPay, intent);
+
+            var result = await useCase.ExecuteAsync(1, "2026_HK1", "đóng như nào", history);
+            Assert.NotNull(result);
+            Assert.Contains("VietQR", result.AiMessage);
+            Assert.Contains("/tuition", result.AiMessage);
+            Assert.DoesNotContain("101705201967", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_Tuition_GuestUser_SuggestsLogin_HidesNumbers()
+        {
+            // 4. Khách chưa đăng nhập hỏi "học phí của tôi" -> SuggestLogin = true, ActionLink Login, không lộ số liệu
+            var useCase = CreateUseCase();
+            var result = await useCase.ExecuteAsync(0, "2026_HK1", "học phí của tôi");
+
+            Assert.NotNull(result);
+            Assert.True(result.SuggestLogin);
+            Assert.Contains(result.ActionLinks, l => l.Kind == AiActionLinkKind.Login);
+            Assert.Contains("chưa đăng nhập", result.AiMessage.ToLowerInvariant());
+            // Không lộ số tiền của bất kỳ sinh viên nào
+            Assert.DoesNotContain("5.400.000", result.AiMessage);
+            Assert.DoesNotContain("6.300.000", result.AiMessage);
+            Assert.DoesNotContain("SV21001", result.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_Tuition_Privacy_StudentCannotViewOtherStudent_AdminCan()
+        {
+            // 5. SV21001 hỏi học phí của SV21003 (Lê Hoàng Nam) -> bị từ chối; Admin hỏi -> xem được
+            var useCase = CreateUseCase();
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                FullName = "Nguyễn Văn Tuấn",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            // SV21001 hỏi SV21003 (Lê Hoàng Nam)
+            var studentQueryResult = await useCase.ExecuteAsync(1, "2026_HK1", "Học phí của sinh viên Lê Hoàng Nam là bao nhiêu?");
+            Assert.NotNull(studentQueryResult);
+            Assert.Contains("bảo mật", studentQueryResult.AiMessage.ToLowerInvariant());
+            Assert.DoesNotContain("ĐÃ ĐÓNG", studentQueryResult.AiMessage);
+
+            // Admin hỏi thông tin học phí của Lê Hoàng Nam
+            await _userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 1,
+                Username = "admin",
+                FullName = "Quản Trị Viên",
+                Role = "Admin",
+                StudentId = 0
+            });
+
+            var adminQueryResult = await useCase.ExecuteAsync(0, "2026_HK1", "Học phí của sinh viên Lê Hoàng Nam là bao nhiêu?");
+            Assert.NotNull(adminQueryResult);
+            Assert.Contains("Lê Hoàng Nam", adminQueryResult.AiMessage);
+            Assert.Contains("ĐÃ ĐÓNG", adminQueryResult.AiMessage);
+        }
+
+        [Fact]
+        public async Task Test_Unit_AiChatSessionState_StoresMessages_ResetsOnUserChange()
+        {
+            // 6. AiChatSessionState lưu tin nhắn và reset khi đăng xuất / đổi tài khoản / đổi vai trò
+            var userStateStore = new CurrentUserStateStore();
+            await userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 2,
+                Username = "sv21001",
+                Role = "Student",
+                StudentId = 1
+            });
+
+            var session = new CourseRegistration.Web.Services.AiChatSessionState(userStateStore);
+
+            // Thêm tin nhắn
+            session.AddMessage(new AiConversationMessage { IsUser = true, Content = "Chào AI" });
+            session.AddMessage(new AiConversationMessage { IsUser = false, Content = "Chào bạn Tuấn!" });
+
+            Assert.Equal(2, session.Messages.Count);
+            Assert.Equal(2, session.GetRecentHistory(6).Count);
+
+            // Đổi tài khoản (ví dụ sang Lê Hoàng Nam)
+            await userStateStore.SetCurrentUserAsync(new UserAccount
+            {
+                AccountId = 3,
+                Username = "sv21003",
+                Role = "Student",
+                StudentId = 3
+            });
+
+            // Phiên chat phải được dọn dẹp sạch sẽ để bảo vệ dữ liệu riêng tư
+            Assert.Empty(session.Messages);
+
+            // Thêm tin nhắn của tài khoản mới
+            session.AddMessage(new AiConversationMessage { IsUser = true, Content = "Học phí của tôi?" });
+            Assert.Single(session.Messages);
+
+            // Đăng xuất
+            await userStateStore.LogoutAsync();
+            Assert.Empty(session.Messages);
+        }
+
+        [Fact]
+        public void Test_Unit_MarkdownLinkFilter_AllowsInternalPath_BlocksExternalAndXss()
+        {
+            // 7. Bộ lọc link markdown: cho phép [Chi tiết](/tuition), chặn [Hack](https://evil.com) và [XSS](javascript:alert(1))
+            string FormatSafeMarkdown(string text)
+            {
+                var encoded = System.Net.WebUtility.HtmlEncode(text);
+                encoded = System.Text.RegularExpressions.Regex.Replace(
+                    encoded,
+                    @"\[([^\]]+)\]\((/[^/\)][^\)]*)\)",
+                    "<a href=\"$2\" class=\"fw-bold text-decoration-underline text-primary\">$1 <i class=\"bi bi-box-arrow-up-right small\"></i></a>"
+                );
+                return encoded;
+            }
+
+            // 1. Cho phép đường dẫn nội bộ hợp lệ
+            string internalLink = FormatSafeMarkdown("Xem chi tiết tại [Chi tiet](/tuition)");
+            Assert.Contains("<a href=\"/tuition\"", internalLink);
+            Assert.Contains("Chi tiet", internalLink);
+
+            // 2. Chặn liên kết ngoài
+            string externalLink = FormatSafeMarkdown("Nhận thưởng tại [Hack Link](https://evil.com)");
+            Assert.DoesNotContain("<a href=", externalLink);
+
+            // 3. Chặn mã độc Javascript
+            string xssLink = FormatSafeMarkdown("Test XSS [Click](javascript:alert(1))");
+            Assert.DoesNotContain("<a href=", xssLink);
+
+            // 4. Chặn protocol-relative //
+            string doubleSlash = FormatSafeMarkdown("Test [Protocol](//evil.com)");
+            Assert.DoesNotContain("<a href=", doubleSlash);
+
+            // 5. Thẻ HTML <script> được encode an toàn
+            string scriptTag = FormatSafeMarkdown("<script>alert('XSS')</script>");
+            Assert.DoesNotContain("<script>", scriptTag);
+            Assert.Contains("&lt;script&gt;", scriptTag);
+        }
+
+        #endregion
     }
 
     #region In-Memory Fake Repositories & Clients For Isolated Unit Testing
